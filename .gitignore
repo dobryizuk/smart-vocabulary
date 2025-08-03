@@ -2,8 +2,8 @@
 CLAUDE.md
 release.sh
 
-# Test files (keep private)
-tests/
+# Keep tests private in production, but allow local testing
+# tests/
 
 # Dependencies
 node_modules/

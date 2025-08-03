@@ -1,0 +1,81 @@
+{
+  "vocabulary": [
+    {
+      "id": "test_word_1",
+      "english": "test",
+      "russian": "тест",
+      "definition": "A procedure to check functionality",
+      "examples": ["Run a test to verify the code works", "This is just a test"],
+      "phonetic": "/test/",
+      "synonyms": ["examination", "trial", "check"],
+      "easeFactor": 1.5,
+      "repetition": 2,
+      "nextReview": "2025-08-01T10:00:00.000Z",
+      "reviewHistory": [
+        {
+          "date": "2025-07-25T10:00:00.000Z",
+          "difficulty": "easy",
+          "exerciseType": "regular"
+        },
+        {
+          "date": "2025-07-26T10:00:00.000Z", 
+          "difficulty": "perfect",
+          "exerciseType": "reverse"
+        }
+      ],
+      "addedDate": "2025-07-24T10:00:00.000Z"
+    },
+    {
+      "id": "test_word_2", 
+      "english": "function",
+      "russian": "функция",
+      "definition": "A piece of code that performs a specific task",
+      "examples": ["This function calculates the sum", "Call the function with parameters"],
+      "phonetic": "/ˈfʌŋkʃən/",
+      "synonyms": ["method", "procedure", "operation"],
+      "easeFactor": 1.8,
+      "repetition": 4,
+      "nextReview": "2025-08-05T10:00:00.000Z",
+      "reviewHistory": [
+        {
+          "date": "2025-07-20T10:00:00.000Z",
+          "difficulty": "hard",
+          "exerciseType": "regular"
+        },
+        {
+          "date": "2025-07-22T10:00:00.000Z",
+          "difficulty": "medium", 
+          "exerciseType": "regular"
+        },
+        {
+          "date": "2025-07-24T10:00:00.000Z",
+          "difficulty": "easy",
+          "exerciseType": "reverse"
+        },
+        {
+          "date": "2025-07-27T10:00:00.000Z",
+          "difficulty": "perfect",
+          "exerciseType": "regular"
+        }
+      ],
+      "addedDate": "2025-07-19T10:00:00.000Z"
+    },
+    {
+      "id": "test_word_3",
+      "english": "vocabulary", 
+      "russian": "словарь",
+      "definition": "A collection of words and their meanings",
+      "examples": ["Expand your vocabulary by reading", "This app helps build vocabulary"],
+      "phonetic": "/vəˈkæbjʊləri/",
+      "synonyms": ["lexicon", "dictionary", "wordbook"],
+      "easeFactor": 1.3,
+      "repetition": 0,
+      "nextReview": null,
+      "reviewHistory": [],
+      "addedDate": "2025-07-28T10:00:00.000Z"
+    }
+  ],
+  "exportDate": "2025-07-28T12:00:00.000Z",
+  "appVersion": "1.0",
+  "totalWords": 3
+}

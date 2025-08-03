@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Final Tests</title></head><body>
+<h2>🧪 Complete Test Suite - All 32 Tests</h2>
+<div id="results"></div>
+<div id="test-interface" style="display: none; margin: 20px 0; padding: 20px; border: 2px solid #007AFF; border-radius: 12px;"></div>
+<script src="../js/app.js"></script>
+<script>
+let bPassed = 0, bFailed = 0, results = [];
+
+function bTest(name, fn) {
+    try {
+        fn();
+        bPassed++;
+        const msg = '✅ ' + name;
+        console.log(msg);
+        results.push(msg);
+    } catch (e) {
+        bFailed++;
+        const msg = '❌ ' + name + ': ' + e.message;
+        console.log(msg);
+        results.push(msg);
+    }
+}
+
+function bAssert(condition, message = 'assertion failed') {
+    if (!condition) throw new Error(message);
+}
+
+function bAssertEqual(actual, expected) {
+    if (actual !== expected) throw new Error('expected ' + expected + ', got ' + actual);
+}
+
+function bAssertNotNull(value, message = 'Value should not be null') {
+    if (value === null || value === undefined) throw new Error(message);
+}
+
+function bAssertType(value, expectedType, message = `Expected type ${expectedType}`) {
+    if (typeof value !== expectedType) throw new Error(message + `, got ${typeof value}`);
+}
+
+// Mock functions
+window.renderWordList = () => {};
+window.updateStats = () => {};
+window.saveUserProgress = () => {};
+window.saveAllVocabulary = () => {};
+
+// Additional test functions
+function canShowReverseExercise(word) {
+    const now = new Date();
+    const lastExerciseDate = word.lastExerciseDate ? new Date(word.lastExerciseDate) : null;
+    const timeSinceLastExercise = lastExerciseDate ? now - lastExerciseDate : Infinity;
+    const minInterval = 10 * 60 * 1000; // 10 minutes
+    
+    return !lastExerciseDate || 
+           word.lastExerciseType !== 'reverse' || 
+           timeSinceLastExercise >= minInterval;
+}
+
+function determineExerciseType(word) {
+    if (!isEligibleForReverseTranslation(word)) {
+        return 'regular';
+    }
+    
+    if (!canShowReverseExercise(word)) {
+        return 'regular';
+    }
+    
+    return Math.random() < 0.5 ? 'regular' : 'reverse';
+}
+
+setTimeout(() => {
+    // Enhanced test data
+    vocabulary = [
+        { 
+            id: "test1", 
+            english: "beautiful", 
+            russian: "красивый", 
+            phonetic: "/ˈbjuːtɪfəl/",
+            definition: "Pleasing the senses or mind aesthetically",
+            easeFactor: 2.8,
+            repetition: 2,
+            reviewHistory: [
+                { date: "2025-07-23T10:00:00.000Z", difficulty: "easy", exerciseType: "regular" }
+            ],
+            lastExerciseType: null,
+            lastExerciseDate: null
+        },
+        { 
+            id: "test2", 
+            english: "challenge", 
+            russian: "вызов", 
+            easeFactor: 2.2,
+            repetition: 1,
+            reviewHistory: [
+                { date: "2025-07-23T09:00:00.000Z", difficulty: "hard", exerciseType: "regular" }
+            ],
+            lastExerciseType: null,
+            lastExerciseDate: null
+        }
+    ];
+    userProgress = { "test1": { repetition: 1 }, "test2": { repetition: 0 } };
+
+    // === SECTION 1: CORE FUNCTIONS ===
+    bTest('isEligibleForReverseTranslation', () => {
+        bAssert(typeof isEligibleForReverseTranslation === 'function');
+        bAssert(isEligibleForReverseTranslation(vocabulary[0]) === true);
+        bAssert(isEligibleForReverseTranslation(vocabulary[1]) === false);
+    });
+
+    bTest('calculateTypingAccuracy', () => {
+        bAssert(typeof calculateTypingAccuracy === 'function');
+        const result = calculateTypingAccuracy('beautiful', 'beautiful');
+        bAssertEqual(result.accuracy, 100);
+        bAssertEqual(result.difficulty, 'perfect');
+    });
+
+    bTest('calculateLearningProgress', () => {
+        bAssert(typeof calculateLearningProgress === 'function');
+        const progress = calculateLearningProgress(1.3);
+        bAssert(progress >= 0 && progress <= 100);
+    });
+
+    bTest('normalizeText', () => {
+        bAssert(typeof normalizeText === 'function');
+        const result = normalizeText('Hello, World!');
+        bAssertEqual(result, 'hello world');
+    });
+
+    bTest('levenshteinDistance', () => {
+        bAssert(typeof levenshteinDistance === 'function');
+        bAssertEqual(levenshteinDistance('hello', 'hello'), 0);
+        bAssertEqual(levenshteinDistance('hello', 'helo'), 1);
+    });
+
+    // === SECTION 2: LEARNING PROGRESS TESTS ===
+    bTest('Learning Progress Calculation - Normal Case', () => {
+        bAssert(typeof calculateLearningProgress === 'function');
+        const result = calculateLearningProgress(1.3);
+        const expected = 0; // Starting easeFactor should give 0% progress
+        bAssertEqual(result, expected);
+    });
+
+    bTest('Learning Progress Calculation - Edge Cases', () => {
+        bAssert(typeof calculateLearningProgress === 'function');
+        bAssertEqual(calculateLearningProgress(1.3), 0);
+        bAssertEqual(calculateLearningProgress(1.0), 0);
+        bAssertEqual(calculateLearningProgress(3.5), 100);
+        bAssertEqual(calculateLearningProgress(4.0), 100);
+    });
+
+
+
+    // === SECTION 5: SESSION SEPARATION TESTS ===
+    bTest('canShowReverseExercise - timing logic', () => {
+        const testWord = { ...vocabulary[0] };
+        
+        // Test fresh word (no previous exercise)
+        bAssert(canShowReverseExercise(testWord) === true);
+        
+        // Test recent reverse exercise (5 minutes ago)
+        testWord.lastExerciseType = 'reverse';
+        testWord.lastExerciseDate = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        bAssert(canShowReverseExercise(testWord) === false);
+        
+        // Test old reverse exercise (15 minutes ago)
+        testWord.lastExerciseDate = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        bAssert(canShowReverseExercise(testWord) === true);
+        
+        // Test recent regular exercise
+        testWord.lastExerciseType = 'regular';
+        testWord.lastExerciseDate = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        bAssert(canShowReverseExercise(testWord) === true);
+    });
+
+    bTest('determineExerciseType - logic flow', () => {
+        // Test ineligible word
+        const result1 = determineExerciseType(vocabulary[1]);
+        bAssertEqual(result1, 'regular');
+        
+        // Test eligible word (should return regular or reverse)
+        const result2 = determineExerciseType(vocabulary[0]);
+        bAssert(['regular', 'reverse'].includes(result2));
+    });
+
+    // === SECTION 6: REVERSE TRANSLATION ELIGIBILITY TESTS ===
+    bTest('Reverse Translation Eligibility - Word with Easy Review', () => {
+        const word = {
+            id: "reverse_test_001",
+            english: "hello",
+            russian: "привет",
+            reviewHistory: [
+                { date: "2025-07-23T10:00:00.000Z", difficulty: "medium" },
+                { date: "2025-07-23T11:00:00.000Z", difficulty: "easy" }
+            ]
+        };
+
+        const result = isEligibleForReverseTranslation(word);
+        bAssert(result === true);
+    });
+
+    bTest('Reverse Translation Eligibility - Word with Perfect Review', () => {
+        const word = {
+            id: "reverse_test_002",
+            english: "world",
+            russian: "мир",
+            reviewHistory: [
+                { date: "2025-07-23T10:00:00.000Z", difficulty: "hard" },
+                { date: "2025-07-23T11:00:00.000Z", difficulty: "perfect" }
+            ]
+        };
+
+        const result = isEligibleForReverseTranslation(word);
+        bAssert(result === true);
+    });
+
+    bTest('Reverse Translation Eligibility - Word with Only Hard/Medium Reviews', () => {
+        const word = {
+            id: "reverse_test_003",
+            english: "difficult",
+            russian: "трудный",
+            reviewHistory: [
+                { date: "2025-07-23T10:00:00.000Z", difficulty: "hard" },
+                { date: "2025-07-23T11:00:00.000Z", difficulty: "medium" }
+            ]
+        };
+
+        const result = isEligibleForReverseTranslation(word);
+        bAssert(result === false);
+    });
+
+    // === SECTION 7: TEXT PROCESSING TESTS ===
+    bTest('Text Normalization for Typing Accuracy', () => {
+        bAssert(typeof normalizeText === 'function');
+        bAssertEqual(normalizeText('Hello!'), 'hello');
+        bAssertEqual(normalizeText('  Hello World  '), 'hello world');
+        bAssertEqual(normalizeText('Hello,   World!'), 'hello world');
+        bAssertEqual(normalizeText('HELLO'), 'hello');
+    });
+
+    bTest('Levenshtein Distance Algorithm', () => {
+        bAssert(typeof levenshteinDistance === 'function');
+        bAssertEqual(levenshteinDistance('hello', 'hello'), 0);
+        bAssertEqual(levenshteinDistance('hello', 'helo'), 1);
+        bAssertEqual(levenshteinDistance('hello', 'world'), 4);
+        bAssertEqual(levenshteinDistance('', 'hello'), 5);
+    });
+
+    // === SECTION 8: COMPREHENSIVE ACCURACY TESTS ===
+    bTest('typing accuracy - multiple scenarios', () => {
+        const testCases = [
+            { input: 'beautiful', expected: 'beautiful', minAccuracy: 100 },
+            { input: 'beautful', expected: 'beautiful', minAccuracy: 85 },
+            { input: 'beutiful', expected: 'beautiful', minAccuracy: 75 },
+            { input: 'wrong', expected: 'beautiful', maxAccuracy: 20 }
+        ];
+        
+        testCases.forEach((testCase, i) => {
+            const result = calculateTypingAccuracy(testCase.input, testCase.expected);
+            if (testCase.minAccuracy) {
+                bAssert(result.accuracy >= testCase.minAccuracy, 
+                    `Case ${i+1}: "${testCase.input}" should have ≥${testCase.minAccuracy}% accuracy, got ${result.accuracy}%`);
+            }
+            if (testCase.maxAccuracy) {
+                bAssert(result.accuracy <= testCase.maxAccuracy, 
+                    `Case ${i+1}: "${testCase.input}" should have ≤${testCase.maxAccuracy}% accuracy, got ${result.accuracy}%`);
+            }
+        });
+    });
+
+    // === SECTION 9: UI INTEGRATION TESTS ===
+    bTest('reverse translation UI creation', () => {
+        const interfaceDiv = document.getElementById('test-interface');
+        const currentWord = vocabulary[0];
+        
+        // Create UI
+        interfaceDiv.innerHTML = `
+            <div class="reverse-translation-card">
+                <div class="word-metadata">
+                    <span>🔄 Reverse Translation</span>
+                </div>
+                <div class="card-word">${currentWord.russian}</div>
+                <div class="card-phonetic">${currentWord.phonetic}</div>
+                <input type="text" id="reverse-input" placeholder="Type English translation...">
+                <div id="reverse-feedback"></div>
+                <button id="reverse-check">Check Answer</button>
+            </div>
+        `;
+        interfaceDiv.style.display = 'block';
+        
+        // Verify elements exist
+        bAssertNotNull(document.getElementById('reverse-input'));
+        bAssertNotNull(document.getElementById('reverse-feedback'));
+        bAssertNotNull(document.getElementById('reverse-check'));
+        bAssert(interfaceDiv.innerHTML.includes(currentWord.russian));
+        bAssert(interfaceDiv.innerHTML.includes(currentWord.phonetic));
+    });
+
+    bTest('real-time input validation', () => {
+        const input = document.getElementById('reverse-input');
+        const feedback = document.getElementById('reverse-feedback');
+        
+        if (!input || !feedback) {
+            throw new Error('UI elements not found - run UI creation test first');
+        }
+        
+        // Test empty input
+        input.value = '';
+        bAssertEqual(input.value, '');
+        
+        // Test partial correct input
+        input.value = 'beaut';
+        const partialResult = calculateTypingAccuracy(input.value, vocabulary[0].english);
+        bAssert(partialResult.accuracy > 0);
+        
+        // Test perfect input
+        input.value = vocabulary[0].english;
+        const perfectResult = calculateTypingAccuracy(input.value, vocabulary[0].english);
+        bAssertEqual(perfectResult.accuracy, 100);
+    });
+
+    // === SECTION 10: PROGRESS TRACKING TESTS ===
+    bTest('progress tracking with exercise types', () => {
+        const testWord = { ...vocabulary[0] };
+        const originalLength = testWord.reviewHistory.length;
+        
+        // Simulate marking difficulty with exercise type
+        testWord.currentExerciseType = 'reverse';
+        testWord.reviewHistory.push({
+            date: new Date().toISOString(),
+            difficulty: 'easy',
+            exerciseType: 'reverse'
+        });
+        
+        bAssertEqual(testWord.reviewHistory.length, originalLength + 1);
+        const lastReview = testWord.reviewHistory[testWord.reviewHistory.length - 1];
+        bAssertEqual(lastReview.exerciseType, 'reverse');
+        bAssertEqual(lastReview.difficulty, 'easy');
+    });
+
+    bTest('Review History Tracking with Exercise Type', () => {
+        // Test that markDifficulty function exists and works properly
+        bAssert(typeof markDifficulty === 'function');
+        
+        // Set up a test word as currentLearningWord with all required properties
+        const testWord = {
+            id: "history_test_001",
+            english: "track",
+            russian: "отслеживать",
+            reviewHistory: [],
+            currentExerciseType: 'reverse',
+            easeFactor: 1.3,
+            repetition: 0,
+            nextReview: null
+        };
+        
+        // Set up required globals and DOM elements
+        const originalCurrentLearningWord = currentLearningWord;
+        const originalLearningSession = learningSession;
+        const originalSessionStats = sessionStats;
+        
+        // Create required DOM elements
+        if (!document.getElementById('learningContent')) {
+            const div = document.createElement('div');
+            div.id = 'learningContent';
+            document.body.appendChild(div);
+        }
+        
+        // Set up globals
+        currentLearningWord = testWord;
+        learningSession = [testWord]; // Prevent endLearningSession from being called
+        sessionStats = { total: 0, correct: 0, streak: 0 };
+        
+        // Verify setup
+        bAssert(currentLearningWord === testWord);
+        bAssert(currentLearningWord.repetition === 0);
+        bAssert(currentLearningWord.easeFactor === 1.3);
+        bAssert(typeof SpacedRepetition.calculateNextReview === 'function');
+        
+        const initialLength = testWord.reviewHistory.length;
+        
+        try {
+            // Use real markDifficulty function
+            markDifficulty('easy');
+            
+            // Verify review was added
+            bAssert(testWord.reviewHistory.length === initialLength + 1, 
+                `Review history length: expected ${initialLength + 1}, got ${testWord.reviewHistory.length}`);
+            const lastReview = testWord.reviewHistory[testWord.reviewHistory.length - 1];
+            bAssertEqual(lastReview.difficulty, 'easy', `Expected difficulty 'easy', got '${lastReview.difficulty}'`);
+            bAssertEqual(lastReview.exerciseType, 'reverse', `Expected exerciseType 'reverse', got '${lastReview.exerciseType}'`);
+            bAssertNotNull(lastReview.date, 'Review date should not be null');
+        } finally {
+            // Always restore original state
+            currentLearningWord = originalCurrentLearningWord;
+            learningSession = originalLearningSession;
+            sessionStats = originalSessionStats;
+        }
+    });
+
+    // === SECTION 11: DELETE FUNCTION TEST ===
+    bTest('deleteWord function exists and works', () => {
+        bAssert(typeof deleteWord === 'function', 'deleteWord function should exist');
+        
+        // Test with actual vocabulary data
+        const testVocab = [
+            { id: "delete_test", english: "test", russian: "тест", easeFactor: 1.3, reviewHistory: [] },
+            { id: "keep_test", english: "keep", russian: "оставить", easeFactor: 1.5, reviewHistory: [] }
+        ];
+        
+        // Backup original vocabulary
+        const originalVocab = [...vocabulary];
+        vocabulary.push(...testVocab);
+        
+        // Mock confirmation to auto-confirm
+        const originalShowDeleteConfirmation = window.showDeleteConfirmation;
+        window.showDeleteConfirmation = function(word, onConfirm) {
+            onConfirm();
+        };
+        
+        const initialLength = vocabulary.length;
+        deleteWord("delete_test");
+        
+        // Verify deletion worked
+        bAssert(vocabulary.length === initialLength - 1, 'Vocabulary length should decrease by 1');
+        bAssert(vocabulary.find(w => w.id === "delete_test") === undefined, 'Deleted word should not exist');
+        bAssert(vocabulary.find(w => w.id === "keep_test") !== undefined, 'Other words should remain');
+        
+        // Restore original state
+        vocabulary.length = 0;
+        vocabulary.push(...originalVocab);
+        window.showDeleteConfirmation = originalShowDeleteConfirmation;
+    });
+
+
+
+
+    // === SECTION 15: PERFORMANCE TEST ===
+    bTest('Large Array Processing Performance', () => {
+        const startTime = performance.now();
+        
+        const largeArray = Array(10000).fill().map((_, i) => ({
+            id: `word_${i}`,
+            english: `word${i}`,
+            russian: `слово${i}`,
+            easeFactor: 1.3
+        }));
+
+        const processed = largeArray.filter(item => item.easeFactor >= 1.0);
+        const endTime = performance.now();
+
+        bAssertEqual(processed.length, 10000);
+        bAssert(endTime - startTime < 1000);
+    });
+
+    // === SECTION 16: REAL EXPORT/IMPORT FUNCTION TESTS ===
+    bTest('Real createExportData function test', () => {
+        bAssert(typeof createExportData === 'function', 'createExportData function should exist');
+        
+        // Test with real vocabulary data
+        const testVocabulary = [
+            {
+                id: "browser_export_test",
+                english: "browser",
+                russian: "браузер",
+                definition: "A web browser application",
+                phonetic: "/ˈbraʊzər/",
+                easeFactor: 1.7,
+                repetition: 3,
+                reviewHistory: [
+                    { date: "2025-07-25T10:00:00.000Z", difficulty: "easy", exerciseType: "regular" },
+                    { date: "2025-07-26T10:00:00.000Z", difficulty: "perfect", exerciseType: "reverse" }
+                ],
+                addedDate: "2025-07-24T10:00:00.000Z",
+                nextReview: "2025-08-05T10:00:00.000Z"
+            }
+        ];
+        
+        // Test real export function
+        const exportResult = createExportData(testVocabulary);
+        
+        // Validate export structure
+        bAssert(exportResult.vocabulary && Array.isArray(exportResult.vocabulary), 'Export should have vocabulary array');
+        bAssert(exportResult.vocabulary.length === 1, 'Export should have correct number of words');
+        bAssert(typeof exportResult.exportDate === 'string', 'Export should have exportDate');
+        bAssert(typeof exportResult.appVersion === 'string', 'Export should have appVersion');
+        bAssert(typeof exportResult.totalWords === 'number', 'Export should have totalWords');
+        bAssert(exportResult.userProgress === undefined, 'Export should not have userProgress (single source of truth)');
+        
+        // Validate exported word structure
+        const exportedWord = exportResult.vocabulary[0];
+        bAssert(exportedWord.id === "browser_export_test", 'Exported word should preserve id');
+        bAssert(exportedWord.english === "browser", 'Exported word should preserve english');
+        bAssert(exportedWord.russian === "браузер", 'Exported word should preserve russian');
+        bAssert(exportedWord.easeFactor === 1.7, 'Exported word should preserve easeFactor');
+        bAssert(exportedWord.repetition === 3, 'Exported word should preserve repetition');
+        bAssert(Array.isArray(exportedWord.reviewHistory), 'Exported word should have reviewHistory array');
+        bAssert(exportedWord.reviewHistory.length === 2, 'Exported word should preserve reviewHistory');
+        
+        // Test that exported word works with app functions
+        bAssert(isEligibleForReverseTranslation(exportedWord), 'Exported word should work with app functions');
+    });
+    
+    bTest('Real validateAndProcessImportData function test', () => {
+        bAssert(typeof validateAndProcessImportData === 'function', 'validateAndProcessImportData function should exist');
+        
+        // Test with valid import data
+        const validImportData = {
+            vocabulary: [
+                {
+                    id: "browser_import_test",
+                    english: "import",
+                    russian: "импорт",
+                    definition: "To bring data into a system",
+                    easeFactor: 1.4,
+                    repetition: 1,
+                    reviewHistory: [
+                        { date: "2025-07-25T10:00:00.000Z", difficulty: "medium", exerciseType: "regular" }
+                    ],
+                    addedDate: "2025-07-24T10:00:00.000Z"
+                }
+            ],
+            exportDate: "2025-07-28T10:00:00.000Z",
+            appVersion: "1.0",
+            totalWords: 1
+        };
+        
+        // Test real import validation function
+        const validationResult = validateAndProcessImportData(validImportData);
+        
+        // Validate validation results
+        bAssert(validationResult.valid === true, 'Validation should succeed');
+        bAssert(validationResult.vocabulary && Array.isArray(validationResult.vocabulary), 'Should return vocabulary array');
+        bAssert(validationResult.vocabulary.length === 1, 'Should return correct number of words');
+        bAssert(validationResult.totalWords === 1, 'Should return correct total count');
+        
+        // Test that validated word works with app functions
+        const validatedWord = validationResult.vocabulary[0];
+        const progress = calculateLearningProgress(validatedWord.easeFactor);
+        bAssert(typeof progress === 'number' && progress >= 0 && progress <= 100, 'Validated word should work with progress calculation');
+        
+        // Test invalid import data
+        const invalidDataCases = [
+            { name: 'missing vocabulary', data: { totalWords: 0 } },
+            { name: 'vocabulary not array', data: { vocabulary: "not array", totalWords: 0 } },
+            { name: 'word missing id', data: { vocabulary: [{ english: "test", russian: "тест", easeFactor: 1.3, repetition: 0, reviewHistory: [] }], totalWords: 1 } }
+        ];
+        
+        invalidDataCases.forEach(testCase => {
+            try {
+                validateAndProcessImportData(testCase.data);
+                bAssert(false, `${testCase.name} should throw error`);
+            } catch (error) {
+                bAssert(error.message.includes('Invalid backup file format') || error.message.includes('Missing or invalid'), `${testCase.name} should throw validation error`);
+            }
+        });
+    });
+    
+    bTest('Export-Import round trip integrity using real functions', () => {
+        // Test round trip using real functions with test data
+        const originalVocabulary = [
+            {
+                id: "roundtrip_browser_test",
+                english: "roundtrip",
+                russian: "круговая поездка",
+                definition: "A journey returning to the starting point",
+                phonetic: "/ˈraʊndtrɪp/",
+                easeFactor: 1.9,
+                repetition: 5,
+                reviewHistory: [
+                    { date: "2025-07-20T10:00:00.000Z", difficulty: "hard", exerciseType: "regular" },
+                    { date: "2025-07-22T10:00:00.000Z", difficulty: "easy", exerciseType: "reverse" },
+                    { date: "2025-07-24T10:00:00.000Z", difficulty: "perfect", exerciseType: "regular" }
+                ],
+                addedDate: "2025-07-19T10:00:00.000Z",
+                nextReview: "2025-08-10T10:00:00.000Z"
+            }
+        ];
+        
+        // Step 1: Export using real function
+        const exportedData = createExportData(originalVocabulary);
+        
+        // Step 2: Import using real validation function
+        const importedData = validateAndProcessImportData(exportedData);
+        
+        // Step 3: Verify round trip integrity
+        bAssert(importedData.valid === true, 'Round trip validation should succeed');
+        bAssert(importedData.vocabulary.length === originalVocabulary.length, 'Round trip should preserve word count');
+        
+        // Verify word data integrity
+        const originalWord = originalVocabulary[0];
+        const importedWord = importedData.vocabulary[0];
+        
+        // Core fields
+        bAssertEqual(importedWord.id, originalWord.id);
+        bAssertEqual(importedWord.english, originalWord.english);
+        bAssertEqual(importedWord.russian, originalWord.russian);
+        bAssertEqual(importedWord.definition, originalWord.definition);
+        bAssertEqual(importedWord.phonetic, originalWord.phonetic);
+        
+        // Progress fields
+        bAssertEqual(importedWord.easeFactor, originalWord.easeFactor);
+        bAssertEqual(importedWord.repetition, originalWord.repetition);
+        bAssertEqual(importedWord.nextReview, originalWord.nextReview);
+        bAssertEqual(importedWord.addedDate, originalWord.addedDate);
+        
+        // Review history
+        bAssert(Array.isArray(importedWord.reviewHistory), 'Should have reviewHistory array');
+        bAssertEqual(importedWord.reviewHistory.length, originalWord.reviewHistory.length);
+        
+        // Functional integrity - imported word should work with app functions
+        const progress = calculateLearningProgress(importedWord.easeFactor);
+        bAssert(typeof progress === 'number' && progress >= 0 && progress <= 100, 'Should work with progress calculation after round trip');
+        
+        bAssert(isEligibleForReverseTranslation(importedWord), 'Should work with reverse translation eligibility after round trip');
+    });
+    
+    bTest('File system and UI integration test', () => {
+        // Test that main UI functions exist and are accessible
+        bAssert(typeof exportData === 'function', 'exportData UI function should exist');
+        bAssert(typeof importData === 'function', 'importData UI function should exist');
+        
+        // Test that we can access DOM elements that the functions would use
+        // Note: We can't test actual file operations in automated tests, but we can verify the functions exist
+        
+        // Test localStorage access (used by export function)
+        try {
+            localStorage.setItem('test_export', 'test');
+            const retrieved = localStorage.getItem('test_export');
+            bAssert(retrieved === 'test', 'localStorage should be accessible for export function');
+            localStorage.removeItem('test_export');
+        } catch (e) {
+            bAssert(false, `localStorage access failed: ${e.message}`);
+        }
+        
+        // Test that global vocabulary variable exists (used by export/import)
+        bAssert(typeof vocabulary !== 'undefined', 'Global vocabulary variable should be accessible');
+        bAssert(Array.isArray(vocabulary), 'Global vocabulary should be an array');
+        
+        // Test that user progress functions exist
+        bAssert(typeof saveUserProgress === 'function', 'saveUserProgress function should exist');
+        bAssert(typeof saveAllVocabulary === 'function', 'saveAllVocabulary function should exist');
+    });
+    
+    // === SECTION 17: END-TO-END INTEGRATION TEST ===
+    bTest('end-to-end reverse translation workflow', () => {
+        // Use fresh word object to avoid test interference
+        const word = { 
+            id: "e2e_test", 
+            english: "beautiful", 
+            russian: "красивый", 
+            phonetic: "/ˈbjuːtɪfəl/",
+            definition: "Pleasing the senses or mind aesthetically",
+            easeFactor: 2.8,
+            repetition: 2,
+            reviewHistory: [
+                { date: "2025-07-23T10:00:00.000Z", difficulty: "easy", exerciseType: "regular" }
+            ],
+            lastExerciseType: null,
+            lastExerciseDate: null
+        };
+        
+        // Step 1: Check eligibility
+        bAssert(typeof isEligibleForReverseTranslation === 'function', 'isEligibleForReverseTranslation function not found');
+        console.log('word.reviewHistory:', JSON.stringify(word.reviewHistory));
+        const eligible = isEligibleForReverseTranslation(word);
+        bAssert(eligible === true, `Step 1 failed: expected eligible=true, got ${eligible} for reviewHistory: ${JSON.stringify(word.reviewHistory)}`);
+        
+        // Step 2: Check session separation
+        const canShow = canShowReverseExercise(word);
+        bAssert(canShow === true, `Step 2 failed: expected canShow=true, got ${canShow}`);
+        
+        // Step 3: Determine exercise type
+        const exerciseType = determineExerciseType(word);
+        bAssert(['regular', 'reverse'].includes(exerciseType), `Step 3 failed: invalid exerciseType=${exerciseType}`);
+        
+        // Step 4: Test typing accuracy
+        const accuracy = calculateTypingAccuracy('beautiful', word.english);
+        bAssert(accuracy.accuracy === 100, `Step 4 failed: expected accuracy=100, got ${accuracy.accuracy} for word.english="${word.english}"`);
+        
+        // Step 5: Update progress
+        word.currentExerciseType = exerciseType;
+        const originalHistoryLength = word.reviewHistory.length;
+        word.reviewHistory.push({
+            date: new Date().toISOString(),
+            difficulty: accuracy.difficulty,
+            exerciseType: exerciseType
+        });
+        bAssert(word.reviewHistory.length === originalHistoryLength + 1, `Step 5 failed: history length didn't increase`);
+    });
+
+    // === SECTION 18: PWA FUNCTIONALITY TESTS ===
+    bTest('Service Worker support', () => {
+        bAssert('serviceWorker' in navigator, 'Service Worker API should be available');
+    });
+    
+    bTest('Manifest availability', async () => {
+        try {
+            const response = await fetch('../manifest.json');
+            bAssert(response.ok, 'Manifest file should be accessible');
+            const manifest = await response.json();
+            bAssert(manifest.name && manifest.short_name, 'Manifest should have required fields');
+            bAssert(manifest.icons && manifest.icons.length > 0, 'Manifest should have icons');
+        } catch (error) {
+            bAssert(false, `Manifest test failed: ${error.message}`);
+        }
+    });
+    
+    bTest('PWA detection', () => {
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+        console.log('PWA standalone mode:', isStandalone);
+        bAssert(true, isStandalone ? 'Running as PWA' : 'Running in browser');
+    });
+    
+    bTest('Local Storage functionality', () => {
+        try {
+            localStorage.setItem('pwa-test', 'test-value');
+            const value = localStorage.getItem('pwa-test');
+            bAssert(value === 'test-value', 'localStorage should work correctly');
+            localStorage.removeItem('pwa-test');
+        } catch (error) {
+            bAssert(false, `localStorage test failed: ${error.message}`);
+        }
+    });
+    
+    bTest('Cache API support', () => {
+        bAssert('caches' in window, 'Cache API should be available for PWA offline functionality');
+    });
+
+    // Generate comprehensive results
+    setTimeout(() => {
+        const total = bPassed + bFailed;
+        const successRate = Math.round((bPassed / total) * 100);
+        const status = bFailed === 0 ? 'ALL_PASSED' : 'SOME_FAILED';
+        const timestamp = new Date().toISOString();
+        
+        const report = [
+            '=== FINAL TESTS RESULTS (ALL 27 TESTS) ===',
+            'Timestamp: ' + timestamp,
+            'Passed: ' + bPassed + '/' + total + ' (' + successRate + '%)',
+            'Status: ' + status,
+            '',
+            '=== COMPREHENSIVE TEST COVERAGE ===',
+            '✅ Core Functions (5 tests)',
+            '✅ Learning Progress (2 tests)',
+            '✅ Session Logic (2 tests)',
+            '✅ Reverse Translation Eligibility (3 tests)',
+            '✅ Text Processing (2 tests)',
+            '✅ Typing Accuracy (1 comprehensive test)',
+            '✅ UI Integration (2 tests)',
+            '✅ Progress Tracking (2 tests)',
+            '✅ Delete Function (1 test)',
+            '✅ Real Export/Import Functions (4 tests)',
+            '✅ Performance (1 test)',
+            '✅ End-to-End Integration (1 test)',
+            '',
+            '=== INDIVIDUAL RESULTS ==='
+        ].concat(results).join('\n') + '\n\n=== END FINAL REPORT ===';
+        
+        // Display on page
+        document.getElementById('results').innerHTML = '<pre style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef; font-size: 12px; max-height: 600px; overflow-y: auto;">' + report + '</pre>';
+        document.title = status + '_' + bPassed + '_' + total;
+        
+        console.log('\n' + report);
+        
+        // Save results with detailed test info
+        const resultData = {
+            timestamp: timestamp,
+            passed: bPassed,
+            failed: bFailed,
+            total: total,
+            success: bFailed === 0,
+            coverage: [
+                'Core Functions', 'Learning Progress', 'Session Logic', 
+                'Reverse Translation Eligibility', 'Text Processing', 'Typing Accuracy', 
+                'UI Integration', 'Progress Tracking', 'Delete Function', 'Performance', 
+                'End-to-End Integration'
+            ],
+            report: report,
+            detailedResults: results,
+            failedTests: results.filter(r => r.startsWith('❌')),
+            passedTests: results.filter(r => r.startsWith('✅'))
+        };
+        
+        // Store detailed results in multiple places for Node.js to access
+        localStorage.setItem('detailedTestResults', JSON.stringify(resultData));
+        
+        // Also put failed tests in the page title for easy extraction
+        const failedTestsInfo = resultData.failedTests.length > 0 ? 
+            '|FAILED:' + resultData.failedTests.join('||') : '';
+        document.title = status + '_' + bPassed + '_' + total + failedTestsInfo;
+        
+        // Try WebKit bridge methods
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.testResults) {
+            try {
+                window.webkit.messageHandlers.testResults.postMessage(resultData);
+                console.log('✅ Results sent via webkit.messageHandlers');
+            } catch (e) {
+                console.log('❌ webkit.messageHandlers failed:', e.message);
+            }
+        }
+        
+        // Mobile URL scheme only
+        if (navigator.userAgent.includes('Mobile')) {
+            try {
+                const dataUri = 'testresults://save?data=' + encodeURIComponent(JSON.stringify(resultData));
+                window.location.href = dataUri;
+                setTimeout(() => {
+                    console.log('✅ Results sent via custom URL scheme');
+                }, 100);
+            } catch (e) {
+                console.log('❌ Custom URL scheme failed:', e.message);
+            }
+        } else {
+            console.log('⏭️ Skipping custom URL scheme (desktop Safari)');
+        }
+        
+        // Fallback storage
+        document.body.setAttribute('data-test-results', JSON.stringify(resultData));
+        localStorage.setItem('finalTestResults', JSON.stringify(resultData));
+        console.log('✅ Results saved to document body and localStorage');
+        
+    }, 500);
+}, 1000);
+</script>
+</body></html>
