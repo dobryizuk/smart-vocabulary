@@ -108,12 +108,10 @@ class DictionaryService {
             word: entry.word,
             phonetic: phonetic,
             definition: definition || `A ${partOfSpeech || 'word'} in English.`,
-            partOfSpeech: partOfSpeech,
-            example: examples[0]?.text || '', // Keep legacy example field
-            examples: examples.slice(0, 5), // New examples array
-            synonyms: synonyms.slice(0, 5), // Limit to 5 synonyms
+            examples: examples.slice(0, 5),
+            synonyms: synonyms.slice(0, 5),
             source: 'dictionary-api',
-            translation: null // Will be filled by translation service
+            translation: null
         };
     }
 
@@ -122,8 +120,7 @@ class DictionaryService {
             word: word,
             phonetic: '',
             definition: `English word: ${word}`,
-            partOfSpeech: 'unknown',
-            example: '',
+            examples: [],
             synonyms: [],
             source: 'fallback',
             translation: null
@@ -390,7 +387,6 @@ function hideDictionaryResults() {
 async function addWord() {
     const english = document.getElementById('englishWord').value.trim();
     const russian = document.getElementById('russianTranslation').value.trim();
-    const notes = document.getElementById('wordNotes').value.trim();
     const definition = document.getElementById('wordDefinition').value.trim();
     const phonetic = document.getElementById('wordPhonetic').value.trim();
     const synonymsText = document.getElementById('wordSynonyms').value.trim();
@@ -415,15 +411,10 @@ async function addWord() {
         id: `custom_${Date.now()}`,
         english,
         russian,
-        notes,
         definition,
         phonetic,
-        partOfSpeech: currentDictionaryData?.partOfSpeech || '',
-        example: examples[0] || '',
         examples,
         synonyms,
-        category: 'user-added',
-        difficulty: 'beginner',
         createdAt: new Date().toISOString(),
         repetition: 0,
         easeFactor: 1.3,
@@ -443,8 +434,7 @@ async function addWord() {
         definition: newWord.definition || '(empty)',
         phonetic: newWord.phonetic || '(empty)',
         synonyms: newWord.synonyms.length > 0 ? newWord.synonyms : '(empty)',
-        examples: newWord.examples.length > 0 ? newWord.examples : '(empty)',
-        notes: newWord.notes || '(empty)'
+        examples: newWord.examples.length > 0 ? newWord.examples : '(empty)'
     });
     console.log('📊 Total vocabulary size:', vocabulary.length);
     
@@ -463,7 +453,6 @@ async function addWord() {
 function clearForm() {
     document.getElementById('englishWord').value = '';
     document.getElementById('russianTranslation').value = '';
-    document.getElementById('wordNotes').value = '';
     document.getElementById('wordDefinition').value = '';
     document.getElementById('wordPhonetic').value = '';
     document.getElementById('wordSynonyms').value = '';
@@ -617,13 +606,6 @@ function renderWordList() {
                                 return `• ${text}`;
                             }).join('<br>')}
                         </div>
-                    </div>
-                ` : ''}
-                
-                ${word.notes ? `
-                    <!-- Notes section -->
-                    <div style="background: #fef5e7; padding: 6px 16px; margin: 0 -16px 0 -16px; border-left: 3px solid #d69e2e;">
-                        <div style="font-size: 0.8em; color: #d69e2e; font-weight: 600;">📝 Notes: ${word.notes}</div>
                     </div>
                 ` : ''}
             </div>
@@ -1005,19 +987,6 @@ async function showTranslation() {
         </div>`;
     }
     
-    // Add notes if available
-    if (currentLearningWord.notes) {
-        const notesWithoutExamples = currentLearningWord.notes
-            .replace(/--- Usage Examples ---[\s\S]*?(?=\n\n---|$)/g, '')
-            .replace(/--- Dictionary Data ---[\s\S]*?(?=\n\n---|$)/g, '')
-            .trim();
-        
-        if (notesWithoutExamples) {
-            content += `<br><div style="background: #fff8e1; padding: 8px; margin: 8px 0; border-radius: 4px; font-size: 0.9em;">
-                <strong>📝 Notes:</strong> ${notesWithoutExamples.replace(/\n/g, '<br>')}
-            </div>`;
-        }
-    }
     
     card.innerHTML = content;
     card.style.opacity = '1';
@@ -1706,17 +1675,12 @@ function createExportData(vocabularyData = null) {
         examples: word.examples,
         phonetic: word.phonetic,
         synonyms: word.synonyms,
-        partOfSpeech: word.partOfSpeech,
-        difficulty: word.difficulty,
-        tags: word.tags,
         // Learning progress data
         easeFactor: word.easeFactor,
         repetition: word.repetition,
-        consecutiveCorrect: word.consecutiveCorrect,
-        timesReviewed: word.timesReviewed,
-        lastReviewed: word.lastReviewed,
         nextReview: word.nextReview,
         reviewHistory: word.reviewHistory,
+        createdAt: word.createdAt,
         addedDate: word.addedDate
     }));
     
@@ -1739,30 +1703,22 @@ async function exportData() {
         // Create export data using testable function
         const exportData = createExportData();
         
-        // Use native iOS export if available, otherwise web download
-        if (window.exportDataNative && window.webkit) {
-            console.log(`📤 Exporting via native iOS share sheet: ${exportData.totalWords} words`);
-            console.log(`📤 Export size reduced: vocabulary-only format (no userProgress duplication)`);
-            window.exportDataNative(exportData);
-        } else {
-            // Web browser fallback
-            const jsonString = JSON.stringify(exportData, null, 2);
-            const fileName = `vocabulary-backup-${new Date().toISOString().slice(0,16).replace(/:/g, '-')}.json`;
-            
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            console.log('📤 Data exported via web download');
-            alert(`Data exported! Check Downloads folder for ${fileName}`);
-        }
+        // Web export
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const fileName = `vocabulary-backup-${new Date().toISOString().slice(0,16).replace(/:/g, '-')}.json`;
+        
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('📤 Data exported via web download');
         
     } catch (error) {
         console.error('❌ Export failed:', error);
