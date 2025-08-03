@@ -28,7 +28,7 @@
                     <div class="form-group">
                         <label for="englishWord">English Word/Phrase:</label>
                         <input type="text" id="englishWord" placeholder="e.g., beautiful, break the ice">
-                        <div style="margin-top: 10px;">
+                        <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn btn-primary" onclick="lookupInDictionary()">📚 Dictionary Lookup</button>
                             <button class="btn btn-secondary" onclick="toggleAdditionalFields()" id="toggleFieldsBtn">➕ More Fields</button>
                         </div>
@@ -135,10 +135,10 @@
                             </button>
                             <div style="display: flex; gap: 6px;">
                                 <button class="btn btn-success" onclick="exportData()" style="flex: 1; padding: 8px 12px; font-size: 0.85em;">
-                                    📤 Export Data
+                                    📤 Save Progress
                                 </button>
                                 <button class="btn btn-info" onclick="importData()" style="flex: 1; padding: 8px 12px; font-size: 0.85em;">
-                                    📥 Import Data
+                                    📥 Upload Progress
                                 </button>
                             </div>
                         </div>

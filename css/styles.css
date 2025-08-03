@@ -300,7 +300,7 @@
             .btn {
                 padding: 14px 16px;
                 font-size: 0.95em;
-                margin-right: 8px;
+                margin-right: 0;
                 margin-bottom: 12px;
                 touch-action: manipulation; /* Prevent zoom on tap */
                 min-height: 44px; /* iOS recommended touch target */
@@ -678,7 +678,7 @@
             
             .word-actions {
                 top: 12px !important;
-                right: 12px !important;
+                right: -10px !important;
                 gap: 6px;
             }
             

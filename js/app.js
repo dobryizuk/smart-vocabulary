@@ -380,7 +380,6 @@ function acceptDictionaryResults() {
     }
     
     hideDictionaryResults();
-    alert('✅ Dictionary data applied!');
 }
 
 function hideDictionaryResults() {
@@ -559,7 +558,7 @@ function renderWordList() {
                         </div>
                         <div class="word-russian" style="font-size: 1.05em; color: #4a5568; font-weight: 500; margin-bottom: 0;">${word.russian}</div>
                     </div>
-                    <div class="word-actions" style="position: absolute; top: 0; right: 0; display: flex; gap: 6px; z-index: 10;">
+                    <div class="word-actions" style="position: absolute; top: 0; right: 50px; display: flex; gap: 6px; z-index: 10;">
                         <button class="btn btn-secondary" onclick="speakWord('${word.english}')" 
                                 style="background: rgba(102, 126, 234, 0.1); color: #667eea; border: 1px solid #667eea; padding: 8px 12px; border-radius: 20px; font-size: 0.85em; min-width: auto; font-weight: 500; cursor: pointer;">🔊</button>
                         <button class="btn btn-danger" onclick="deleteWord('${word.id}'); console.log('Delete button clicked for: ${word.id}');" 
@@ -594,7 +593,7 @@ function renderWordList() {
                 
                 ${word.definition ? `
                     <!-- Definition section -->
-                    <div style="background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%); padding: 10px 16px; margin: 0 -16px 12px -16px; border-left: 4px solid #4299e1; border-radius: 0;">
+                    <div style="background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%); padding: 10px 8px; margin: 10px -10px 12px -16px; border-left: 4px solid #4299e1; border-radius: 0;">
                         <div style="font-size: 0.9em; font-weight: 600; color: #2b6cb0; margin-bottom: 4px;">📖 Definition</div>
                         <div style="font-size: 1em; color: #2d3748; line-height: 1.3; font-weight: 400;">${word.definition}</div>
                     </div>
@@ -602,7 +601,7 @@ function renderWordList() {
                 
                 ${word.synonyms && word.synonyms.length > 0 ? `
                     <!-- Synonyms section -->
-                    <div style="background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%); padding: 10px 16px; margin: 0 -16px 12px -16px; border-left: 4px solid #38a169; border-radius: 0;">
+                    <div style="background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%); padding: 10px 8px; margin: 10px -10px 12px -16px; border-left: 4px solid #38a169; border-radius: 0;">
                         <div style="font-size: 0.9em; font-weight: 600; color: #2f855a; margin-bottom: 4px;">🔄 Synonyms</div>
                         <div style="font-size: 1em; color: #2d3748; line-height: 1.3; font-weight: 400;">${word.synonyms.join(', ')}</div>
                     </div>
@@ -610,7 +609,7 @@ function renderWordList() {
                 
                 ${word.examples && word.examples.length > 0 ? `
                     <!-- Examples section -->
-                    <div style="background: linear-gradient(135deg, #fffbf0 0%, #fef5e7 100%); padding: 10px 16px; margin: 0 -16px 12px -16px; border-left: 4px solid #d69e2e; border-radius: 0;">
+                    <div style="background: linear-gradient(135deg, #fffbf0 0%, #fef5e7 100%); padding: 10px 8px; margin: 10px -10px 12px -16px; border-left: 4px solid #d69e2e; border-radius: 0;">
                         <div style="font-size: 0.9em; font-weight: 600; color: #b7791f; margin-bottom: 4px;">💡 Examples</div>
                         <div style="font-size: 1em; color: #2d3748; line-height: 1.3; font-weight: 400;">
                             ${word.examples.map(example => {
@@ -846,7 +845,7 @@ function showLearningCard() {
                 <div class="card-word">${currentLearningWord.english}</div>
                 ${currentLearningWord.phonetic ? `<div class="card-phonetic">${currentLearningWord.phonetic}</div>` : ''}
                 <button onclick="speakWord('${currentLearningWord.english}')" 
-                        style="background: #007aff; color: white; border: none; width: 44px; height: 44px; border-radius: 22px; font-size: 18px; display: flex; align-items: center; justify-content: center; position: absolute; right: 0; top: 50%; transform: translateY(-50%);">
+                        style="background: #007aff; color: white; border: none; width: 44px; height: 44px; border-radius: 22px; font-size: 18px; display: flex; align-items: center; justify-content: center; position: absolute; right: 16px; top: 50%; transform: translateY(-50%);">
                     🔊
                 </button>
             </div>
@@ -1083,10 +1082,8 @@ function endLearningSession() {
 // ============================================================================
 
 function isEligibleForReverseTranslation(word) {
-    // Word must have at least one "easy" or "perfect" review
-    return word.reviewHistory.some(review => 
-        review.difficulty === 'easy' || review.difficulty === 'perfect'
-    );
+    // Word is eligible for reverse translation from first repetition onward
+    return word.repetition > 0 || (word.reviewHistory && word.reviewHistory.length > 0);
 }
 
 function canShowReverseExercise(word) {
