@@ -1,10 +1,10 @@
 // Smart Vocabulary - Service Worker
-const CACHE_NAME = 'smart-vocabulary-v1';
-const BASE_PATH = '/smart-vocabulary/';
+const CACHE_NAME = 'smart-vocabulary-v2'; // Updated cache version
+const BASE_PATH = location.pathname.replace(/\/[^\/]*$/, '/'); // Dynamic base path
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + 'index.html',
-  BASE_PATH + 'js/app.js',
+  BASE_PATH + 'js/app.js', 
   BASE_PATH + 'css/styles.css',
   BASE_PATH + 'manifest.json'
 ];
@@ -12,6 +12,7 @@ const urlsToCache = [
 // Install event - cache resources
 self.addEventListener('install', event => {
   console.log('Service Worker: Installing...');
+  self.skipWaiting(); // Force new service worker to activate immediately
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -35,6 +36,8 @@ self.addEventListener('activate', event => {
           }
         })
       );
+    }).then(() => {
+      return self.clients.claim(); // Take control of all clients immediately
     })
   );
 });

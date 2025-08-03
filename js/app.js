@@ -1862,8 +1862,11 @@ function importData() {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
+            console.log('🔍 Registering service worker from:', window.location.href);
             const registration = await navigator.serviceWorker.register('./sw.js');
             console.log('✅ Service Worker registered:', registration.scope);
+            console.log('📍 Current location:', window.location.href);
+            console.log('📂 Base URL:', new URL('./', window.location.href).href);
         } catch (error) {
             console.log('❌ Service Worker registration failed:', error);
         }
