@@ -355,6 +355,12 @@ function displayDictionaryResults(data) {
 function acceptDictionaryResults() {
     if (!currentDictionaryData) return;
     
+    // Show additional fields if they're hidden
+    const additionalFields = document.getElementById('additionalFields');
+    if (additionalFields.style.display === 'none' || !additionalFields.style.display) {
+        toggleAdditionalFields();
+    }
+    
     // Auto-fill form with dictionary data
     document.getElementById('russianTranslation').value = currentDictionaryData.translation || '';
     document.getElementById('wordDefinition').value = currentDictionaryData.definition || '';
@@ -465,6 +471,23 @@ function clearForm() {
     document.getElementById('wordExamples').value = '';
     hideDictionaryResults();
     currentDictionaryData = null;
+}
+
+function toggleAdditionalFields() {
+    const additionalFields = document.getElementById('additionalFields');
+    const toggleBtn = document.getElementById('toggleFieldsBtn');
+    
+    if (additionalFields.style.display === 'none' || !additionalFields.style.display) {
+        additionalFields.style.display = 'block';
+        toggleBtn.innerHTML = '➖ Hide Fields';
+        toggleBtn.classList.remove('btn-secondary');
+        toggleBtn.classList.add('btn-warning');
+    } else {
+        additionalFields.style.display = 'none';
+        toggleBtn.innerHTML = '➕ More Fields';
+        toggleBtn.classList.remove('btn-warning');  
+        toggleBtn.classList.add('btn-secondary');
+    }
 }
 
 function calculateLearningProgress(easeFactor) {

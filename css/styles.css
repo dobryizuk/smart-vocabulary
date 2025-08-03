@@ -123,12 +123,127 @@
             .tab-content {
                 padding: 15px;
             }
+            
+            /* More compact ADD tab on mobile */
+            #add-tab .tab-content-inner {
+                padding: 12px;
+            }
+            
+            #add-tab h3 {
+                margin-bottom: 12px;
+                font-size: 1.2em;
+            }
+            
+            #add-tab .form-group {
+                margin-bottom: 8px;
+            }
+            
+            #add-tab .form-group:first-of-type {
+                padding: 12px;
+                margin-bottom: 10px;
+            }
+            
+            #additionalFields {
+                padding: 12px;
+                margin-top: 6px;
+            }
+            
+            #add-tab .form-group:first-of-type .btn {
+                padding: 8px 12px;
+                margin-right: 6px;
+                margin-bottom: 4px;
+                font-size: 0.85em;
+                width: auto;
+            }
+            
+            #additionalFields .btn {
+                padding: 10px 16px;
+                margin-bottom: 6px;
+                width: 100%;
+                margin-right: 0;
+            }
         }
 
         .tab-content-inner {
             padding: 20px;
             flex: 1;
             overflow-y: auto;
+        }
+        
+        /* Compact styling for ADD tab */
+        #add-tab .tab-content-inner {
+            padding: 15px;
+        }
+        
+        #add-tab h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #1d1d1f;
+            text-align: center;
+        }
+        
+        /* Main English word field styling */
+        #add-tab .form-group:first-of-type {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        #add-tab .form-group:first-of-type input {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        /* Dictionary results styling */
+        #add-tab #dictionaryResults {
+            margin: 8px 0 12px 0;
+        }
+        
+        #add-tab #dictionaryResults > div {
+            padding: 12px;
+            margin: 8px 0;
+        }
+        
+        /* Additional fields container */
+        #additionalFields {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        #additionalFields .form-group {
+            background: transparent;
+            padding: 0;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        
+        #additionalFields .form-group:not(:last-child) {
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+        
+        /* Button styling in collapsed mode */
+        #add-tab .form-group:first-of-type .btn {
+            margin-right: 8px;
+            margin-bottom: 0;
+            font-size: 0.9em;
+            padding: 8px 16px;
+        }
+        
+        /* Action buttons container */
+        #additionalFields .btn {
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            padding: 10px 20px;
         }
         
         #learn-tab .tab-content-inner {
@@ -139,28 +254,33 @@
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #1d1d1f;
+            font-size: 0.9em;
         }
 
         .form-group input, .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
+            padding: 10px 12px;
+            border: 1px solid #d1d1d6;
+            border-radius: 10px;
             font-size: 1em;
-            transition: border-color 0.3s ease;
+            transition: all 0.2s ease;
+            background: #f2f2f7;
         }
 
         .form-group input:focus, .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #007aff;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+            transform: translateY(-1px);
         }
 
         .btn {
