@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Vocabulary - Spaced Repetition Learning</title>
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Smart Vocabulary">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <!-- Add Words Tab -->
+            <div class="tab-content active" id="add-tab">
+                <div class="tab-content-inner">
+                    <h3>Add New Word or Phrase</h3>
+                    
+                    <div class="form-group">
+                        <label for="englishWord">English Word/Phrase:</label>
+                        <input type="text" id="englishWord" placeholder="e.g., beautiful, break the ice">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="russianTranslation">Russian Translation:</label>
+                        <input type="text" id="russianTranslation" placeholder="e.g., красивый, сломать лед">
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="lookupInDictionary()">📚 Dictionary Lookup</button>
+                        </div>
+                    </div>
+
+                    <div id="dictionaryResults" class="translation-suggestion" style="display: none;">
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <h4 style="margin-top: 0; color: #2e7d32;">📖 Dictionary Results</h4>
+                            <div id="dictionaryContent"></div>
+                            <div style="margin-top: 15px;">
+                                <button class="btn btn-success" onclick="acceptDictionaryResults()">✅ Use Dictionary Data</button>
+                                <button class="btn btn-secondary" onclick="hideDictionaryResults()">❌ Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wordDefinition">Definition:</label>
+                        <textarea id="wordDefinition" rows="2" placeholder="Word definition..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wordPhonetic">Phonetic (pronunciation):</label>
+                        <input type="text" id="wordPhonetic" placeholder="e.g., /ˈbjuːtɪfʊl/">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wordSynonyms">Synonyms (comma-separated):</label>
+                        <input type="text" id="wordSynonyms" placeholder="e.g., gorgeous, lovely, attractive">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wordExamples">Examples (one per line):</label>
+                        <textarea id="wordExamples" rows="3" placeholder="Example sentence 1&#10;Example sentence 2"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wordNotes">Notes (optional):</label>
+                        <textarea id="wordNotes" rows="3" placeholder="Context, examples, or personal notes..."></textarea>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="addWord()">💾 Save Word</button>
+                    <button class="btn btn-secondary" onclick="clearForm()">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <!-- Word List Tab -->
+            <div class="tab-content" id="list-tab">
+                <div class="tab-content-inner" style="padding: 0; display: flex; flex-direction: column;">
+                    <div style="padding: 20px; padding-bottom: 10px; background: white; border-bottom: 1px solid #e5e5e7;">
+                        <h3 style="margin: 0; font-size: 1.2em; font-weight: 600; color: #1d1d1f;"><span id="wordCount">0</span> words</h3>
+                    </div>
+                    <div class="word-list" id="wordList">
+                        <div class="empty-state">
+                            <h3>No words yet!</h3>
+                            <p>Add your first word in the "Add Words" tab</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learning Tab -->
+            <div class="tab-content" id="learn-tab">
+                <div class="tab-content-inner">
+                    <div id="learningContent">
+                        <div class="empty-state">
+                            <h3>Ready to learn?</h3>
+                            <p>Add some words first, then come back to start learning!</p>
+                            <button class="btn btn-primary" onclick="startLearning()">🚀 Start Learning</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div class="tab-content" id="stats-tab">
+                <div class="tab-content-inner">
+                    <h3>Learning Statistics</h3>
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 8px;">
+                            <button class="btn btn-success" id="speechToggle" onclick="toggleSpeech()" style="padding: 8px 12px; font-size: 0.85em;">
+                                🔊 Sound On
+                            </button>
+                            <button class="btn btn-success" id="autoPlayToggle" onclick="toggleAutoPlay()" style="padding: 8px 12px; font-size: 0.85em;">
+                                🎵 Auto Play On
+                            </button>
+                        </div>
+                        <div style="font-size: 0.8em; color: #666;">Audio pronunciation settings</div>
+                    </div>
+                    <div style="text-align: center; margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                        <h4 style="margin-bottom: 8px; font-size: 1.1em;">Data Management</h4>
+                        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;">
+                            <button class="btn btn-warning" onclick="resetUserProgress()" style="padding: 8px 16px; font-size: 0.85em;">
+                                🗑️ Reset Progress
+                            </button>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn btn-success" onclick="exportData()" style="flex: 1; padding: 8px 12px; font-size: 0.85em;">
+                                    📤 Export Data
+                                </button>
+                                <button class="btn btn-info" onclick="importData()" style="flex: 1; padding: 8px 12px; font-size: 0.85em;">
+                                    📥 Import Data
+                                </button>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.75em; color: #666; margin: 0;">
+                            Words are stored locally on device. Progress can be reset if needed.
+                        </p>
+                    </div>
+                    <div class="stats" id="statsGrid">
+                        <div class="stat-card">
+                            <span class="stat-value" id="totalWordsCount">0</span>
+                            <div class="stat-label">Total Words</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #d4edda, #c3e6cb);">
+                            <span class="stat-value" id="learnedWordsCount" style="color: #155724;">0</span>
+                            <div class="stat-label" style="color: #155724;">Well Known (75%+)</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fff3cd, #ffeaa7);">
+                            <span class="stat-value" id="inProgressWordsCount" style="color: #856404;">0</span>
+                            <div class="stat-label" style="color: #856404;">In Progress (50-75%)</div>
+                        </div>
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f8d7da, #f5c6cb);">
+                            <span class="stat-value" id="difficultWordsCount" style="color: #721c24;">0</span>
+                            <div class="stat-label" style="color: #721c24;">Difficult (<50%)</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="reviewWordsCount">0</span>
+                            <div class="stat-label">Need Review</div>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="streakCount">0</span>
+                            <div class="stat-label">Current Streak</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- iOS-style Bottom Tab Bar -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="showTab('add')">
+            <div class="tab-icon">➕</div>
+            <div>Add</div>
+        </button>
+        <button class="tab-btn" onclick="showTab('list')">
+            <div class="tab-icon">📋</div>
+            <div>My Words</div>
+        </button>
+        <button class="tab-btn" onclick="showTab('learn')">
+            <div class="tab-icon">🎓</div>
+            <div>Learn</div>
+        </button>
+        <button class="tab-btn" onclick="showTab('stats')">
+            <div class="tab-icon">📊</div>
+            <div>Stats</div>
+        </button>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
