@@ -1862,7 +1862,7 @@ function importData() {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
-            const registration = await navigator.serviceWorker.register('/sw.js');
+            const registration = await navigator.serviceWorker.register('./sw.js');
             console.log('✅ Service Worker registered:', registration.scope);
         } catch (error) {
             console.log('❌ Service Worker registration failed:', error);

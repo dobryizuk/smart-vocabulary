@@ -1,11 +1,12 @@
 // Smart Vocabulary - Service Worker
 const CACHE_NAME = 'smart-vocabulary-v1';
+const BASE_PATH = '/smart-vocabulary/';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/js/app.js',
-  '/css/styles.css',
-  '/manifest.json'
+  BASE_PATH,
+  BASE_PATH + 'index.html',
+  BASE_PATH + 'js/app.js',
+  BASE_PATH + 'css/styles.css',
+  BASE_PATH + 'manifest.json'
 ];
 
 // Install event - cache resources
@@ -50,7 +51,7 @@ self.addEventListener('fetch', event => {
       .catch(() => {
         // If both cache and network fail, show offline page
         if (event.request.destination === 'document') {
-          return caches.match('/index.html');
+          return caches.match(BASE_PATH + 'index.html');
         }
       })
   );
