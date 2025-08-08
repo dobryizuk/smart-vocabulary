@@ -1,0 +1,46 @@
+{
+  "name": "smart-vocabulary",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sw.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "npx playwright show-report",
+    "serve": "python3 -m http.server 3000",
+    
+    "lint": "npm run lint:js && npm run lint:css",
+    "lint:js": "eslint js/**/*.js tests/**/*.js --fix",
+    "lint:css": "stylelint css/**/*.css --fix",
+    "lint:check": "npm run lint:js:check && npm run lint:css:check",
+    "lint:js:check": "eslint js/**/*.js tests/**/*.js",
+    "lint:css:check": "stylelint css/**/*.css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github-personal:dobryizuk/smart-vocabulary.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.54.2",
+    "@testing-library/dom": "^10.4.1",
+    "eslint": "^9.32.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "jsdom": "^26.1.0",
+    "stylelint": "^16.23.1",
+    "stylelint-config-recommended": "^17.0.0",
+    "stylelint-config-standard": "^39.0.0",
+    "vitest": "^3.2.4"
+  }
+}

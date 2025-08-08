@@ -1,0 +1,97 @@
+/* ============================================================================
+   BASE STYLES & LAYOUT
+   ============================================================================ */
+
+:root {
+    /* Modern Dark Theme Design System */
+    --color-bg: #0F0F0F; /* Deep black background */
+    --color-surface: #1C1C1E; /* Card surfaces */
+    --color-surface-elevated: #2C2C2E; /* Elevated cards */
+    --color-border: #38383A;
+    
+    /* Text colors */
+    --color-text: #FFFFFF;
+    --color-text-secondary: #98989A;
+    --color-text-tertiary: #636366;
+    
+    /* Accent colors */
+    --color-accent-blue: #0A84FF;
+    --color-accent-green: #30D158;
+    --color-accent-orange: #FF9F0A;
+    --color-accent-red: #FF453A;
+    --color-accent-purple: #BF5AF2;
+    --color-accent-yellow: #FFD60A;
+    
+    /* Semantic colors for synonyms */
+    --color-synonym-1: #0A84FF;
+    --color-synonym-2: #30D158;
+    --color-synonym-3: #FF9F0A;
+    --color-synonym-4: #BF5AF2;
+    
+    /* Progress indicator */
+    --color-progress: #0A84FF;
+    --radius-sm: 10px;
+    --radius-md: 12px;
+    --radius-lg: 14px;
+    --radius-pill: 9999px;
+    --space-1: 6px;
+    --space-2: 10px;
+    --space-3: 14px;
+    --space-4: 18px;
+    /* Modern shadows for dark theme */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.1);
+    --blur-backdrop: blur(20px);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--color-bg);
+    height: 100vh;
+    color: var(--color-text);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+.main-content {
+    background: var(--color-surface);
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 74px; /* Space for bottom tab bar */
+}
+
+/* Common utility classes */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.empty-state h3 {
+    margin-bottom: 12px;
+    color: var(--color-text);
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+    line-height: 1.5;
+}

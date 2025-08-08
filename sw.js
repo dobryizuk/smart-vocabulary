@@ -4,8 +4,24 @@ const BASE_PATH = location.pathname.replace(/\/[^\/]*$/, '/'); // Dynamic base p
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + 'index.html',
-  BASE_PATH + 'js/app.js', 
-  BASE_PATH + 'css/styles.css',
+  // JavaScript modules
+  BASE_PATH + 'js/data-manager.js',
+  BASE_PATH + 'js/ui-components.js',
+  BASE_PATH + 'js/dictionary-service.js',
+  BASE_PATH + 'js/spaced-repetition.js',
+  BASE_PATH + 'js/speech-manager.js',
+  BASE_PATH + 'js/import-export.js',
+  BASE_PATH + 'js/learning-session.js',
+  BASE_PATH + 'js/statistics.js',
+  BASE_PATH + 'js/app-main.js',
+  BASE_PATH + 'js/app-init.js',
+  // CSS modules
+  BASE_PATH + 'css/base.css',
+  BASE_PATH + 'css/navigation.css',
+  BASE_PATH + 'css/components.css',
+  BASE_PATH + 'css/forms.css',
+  BASE_PATH + 'css/learning.css',
+  // Other assets
   BASE_PATH + 'manifest.json'
 ];
 

@@ -1,0 +1,653 @@
+/* ============================================================================
+   MODERN DARK THEME - Like Screenshot Example
+   ============================================================================ */
+
+/* Complete dark theme override */
+body {
+    background: var(--color-bg) !important;
+    color: var(--color-text) !important;
+}
+
+.main-content {
+    background: var(--color-bg) !important;
+}
+
+.tab-content {
+    background: var(--color-bg) !important;
+}
+
+.tab-content-inner {
+    background: var(--color-bg) !important;
+}
+
+/* Word count header */
+.tab-content-inner > div:first-child {
+    background: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+}
+
+.tab-content-inner h3 {
+    color: var(--color-text) !important;
+}
+
+/* Override base components for dark theme */
+.word-card {
+    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
+    border-radius: 16px !important;
+    padding: 16px 18px !important; /* Reduced padding for more compact layout */
+    margin-bottom: 12px !important; /* Reduced margin for more compact layout */
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--color-border);
+    transition: none !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Expandable word card states */
+/* Expandable cards don't have special cursor or hover - only the toggle button does */
+
+.word-card--expanded {
+    /* Remove border color change to prevent "blinking" effect */
+}
+
+/* Toggle indicator */
+.word-card__toggle {
+    position: absolute;
+    top: 0;
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%) scaleX(1.8); /* Center and scale */
+    width: 24px;
+    height: 24px;
+    background: none !important;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: var(--color-text-secondary) !important;
+    transition: transform 0.3s ease; /* Only animate transform, not color */
+    cursor: pointer;
+    z-index: 15;
+    outline: none !important; /* Remove focus outline */
+    -webkit-tap-highlight-color: transparent !important; /* Remove mobile tap highlight */
+}
+
+/* Prevent any browser default button states */
+.word-card__toggle:focus,
+.word-card__toggle:active,
+.word-card__toggle:hover {
+    background: none !important;
+    color: var(--color-text-secondary) !important;
+    outline: none !important;
+}
+
+.word-card--expanded .word-card__toggle {
+    transform: translateX(-50%) rotate(180deg) scaleX(1.8);
+    /* Keep same color - no color change on expand */
+}
+
+/* Remove hover effects to prevent visual changes on click */
+
+/* Compact progress styling */
+.progress-component {
+    margin: 12px 0 4px 0; /* General margin with minimized bottom margin */
+}
+
+.progress-component__header {
+    margin-bottom: 1px !important; /* Minimize gap between percentage and bar */
+}
+
+
+
+/* Expandable content */
+.word-card__expandable-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.word-card--expanded .word-card__expandable-content {
+    max-height: 800px;
+    opacity: 1;
+    margin-top: 8px; /* Уменьшен с 16px до 8px */
+}
+
+/* Base hover effect only for non-expandable cards */
+.word-card:not(.word-card--expandable):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Prevent click propagation on action buttons */
+.word-card__actions {
+    z-index: 10;
+    position: relative;
+}
+
+/* Hide only delete button by default */
+.action-btn--danger {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    background: rgba(255, 69, 58, 0.2) !important;
+    color: var(--color-accent-red) !important;
+    border: 1px solid rgba(255, 69, 58, 0.3) !important;
+}
+
+.word-card--expanded .action-btn--danger {
+    opacity: 1;
+    visibility: visible;
+}
+
+.action-btn {
+    z-index: 11;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ============================================================================
+   MESSAGE SYSTEM
+   ============================================================================ */
+
+.app-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    box-shadow: var(--shadow-md);
+    animation: slideInFromTop 0.3s ease-out;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.app-message--success {
+    background: var(--color-accent-green);
+    color: white;
+}
+
+.app-message--error {
+    background: var(--color-accent-red);
+    color: white;
+}
+
+.app-message--info {
+    background: var(--color-accent-blue);
+    color: white;
+}
+
+@keyframes slideInFromTop {
+    from {
+        transform: translateX(-50%) translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Typography updates */
+.word-card__english {
+    font-size: 1.4em !important;
+    font-weight: 700 !important;
+    color: var(--color-text) !important;
+    line-height: 1.2 !important;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+}
+
+.word-card__russian {
+    font-size: 1.0em !important;
+    color: var(--color-text-secondary) !important;
+    margin-top: 2px; /* Reduce margin */
+    font-weight: 500;
+}
+
+.word-card__phonetic {
+    font-size: 0.7em !important;
+    font-weight: 400 !important;
+    color: var(--color-text-tertiary) !important;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    margin-top: 3px;
+    margin-left: 0 !important;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 3px 6px;
+    border-radius: 5px;
+    display: inline-block;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Definition section like screenshot */
+.detail-block--definition {
+    background: linear-gradient(135deg, rgba(10, 132, 255, 0.12) 0%, rgba(10, 132, 255, 0.06) 100%) !important;
+    border-left: 4px solid var(--color-accent-blue) !important;
+    border: 1px solid rgba(10, 132, 255, 0.25) !important;
+    border-radius: 12px !important;
+    margin: 8px 0 !important; /* Уменьшен с 12px до 8px */
+    padding: 12px 14px !important; /* Уменьшен с 16px 18px до 12px 14px */
+}
+
+.detail-block--definition .detail-title {
+    color: var(--color-accent-blue) !important;
+    font-size: 0.7em !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 6px !important; /* Уменьшен с 8px до 6px */
+}
+
+.detail-block--definition .detail-text {
+    color: var(--color-text) !important;
+    line-height: 1.4 !important;
+    font-weight: 400;
+}
+
+/* Synonyms section like screenshot */
+.detail-block--synonyms {
+    background: linear-gradient(135deg, rgba(48, 209, 88, 0.12) 0%, rgba(48, 209, 88, 0.06) 100%) !important;
+    border-left: 4px solid var(--color-accent-green) !important;
+    border: 1px solid rgba(48, 209, 88, 0.25) !important;
+    border-radius: 12px !important;
+    margin: 8px 0 !important; /* Уменьшен с 12px до 8px */
+    padding: 12px 14px !important; /* Уменьшен с 16px 18px до 12px 14px */
+}
+
+.detail-block--synonyms .detail-title {
+    color: var(--color-accent-green) !important;
+    font-size: 0.7em !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 6px !important; /* Уменьшен с 8px до 6px */
+}
+
+/* Synonym chips */
+.synonym-chip {
+    display: inline-block;
+    background: rgba(48, 209, 88, 0.2);
+    color: var(--color-accent-green);
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin: 2px 4px 2px 0;
+    border: 1px solid rgba(48, 209, 88, 0.3);
+    transition: all 0.2s ease;
+}
+
+.synonym-chip:hover {
+    background: rgba(48, 209, 88, 0.3);
+    transform: scale(1.05);
+}
+
+/* Examples section like screenshot */
+.detail-block--examples {
+    background: linear-gradient(135deg, rgba(255, 159, 10, 0.12) 0%, rgba(255, 159, 10, 0.06) 100%) !important;
+    border-left: 4px solid var(--color-accent-orange) !important;
+    border: 1px solid rgba(255, 159, 10, 0.25) !important;
+    border-radius: 12px !important;
+    margin: 8px 0 !important; /* Уменьшен с 12px до 8px */
+    padding: 12px 14px !important; /* Уменьшен с 16px 18px до 12px 14px */
+}
+
+.detail-block--examples .detail-title {
+    color: var(--color-accent-orange) !important;
+    font-size: 0.7em !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 6px !important; /* Уменьшен с 8px до 6px */
+}
+
+.detail-block--examples .detail-text {
+    color: var(--color-text) !important;
+    line-height: 1.4 !important;
+}
+
+.detail-block--examples ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+.detail-block--examples li {
+    margin-bottom: 6px;
+    color: var(--color-text);
+}
+
+/* Progress bar like screenshot */
+
+
+.progress-component__bar {
+    height: 6px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 3px !important;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.progress-component__fill {
+    height: 100% !important;
+    background: linear-gradient(90deg, var(--color-progress) 0%, #5A9FFF 100%) !important;
+    border-radius: 3px !important;
+    transition: width 0.5s ease !important;
+    box-shadow: 0 0 8px rgba(10, 132, 255, 0.3);
+}
+
+.progress-component__percentage {
+    font-size: 0.75em !important;
+    color: var(--color-text-secondary) !important;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+/* Next review date like screenshot */
+.next-review-card {
+    background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 12px 0;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.next-review-card .detail-title {
+    color: var(--color-text-secondary);
+    font-size: 0.7em;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.next-review-date {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.next-review-date::before {
+    content: "📅";
+    font-size: 1.2em;
+}
+
+/* Progress indicator at bottom like screenshot */
+.progress-indicator {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+}
+
+.progress-indicator__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-progress) 0%, #5A9FFF 100%);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(10, 132, 255, 0.5);
+}
+
+/* Button styles for dark theme */
+.btn {
+    background: var(--color-accent-blue) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn:hover {
+    background: #1E90FF !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+}
+
+/* Listen button style */
+.btn--listen {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--color-text) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    backdrop-filter: blur(10px);
+}
+
+.btn--listen:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Form controls dark theme */
+.form-control {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border: 1px solid var(--color-border) !important;
+}
+
+.form-control:focus {
+    background: var(--color-surface-elevated) !important;
+    border-color: var(--color-accent-blue) !important;
+}
+
+/* Empty state */
+.empty-state {
+    background: var(--color-surface) !important;
+    color: var(--color-text-secondary) !important;
+}
+
+.empty-state h3 {
+    color: var(--color-text) !important;
+}
+
+/* Tab navigation dark theme */
+.tab-nav {
+    background: rgba(28, 28, 30, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    border-top: 0.5px solid var(--color-border) !important;
+}
+
+.tab-btn {
+    color: var(--color-text-secondary) !important;
+}
+
+.tab-btn.active {
+    color: var(--color-accent-blue) !important;
+}
+
+.tab-btn:active {
+    color: var(--color-accent-blue) !important;
+    transform: scale(0.95);
+}
+
+.tab-btn:focus {
+    outline: none !important;
+}
+
+.tab-btn:focus:not(:active) {
+    color: var(--color-text-secondary) !important;
+}
+
+
+
+.action-btn--primary {
+    background: rgba(10, 132, 255, 0.2) !important;
+    color: var(--color-accent-blue) !important;
+    border: 1px solid rgba(10, 132, 255, 0.3) !important;
+}
+
+
+
+/* Metadata chips dark theme - like screenshot */
+.word-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px; /* Уменьшен с 8px до 6px */
+    margin-top: 8px; /* Уменьшен с 12px до 8px */
+}
+
+.metadata-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px; /* Уменьшен с 4px до 3px */
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    padding: 4px 8px; /* Уменьшен с 6px 12px до 4px 8px */
+    border-radius: 12px; /* Уменьшен с 16px до 12px */
+    font-size: 0.7em; /* Уменьшен с 0.75em до 0.7em */
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.metadata-chip--repetitions {
+    background: rgba(10, 132, 255, 0.15) !important;
+    color: var(--color-accent-blue) !important;
+    border: 1px solid rgba(10, 132, 255, 0.25) !important;
+}
+
+.metadata-chip--review {
+    background: rgba(255, 159, 10, 0.15) !important;
+    color: var(--color-accent-orange) !important;
+    border: 1px solid rgba(255, 159, 10, 0.25) !important;
+}
+
+.metadata-chip--added {
+    background: rgba(48, 209, 88, 0.15) !important;
+    color: var(--color-accent-green) !important;
+    border: 1px solid rgba(48, 209, 88, 0.25) !important;
+}
+
+.metadata-chip--accuracy {
+    background: rgba(175, 82, 222, 0.15) !important;
+    color: var(--color-accent-purple, #af52de) !important;
+    border: 1px solid rgba(175, 82, 222, 0.25) !important;
+}
+
+.metadata-chip:hover {
+    transform: scale(1.05);
+    background-opacity: 0.2;
+}
+
+/* Word list container */
+.word-list {
+    background: var(--color-bg) !important;
+}
+
+/* Learning session */
+.learning-card {
+    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%) !important;
+    border: 2px solid var(--color-accent-blue) !important;
+    box-shadow: var(--shadow-lg) !important;
+    padding: 20px !important;
+    margin: 0 auto 16px auto !important;
+}
+
+/* Compact word display */
+.card-word {
+    font-size: 2em !important;
+    margin-bottom: 16px !important;
+    color: var(--color-text) !important;
+}
+
+/* Gray translation text */
+.card-translation {
+    background: var(--color-surface-elevated) !important;
+    color: var(--color-text-secondary) !important;
+    padding: 12px 16px !important;
+    margin: 12px 0 !important;
+    font-size: 1.2em !important;
+    font-weight: 500 !important;
+}
+
+/* Compact definition */
+.card-definition {
+    background: rgba(10, 132, 255, 0.1) !important;
+    padding: 12px 16px !important;
+    margin: 10px 0 !important;
+    color: var(--color-text) !important;
+}
+
+/* Compact examples */
+.card-examples {
+    background: rgba(255, 149, 0, 0.1) !important;
+    padding: 12px 16px !important;
+    margin: 10px 0 !important;
+}
+
+/* Improved difficulty buttons layout */
+.difficulty-buttons {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr 1fr !important;
+    gap: 8px !important;
+    margin: 16px 0 !important;
+    width: 100% !important;
+}
+
+.difficulty-btn {
+    padding: 10px 6px !important;
+    min-height: 55px !important;
+    font-size: 0.75em !important;
+    border-radius: 10px !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* Compact session progress */
+.session-progress {
+    background: rgba(10, 132, 255, 0.1) !important;
+    padding: 8px 12px !important;
+    margin: 12px 0 !important;
+    font-size: 0.85em !important;
+    color: var(--color-accent-blue) !important;
+}
+
+/* Learning content */
+#learningContent {
+    background: var(--color-bg) !important;
+}
+
+/* Statistics */
+.stats {
+    background: var(--color-bg) !important;
+}
+
+.stat-card {
+    background: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+
+/* Legacy metadata styles */
+.metadata-item {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin: 4px 8px 4px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.metadata-item__icon {
+    opacity: 0.8;
+}
+
+/* Theme color for PWA */
+meta[name="theme-color"] {
+    content: var(--color-bg) !important;
+}

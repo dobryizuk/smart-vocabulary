@@ -35,3 +35,6 @@ create-icons.html
 
 # Test coverage
 coverage/
+playwright-report
+test-results
+
