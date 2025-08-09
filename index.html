@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Vocabulary - Spaced Repetition Learning</title>
     <!-- Modular CSS -->
+    <link rel="stylesheet" href="css/themes.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/navigation.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/forms.css">
     <link rel="stylesheet" href="css/learning.css">
-    <link rel="stylesheet" href="css/dark-theme.css">
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0F0F0F">
@@ -82,8 +82,8 @@
             <!-- Word List Tab -->
             <div class="tab-content" id="list-tab">
                 <div class="tab-content-inner" style="padding: 0; display: flex; flex-direction: column;">
-                    <div style="padding: 20px; padding-bottom: 10px; background: white; border-bottom: 1px solid #e5e5e7;">
-                        <h3 style="margin: 0; font-size: 1.2em; font-weight: 600; color: #1d1d1f;"><span id="wordCount">0</span> words</h3>
+                    <div class="word-list-header">
+                        <h3><span id="wordCount">0</span> words</h3>
                     </div>
                     <div class="word-list" id="wordList" data-testid="word-list">
                         <div class="empty-state">
@@ -101,7 +101,7 @@
                         <div class="empty-state">
                             <h3>Ready to learn?</h3>
                             <p>Add some words first, then come back to start learning!</p>
-                            <button class="btn btn-primary" onclick="startLearning()">🚀 Start Learning</button>
+                            <button class="btn btn-primary" onclick="startLearning()">🚀 Start New Session</button>
                         </div>
                     </div>
                 </div>
@@ -174,6 +174,8 @@
     </div>
 
     <!-- Modular JavaScript -->
+    <script src="js/app-state.js"></script>
+    <script src="js/theme-manager.js"></script>
     <script src="js/data-manager.js"></script>
     <script src="js/ui-components.js"></script>
     <script src="js/dictionary-service.js"></script>

@@ -10,21 +10,105 @@
  * @param {boolean} showProgress - Whether to show progress component
  * @returns {string} HTML string for the word card
  */
+function buildActionsHtml(actions, expandable) {
+    return actions.map(action => {
+        const clickHandler = expandable ? `event.stopPropagation(); ${action.onclick}` : action.onclick;
+        return `<button class="action-btn action-btn--${action.type}" onclick="${clickHandler}" title="${action.title || ''}">${action.icon}</button>`;
+    }).join('');
+}
+
+function computeProgressVariant(variant) {
+    return variant === 'compact' ? 'inline' : 'default';
+}
+
+function computeReview(nextReview) {
+    const date = nextReview ? new Date(nextReview) : null;
+    const invalid = !date || isNaN(date.getTime());
+    if (invalid) {
+        return { isReady: true, reviewText: 'New word' };
+    }
+    const isReady = date <= new Date();
+    if (isReady) {
+        return { isReady, reviewText: 'Ready for review' };
+    }
+    const formatted = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return { isReady, reviewText: `Review: ${formatted}` };
+}
+
+function buildVariantClasses(variant, expandable) {
+    const cardClasses = ['word-card'];
+    const headerClasses = ['word-card__header'];
+    const englishClasses = ['word-card__english'];
+    const russianClasses = ['word-card__russian'];
+    const actionsClasses = ['word-card__actions'];
+    switch (variant) {
+        case 'compact':
+            cardClasses.push('word-card--compact');
+            headerClasses.push('word-card__header--compact');
+            actionsClasses.push('word-card__actions--compact');
+            break;
+        case 'learning':
+            cardClasses.push('word-card--learning');
+            englishClasses.push('word-card__english--learning');
+            russianClasses.push('word-card__russian--learning');
+            break;
+        default:
+            break;
+    }
+    if (expandable) cardClasses.push('word-card--expandable');
+    return { cardClasses, headerClasses, englishClasses, russianClasses, actionsClasses };
+}
+
+function buildNonExpandableDetails(word, variant) {
+    const showDetails = variant !== 'compact' && variant !== 'learning';
+    const definitionHtml = showDetails && word.definition ? `<div class="word-card__definition">${word.definition}</div>` : '';
+    const examplesHtml = showDetails && word.examples ? `<div class="word-card__examples">${word.examples}</div>` : '';
+    return { definitionHtml, examplesHtml };
+}
+
+function buildToggleButtonHTML(expandable, hasExtra, uniqueId) {
+    if (!(expandable && hasExtra)) return '';
+    return `<div class="word-card__toggle" onclick="toggleWordCard('${uniqueId}')" title="Show/hide details">⌄</div>`;
+}
+
+function buildPhoneticHtml(word, variant) {
+    if (variant === 'learning' || !word.phonetic) return '';
+    return `<span class="word-card__phonetic">${word.phonetic}</span>`;
+}
+
+function buildEnglishHtml(word, englishClasses, variant) {
+    const phoneticHtml = buildPhoneticHtml(word, variant);
+    return `
+        <div class="${englishClasses.join(' ')}">
+            ${word.english}
+            ${phoneticHtml}
+        </div>
+    `;
+}
+
+function buildRussianHtml(word, russianClasses, variant) {
+    if (variant === 'learning') return '';
+    return `<div class="${russianClasses.join(' ')}">${word.russian}</div>`;
+}
+
+function buildHeaderSection(word, variant, englishClasses, russianClasses, headerClasses) {
+    const englishHtml = buildEnglishHtml(word, englishClasses, variant);
+    const russianHtml = buildRussianHtml(word, russianClasses, variant);
+    return `
+        <div class="${headerClasses.join(' ')}" style="flex: 1;">
+            ${englishHtml}
+            ${russianHtml}
+        </div>
+    `;
+}
+
 function createWordCard(word, variant = 'default', actions = [], showProgress = false, expandable = false) {
     const userProgress = window.DataManager?.userProgress || {};
     const baseProgress = userProgress[word.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
     const uniqueId = `word-card-${word.id}`;
     
     // Create extended progress with all metadata fields
-    const nextReview = word.nextReview ? new Date(word.nextReview) : null;
-    const isReady = !nextReview || isNaN(nextReview.getTime()) || nextReview <= new Date();
-    const reviewText = nextReview && !isNaN(nextReview.getTime()) ? 
-        (isReady ? 'Ready for review' : `Review: ${nextReview.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        })}`) :
-        'New word';
+    const { isReady, reviewText } = computeReview(word.nextReview);
         
     const progress = {
         ...baseProgress,
@@ -38,74 +122,42 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
     const progressPercentage = window.SpacedRepetition?.calculateLearningProgress?.(word.easeFactor || 1.3) || 0;
     
     // Determine card classes based on variant
-    const cardClasses = ['word-card'];
-    const headerClasses = ['word-card__header'];
-    const englishClasses = ['word-card__english'];
-    const russianClasses = ['word-card__russian'];
-    const actionsClasses = ['word-card__actions'];
-    
-    if (variant === 'compact') {
-        cardClasses.push('word-card--compact');
-        headerClasses.push('word-card__header--compact');
-        actionsClasses.push('word-card__actions--compact');
-    } else if (variant === 'learning') {
-        cardClasses.push('word-card--learning');
-        englishClasses.push('word-card__english--learning');
-        russianClasses.push('word-card__russian--learning');
-    }
-    
-    if (expandable) {
-        cardClasses.push('word-card--expandable');
-    }
+    const { cardClasses, headerClasses, englishClasses, russianClasses, actionsClasses } = buildVariantClasses(variant, expandable);
     
     // Build actions HTML (with event stopping for expandable cards)
-    const actionsHtml = actions.map(action => {
-        const clickHandler = expandable ? 
-            `event.stopPropagation(); ${action.onclick}` : 
-            action.onclick;
-        
-        return `<button class="action-btn action-btn--${action.type}" onclick="${clickHandler}" title="${action.title || ''}">
-            ${action.icon}
-        </button>`;
-    }).join('');
+    const actionsHtml = buildActionsHtml(actions, expandable);
     
     // Build progress component if requested
-    const progressHtml = showProgress ? createProgressComponent(progressPercentage, variant === 'compact' ? 'inline' : 'default', '') : '';
+    const progressVariant = computeProgressVariant(variant);
+    const progressHtml = showProgress ? createProgressComponent(progressPercentage, progressVariant, '') : '';
     
     // Create metadata and details
     const metadata = createWordMetadata(word, progress);
     const detailSections = createWordDetailSections(word, variant);
     
     // Expandable content (details + metadata)
-    const expandableContent = expandable && (metadata || detailSections) ? `
-        <div class="word-card__expandable-content">
-            ${detailSections}
-            ${metadata}
-        </div>
-    ` : '';
+    const expandableContent = (expandable && (metadata || detailSections))
+        ? `<div class="word-card__expandable-content">${detailSections}${metadata}</div>`
+        : '';
     
     // Toggle button for expandable cards
-    const toggleButton = expandable && (metadata || detailSections) ? `
-        <div class="word-card__toggle" onclick="toggleWordCard('${uniqueId}')" title="Show/hide details">
-            ⌄
-        </div>
-    ` : '';
+    const toggleButton = buildToggleButtonHTML(expandable, (metadata || detailSections), uniqueId);
     
+    const headerHtml = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            ${buildHeaderSection(word, variant, englishClasses, russianClasses, headerClasses)}
+            ${actionsHtml ? `<div class="${actionsClasses.join(' ')}">${actionsHtml}</div>` : ''}
+        </div>
+    `;
+
+    const { definitionHtml, examplesHtml } = buildNonExpandableDetails(word, variant);
+
     return `
         <div class="${cardClasses.join(' ')}" id="${uniqueId}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div class="${headerClasses.join(' ')}" style="flex: 1;">
-                    <div class="${englishClasses.join(' ')}">
-                        ${word.english}
-                        ${word.phonetic ? `<span class="word-card__phonetic">${word.phonetic}</span>` : ''}
-                    </div>
-                    ${variant !== 'learning' ? `<div class="${russianClasses.join(' ')}">${word.russian}</div>` : ''}
-                </div>
-                ${actionsHtml ? `<div class="${actionsClasses.join(' ')}">${actionsHtml}</div>` : ''}
-            </div>
+            ${headerHtml}
             ${progressHtml}
-            ${!expandable && variant !== 'compact' && variant !== 'learning' && word.definition ? `<div class="word-card__definition">${word.definition}</div>` : ''}
-            ${!expandable && variant !== 'compact' && variant !== 'learning' && word.examples ? `<div class="word-card__examples">${word.examples}</div>` : ''}
+            ${definitionHtml}
+            ${examplesHtml}
             ${expandableContent}
             ${toggleButton}
         </div>
@@ -149,8 +201,8 @@ function createProgressComponent(percentage, variant = 'default', label = 'Learn
     return `
         <div class="${componentClasses.join(' ')}">
             ${headerHtml}
-            <div class="${barClasses.join(' ')}" style="height: ${barHeight}; width: 100%; background: #d1d3d4; border-radius: 4px; overflow: hidden; border: 1px solid #adb5bd; box-sizing: border-box; margin-top: 4px; display: block;">
-                <div class="progress-component__fill" style="width: ${percentage}%; height: 100%; background: linear-gradient(90deg, #ff3b30 0%, #ff9500 30%, #34c759 70%, #007aff 100%); border-radius: 3px; transition: width 0.3s ease; min-width: 1px; display: block; position: relative;"></div>
+            <div class="${barClasses.join(' ')}" style="height: ${barHeight};">
+                <div class="progress-component__fill" style="width: ${percentage}%;"></div>
             </div>
         </div>
     `;
@@ -235,6 +287,70 @@ function createWordDetailSections(word, variant = 'default') {
     return sectionsHtml;
 }
 
+// Build single detail sections with explicit order control
+function createDefinitionSection(word, isLearning = false) {
+    if (!word.definition) return '';
+    const baseClass = `detail-block detail-block--definition${isLearning ? ' detail-block--learning' : ''}`;
+    const title = `<div class="detail-title">${isLearning ? 'Definition' : '📖 Definition'}</div>`;
+    return `<div class="${baseClass}">${title}<div class="detail-text">${word.definition}</div></div>`;
+}
+
+function createExamplesSection(word, isLearning = false) {
+    if (!(word.examples && word.examples.length > 0)) return '';
+    const baseClass = `detail-block detail-block--examples${isLearning ? ' detail-block--learning' : ''}`;
+    const title = `<div class="detail-title">${isLearning ? 'Examples' : '💡 Examples'}</div>`;
+    const examplesHtml = word.examples
+        .slice(0, isLearning ? 2 : word.examples.length)
+        .map(example => {
+            const text = typeof example === 'string' ? example : example.text || example.toString();
+            return isLearning
+                ? `<div class="detail-text" style="font-size: 0.85em; font-style: italic; margin-bottom: 4px;">"${text}"</div>`
+                : `• ${text}`;
+        }).join(isLearning ? '' : '<br>');
+    return `<div class="${baseClass}">${title}<div class="detail-text">${examplesHtml}</div></div>`;
+}
+
+function createSynonymsSection(word, isLearning = false) {
+    if (!(word.synonyms && word.synonyms.length > 0)) return '';
+    const baseClass = `detail-block detail-block--synonyms${isLearning ? ' detail-block--learning' : ''}`;
+    const title = `<div class="detail-title">Synonyms</div>`;
+    const synonymChips = word.synonyms.map(synonym => `<span class="synonym-chip">${synonym}</span>`).join('');
+    return `<div class="${baseClass}">${title}<div class="detail-text">${synonymChips}</div></div>`;
+}
+
+/**
+ * Creates answer layout with fixed order:
+ * 1) specificHtml (exercise-specific block)
+ * 2) difficulty buttons
+ * 3) definition
+ * 4) examples
+ * 5) synonyms
+ */
+function createAnswerLayout({ specificHtml = '', word, variant = 'learning' }) {
+    const isLearning = variant === 'learning';
+    const buttons = createDifficultyButtons();
+    const definition = createDefinitionSection(word, isLearning);
+    const examples = createExamplesSection(word, isLearning);
+    const synonyms = createSynonymsSection(word, isLearning);
+    return [specificHtml, buttons, definition, examples, synonyms].join('');
+}
+
+/**
+ * Creates a primary answer block used above details (unified style)
+ * @param {string} label - Title of the block (e.g., 'Translation', 'Correct answer')
+ * @param {string} value - Main text value
+ * @returns {string} HTML string
+ */
+function createPrimaryAnswerBlock(label, value) {
+    if (!value) return '';
+    return `
+        <div class="card-translation">
+            <div class="section-subtitle">${label}</div>
+            <div style="font-size: 1.3em; font-weight: 700;">${value}</div>
+        </div>
+    `;
+}
+
 /**
  * Creates translation block component for learning screen
  * @param {Object} word - Word object
@@ -246,12 +362,7 @@ function createTranslationBlock(word, variant = 'learning') {
     
     const isCompact = variant === 'learning';
     
-    return `
-        <div class="card-translation">
-            <div class="section-subtitle">${isCompact ? 'Translation' : '🔤 Translation'}</div>
-            <div style="font-size: 1.3em; font-weight: 700;">${word.russian}</div>
-        </div>
-    `;
+    return createPrimaryAnswerBlock(isCompact ? 'Translation' : '🔤 Translation', word.russian);
 }
 
 /**
@@ -267,8 +378,8 @@ function createLearningAnswerContent(word, progress, variant = 'learning') {
     // Add translation block
     content += createTranslationBlock(word, variant);
     
-    // Add word detail sections
-    content += createWordDetailSections(word, variant);
+    // Add word detail sections styled like expanded list cards
+    content += createWordDetailSections(word, 'default');
     
     // Add metadata if progress data is available
     if (progress) {
@@ -284,111 +395,80 @@ function createLearningAnswerContent(word, progress, variant = 'learning') {
  * @param {Object} progress - Progress object
  * @returns {string} HTML string for metadata
  */
+function shouldAddItem(condition) {
+    return Boolean(condition);
+}
+
 function createWordMetadata(word, progress) {
     const items = [];
-    
-    // Helper function to format date in European format (DD/MM/YYYY)
+
     const formatEuropeanDate = (date) => {
         const d = new Date(date);
         if (isNaN(d.getTime())) return '';
-        
-        return d.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
-    
-    // 1. Always show repetitions if available
-    if (progress.repetitions !== undefined) {
-        items.push({
-            icon: '🔄',
-            text: `${progress.repetitions} repetitions`,
-            type: 'repetitions'
-        });
-    }
-    
-    // 2. Show next review if available
-    if (word.nextReview) {
-        const nextReviewDate = new Date(word.nextReview);
-        
-        // Check if date is valid
-        if (!isNaN(nextReviewDate.getTime())) {
-            const today = new Date();
-            const isReady = nextReviewDate <= today;
+
+    const pushItem = (icon, text, type) => items.push({ icon, text, type });
+
+    const addAddedDateItem = () => {
+        if (!shouldAddItem(progress.addedDate)) return;
+        const addedDate = progress.addedDate instanceof Date ? progress.addedDate : new Date(progress.addedDate);
+        if (isNaN(addedDate.getTime())) return;
+        pushItem('📅', `Added ${formatEuropeanDate(addedDate)}`, 'added');
+    };
+
+    const addRepetitionsItem = () => {
+        if (!shouldAddItem(progress.repetitions !== undefined)) return;
+        pushItem('🔄', `${progress.repetitions} repetitions`, 'repetitions');
+    };
+
+    const addReviewItem = () => {
+        if (shouldAddItem(word.nextReview)) {
+            const nextReviewDate = new Date(word.nextReview);
+            if (isNaN(nextReviewDate.getTime())) return;
+            const isReady = nextReviewDate <= new Date();
             const reviewDate = formatEuropeanDate(nextReviewDate);
-            
-            items.push({
-                icon: isReady ? '✅' : '📅',
-                text: isReady ? `Ready for review (${reviewDate})` : `Next review: ${reviewDate}`,
-                type: 'review'
-            });
+            const text = isReady ? `Ready for review (${reviewDate})` : `Next review: ${reviewDate}`;
+            pushItem(isReady ? '✅' : '📅', text, 'review');
+            return;
         }
-    } else if (progress.reviewStatus) {
-        // Fallback to progress.reviewStatus if word.nextReview is not available
-        const isReady = progress.isReady;
-        items.push({
-            icon: isReady ? '✅' : '📅',
-            text: progress.reviewStatus,
-            type: 'review'
-        });
-    }
-    
-    // 3. Show added date if available
-    if (progress.addedDate) {
-        const addedDate = progress.addedDate instanceof Date ? 
-            progress.addedDate : 
-            new Date(progress.addedDate);
-        
-        // Check if date is valid
-        if (!isNaN(addedDate.getTime())) {
-            const formattedDate = formatEuropeanDate(addedDate);
-            items.push({
-                icon: '📅',
-                text: `Added ${formattedDate}`,
-                type: 'added'
-            });
+        if (shouldAddItem(progress.reviewStatus)) {
+            const isReady = progress.isReady;
+            pushItem(isReady ? '✅' : '📅', progress.reviewStatus, 'review');
         }
-    }
-    
-    // Show accuracy if available (optional, not in the main 3)
-    if (progress.totalAttempts > 0) {
-        items.push({
-            icon: '📊',
-            text: `${progress.correctCount}/${progress.totalAttempts} correct`,
-            type: 'accuracy'
-        });
-    }
-    
-    // Show last seen if available (optional, not in the main 3)
-    if (progress.lastSeen && progress.totalAttempts > 0) {
+    };
+
+    const addAccuracyItem = () => {
+        if (!shouldAddItem(progress.totalAttempts > 0)) return;
+        pushItem('📊', `${progress.correctCount}/${progress.totalAttempts} correct`, 'accuracy');
+    };
+
+    const addLastSeenItem = () => {
+        if (!shouldAddItem(progress.lastSeen && progress.totalAttempts > 0)) return;
         const daysAgo = Math.floor((Date.now() - new Date(progress.lastSeen)) / (1000 * 60 * 60 * 24));
-        items.push({
-            icon: '⏰',
-            text: daysAgo === 0 ? 'Today' : `${daysAgo} days ago`,
-            type: 'lastSeen'
-        });
-    }
-    
+        pushItem('⏰', daysAgo === 0 ? 'Today' : `${daysAgo} days ago`, 'lastSeen');
+    };
+
+    addAddedDateItem();
+    addRepetitionsItem();
+    addReviewItem();
+    addAccuracyItem();
+    addLastSeenItem();
+
     if (items.length === 0) return '';
-    
-    const chipsHtml = items.map((item, _index) => {
-        let chipClass = 'metadata-chip';
-        
-        // Apply different colors based on content type
-        if (item.type === 'repetitions') {
-            chipClass += ' metadata-chip--repetitions';
-        } else if (item.type === 'review' || item.type === 'lastSeen') {
-            chipClass += ' metadata-chip--review';
-        } else if (item.type === 'added') {
-            chipClass += ' metadata-chip--added';
-        } else if (item.type === 'accuracy') {
-            chipClass += ' metadata-chip--accuracy';
+
+    const getChipClass = (type) => {
+        switch (type) {
+            case 'added': return 'metadata-chip metadata-chip--added';
+            case 'review':
+            case 'lastSeen': return 'metadata-chip metadata-chip--review';
+            case 'repetitions': return 'metadata-chip metadata-chip--repetitions';
+            case 'accuracy': return 'metadata-chip metadata-chip--accuracy';
+            default: return 'metadata-chip';
         }
-        
-        return `<span class="${chipClass}">${item.icon} ${item.text}</span>`;
-    }).join('');
-    
+    };
+
+    const chipsHtml = items.map((item) => `<span class="${getChipClass(item.type)}">${item.icon} ${item.text}</span>`).join('');
     return `<div class="word-metadata">${chipsHtml}</div>`;
 }
 
@@ -397,7 +477,7 @@ function createWordMetadata(word, progress) {
  * @param {string} variant - Optional variant for styling
  * @returns {string} HTML string for difficulty buttons
  */
-function createDifficultyButtons(_variant = 'default') {
+function createDifficultyButtons() {
     const buttonsHtml = `
         <div class="difficulty-buttons" style="margin-top: 20px;">
             <button class="difficulty-btn difficulty-btn--hard" onclick="markDifficulty('hard')">
@@ -600,10 +680,7 @@ function createFlexContainer(content, direction = 'row', justify = 'flex-start',
  * @param {string} style - additional styles
  * @returns {string} HTML string for styled container
  */
-function createStyledContainer(content, background = '', padding = '', borderRadius = '', margin = '', style = '') {
-    const containerStyle = `${background ? 'background: ' + background + ';' : ''}${padding ? 'padding: ' + padding + ';' : ''}${borderRadius ? 'border-radius: ' + borderRadius + ';' : ''}${margin ? 'margin: ' + margin + ';' : ''}${style ? ' ' + style : ''}`;
-    return `<div style="${containerStyle}">${content}</div>`;
-}
+// Removed unused createStyledContainer to reduce bundle size
 
 /**
  * Creates an info box with common styling
@@ -671,6 +748,8 @@ window.UIComponents = {
     createWordDetailSections,
     createTranslationBlock,
     createLearningAnswerContent,
+    createAnswerLayout,
+    createPrimaryAnswerBlock,
     createWordMetadata,
     createDifficultyButtons,
     showDeleteConfirmation,
@@ -680,7 +759,6 @@ window.UIComponents = {
     createButtonGroup,
     createButton,
     createFlexContainer,
-    createStyledContainer,
     createInfoBox,
     createSmallText
 };
@@ -692,6 +770,8 @@ window.createStatusBadge = createStatusBadge;
 window.createWordDetailSections = createWordDetailSections;
 window.createTranslationBlock = createTranslationBlock;
 window.createLearningAnswerContent = createLearningAnswerContent;
+window.createAnswerLayout = createAnswerLayout;
+window.createPrimaryAnswerBlock = createPrimaryAnswerBlock;
 window.createWordMetadata = createWordMetadata;
 window.createDifficultyButtons = createDifficultyButtons;
 window.createEmptyState = createEmptyState;
@@ -699,7 +779,6 @@ window.createSessionProgress = createSessionProgress;
 window.createButtonGroup = createButtonGroup;
 window.createButton = createButton;
 window.createFlexContainer = createFlexContainer;
-window.createStyledContainer = createStyledContainer;
 window.createInfoBox = createInfoBox;
 window.createSmallText = createSmallText;
 window.showDeleteConfirmation = showDeleteConfirmation;

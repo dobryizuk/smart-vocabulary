@@ -94,94 +94,16 @@
     box-shadow: none;
 }
 
-.btn--danger {
-    background: var(--color-accent-red);
-}
-
-.btn--danger:hover,
-.btn--danger:active {
-    background: var(--color-accent-red);
-    opacity: 1;
-    box-shadow: none;
-}
-
-.btn--success {
-    background: var(--color-accent-green);
-}
-
-.btn--success:hover,
-.btn--success:active {
-    background: var(--color-accent-green);
-    opacity: 1;
-    box-shadow: none;
-}
-
-.btn--listen {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    backdrop-filter: var(--blur-backdrop);
-}
-
-.btn--listen:hover,
-.btn--listen:active {
-    background: var(--color-surface-elevated);
-}
-
 /* Button sizes */
-.btn--small {
-    padding: 8px 16px;
-    font-size: 0.9em;
-    min-height: 36px;
-}
-
-.btn--large {
-    padding: 16px 24px;
-    font-size: 1.1em;
-    min-height: 52px;
-}
 
 /* Button groups */
-/* Base button group layout */
 .btn-group {
     display: flex;
     gap: 8px;
-    flex-flow: column wrap; /* Mobile-first default, shorthand for direction + wrap */
-}
-
-.btn-group--vertical {
-    flex-direction: column;
-}
-
-.btn-group--centered {
-    justify-content: center;
-    align-items: center; /* Mobile-first default */
+    flex-wrap: wrap;
 }
 
 /* Form validation states */
-.form-control.is-valid {
-    border-color: var(--color-accent-green);
-    background: var(--color-surface-elevated);
-}
-
-.form-control.is-invalid {
-    border-color: var(--color-accent-red);
-    background: var(--color-surface-elevated);
-}
-
-.form-feedback {
-    margin-top: 6px;
-    font-size: 0.85em;
-    font-weight: 500;
-}
-
-.form-feedback--valid {
-    color: var(--color-accent-green);
-}
-
-.form-feedback--invalid {
-    color: var(--color-accent-red);
-}
 
 /* Dictionary results styling */
 .translation-suggestion {
@@ -207,23 +129,14 @@
 }
 
 /* Form layout utilities */
-.form-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-    flex-direction: column;
-}
 
-.form-col {
-    flex: 1;
+/* Responsive form adjustments */
+@media (width <= 768px) {
+    
+    .btn-group {
+        flex-direction: column;
+    }
 }
-
-.form-col--half,
-.form-col--third {
-    flex: 1;
-}
-
-/* Mobile-first defaults applied; media queries removed for iPhone 14 baseline */
 
 /* Loading states */
 .form-control:disabled,

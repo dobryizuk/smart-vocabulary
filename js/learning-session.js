@@ -2,55 +2,65 @@
 // LEARNING SESSION MANAGEMENT
 // ============================================================================
 
-// Use global variables if they exist, otherwise declare locally
-if (typeof currentLearningWord === 'undefined') {
-    var currentLearningWord = null;
+// Ensure AppState exists when this file is executed standalone (e.g., in unit tests)
+if (typeof window !== 'undefined') {
+    window.AppState = window.AppState || {
+        currentLearningWord: null,
+        learningSession: [],
+        sessionStats: { correct: 0, total: 0, streak: 0 },
+        currentDictionaryData: null
+    };
 }
-if (typeof learningSession === 'undefined') {
-    var learningSession = [];
-}
-if (typeof sessionStats === 'undefined') {
-    var sessionStats = { correct: 0, total: 0, streak: 0 };
-}
+
+// Use centralized AppState
 
 // ============================================================================
 // LEARNING SESSION FUNCTIONS  
 // ============================================================================
 
+function getSecureRandomInt(maxExclusive) {
+    const cryptoObj = (typeof window !== 'undefined' && window.crypto) || (typeof globalThis !== 'undefined' && globalThis.crypto);
+    if (!cryptoObj || !cryptoObj.getRandomValues) {
+        throw new Error('Secure random generator is not available');
+    }
+    const array = new Uint32Array(1);
+    const range = 0x100000000; // 2^32
+    const limit = range - (range % maxExclusive); // Rejection sampling to avoid modulo bias
+    let value;
+    do {
+        cryptoObj.getRandomValues(array);
+        value = array[0];
+    } while (value >= limit);
+    return value % maxExclusive;
+}
+
+function secureShuffle(inputArray) {
+    const array = [...inputArray];
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = getSecureRandomInt(i + 1);
+        const tmp = array[i];
+        array[i] = array[j];
+        array[j] = tmp;
+    }
+    return array;
+}
+
 function prepareLearningSession() {
     const wordsForReview = window.SpacedRepetition?.getWordsForReview?.() || [];
-    const learningContent = document.getElementById('learningContent');
+    ensureLearningLayout();
 
     if (wordsForReview.length === 0) {
         // Check if we have any words at all
         const vocabulary = window.DataManager?.vocabulary || [];
         const hasWords = vocabulary.length > 0;
-        
-        if (!hasWords) {
-            const emptyStateHtml = window.UIComponents?.createEmptyState?.(
-                'Ready to learn! 📚',
-                'Add some words first to start learning.',
-                [{ text: '➕ Add More Words', onclick: 'showTab(\'add\')', type: 'primary' }]
-            ) || '';
-            learningContent.innerHTML = emptyStateHtml;
-        } else {
-            const emptyStateHtml = window.UIComponents?.createEmptyState?.(
-                'Great job! 🎉',
-                'No words need review right now. Come back later or add more words!',
-                [
-                    { text: '➕ Add More Words', onclick: 'showTab(\'add\')', type: 'primary' },
-                    { text: '🔄 Practice All Words', onclick: 'forceStartLearning()', type: 'secondary', style: 'background: #ff9500; color: white; border: none;' }
-                ]
-            ) || '';
-            learningContent.innerHTML = emptyStateHtml;
-        }
+        renderLearningEmptyState(hasWords);
         return;
     }
 
-    learningSession = [...wordsForReview].sort(() => Math.random() - 0.5);
+    AppState.learningSession = secureShuffle(wordsForReview);
     
     // Initialize session exercise types tracking for all words
-    learningSession.forEach(word => {
+    AppState.learningSession.forEach(word => {
         if (!word.sessionExerciseTypes) {
             word.sessionExerciseTypes = [];
         }
@@ -67,52 +77,89 @@ function startLearning() {
         return;
     }
 
-    learningSession = [...wordsForReview].sort(() => Math.random() - 0.5);
+    AppState.learningSession = secureShuffle(wordsForReview);
     
     // Initialize session exercise types tracking for all words
-    learningSession.forEach(word => {
+    AppState.learningSession.forEach(word => {
         if (!word.sessionExerciseTypes) {
             word.sessionExerciseTypes = [];
         }
     });
     
-    currentLearningWord = learningSession[0];
+    AppState.currentLearningWord = AppState.learningSession[0];
     showLearningCard();
+}
+
+function ensureLearningLayout(resetMain = false) {
+    const learningContent = document.getElementById('learningContent');
+    if (!learningContent) return { mainEl: null, progressEl: null };
+    let mainEl = document.getElementById('learningMain');
+    let progressEl = document.getElementById('sessionProgressContainer');
+    if (!mainEl || !progressEl) {
+        learningContent.innerHTML = `
+            <div id="learningMain"></div>
+            <div id="sessionProgressContainer"></div>
+        `;
+        mainEl = document.getElementById('learningMain');
+        progressEl = document.getElementById('sessionProgressContainer');
+    } else if (resetMain) {
+        // Clear only the main content for a fresh render when requested
+        mainEl.innerHTML = '';
+    }
+    return { mainEl, progressEl };
+}
+
+function renderLearningEmptyState(hasWords) {
+    const { mainEl, progressEl } = ensureLearningLayout(true);
+    if (!mainEl || !progressEl) return;
+    const actions = [
+        { text: 'Start New Session', onclick: 'forceStartLearning()', type: 'primary' }
+    ];
+    const title = hasWords ? 'Great job! 🎉' : 'Ready to learn! 📚';
+    const subtitle = hasWords
+        ? 'No words need review right now. Start a new session to practice.'
+        : 'Add some words first, then start a new session.';
+    const emptyStateHtml = window.UIComponents?.createEmptyState?.(title, subtitle, actions) || '';
+    mainEl.innerHTML = emptyStateHtml;
+    progressEl.innerHTML = '';
 }
 
 function forceStartLearning() {
     // Practice all words regardless of schedule - useful for debugging and extra practice
     const vocabulary = window.DataManager?.vocabulary || [];
     if (vocabulary.length === 0) {
-        alert('No words available to practice!');
+        // No words at all: go to Add tab instead of showing a second placeholder
+        if (typeof window.showTab === 'function') {
+            window.showTab('add');
+        }
         return;
     }
 
     console.log('🚀 Force starting learning session with all words');
-    learningSession = [...vocabulary].sort(() => Math.random() - 0.5);
+    AppState.learningSession = secureShuffle(vocabulary);
     
     // Initialize session exercise types tracking for all words
-    learningSession.forEach(word => {
+    AppState.learningSession.forEach(word => {
         if (!word.sessionExerciseTypes) {
             word.sessionExerciseTypes = [];
         }
     });
     
-    currentLearningWord = learningSession[0];
+    AppState.currentLearningWord = AppState.learningSession[0];
     showLearningCard();
 }
 
 function showLearningCard() {
-    if (!currentLearningWord) {
+    if (!AppState.currentLearningWord) {
         endLearningSession();
         return;
     }
 
     // Determine exercise type for this word
-    const exerciseType = determineExerciseType(currentLearningWord);
-    currentLearningWord.currentExerciseType = exerciseType;
-    currentLearningWord.lastExerciseDate = new Date().toISOString();
-    currentLearningWord.lastExerciseType = exerciseType;
+    const exerciseType = determineExerciseType(AppState.currentLearningWord);
+    AppState.currentLearningWord.currentExerciseType = exerciseType;
+    AppState.currentLearningWord.lastExerciseDate = new Date().toISOString();
+    AppState.currentLearningWord.lastExerciseType = exerciseType;
 
     // Show appropriate exercise type
     if (exerciseType === 'reverse') {
@@ -121,7 +168,7 @@ function showLearningCard() {
     }
 
     // Continue with regular exercise (existing code)
-    const learningContent = document.getElementById('learningContent');
+    const { mainEl, progressEl } = ensureLearningLayout(true);
     
     // Calculate progress data for enhanced display (unused but kept for potential future use)
     // const progressPercentage = Math.round(((currentLearningWord.easeFactor - 1.3) / (3.5 - 1.3)) * 100);
@@ -131,80 +178,59 @@ function showLearningCard() {
         {
             type: 'primary',
             icon: '🔊',
-            onclick: `speakWord('${currentLearningWord.english}')`,
+            onclick: `speakWord('${AppState.currentLearningWord.english}')`,
             title: 'Pronounce word'
         }
     ];
     
-    // Prepare progress data
-    const userProgress = window.DataManager?.userProgress || {};
-    const progress = userProgress[currentLearningWord.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
-    // Extended progress data (unused but kept for potential future use)
-    // const extendedProgress = {
-    //     ...progress,
-    //     repetitions: currentLearningWord.repetition || 0,
-    //     addedDate: new Date(currentLearningWord.addedDate || currentLearningWord.createdAt)
-    // };
+    // Prepare actions for learning card only (progress metadata is computed by UI component as needed)
     
     // Create unified word card for learning
-    const cardHtml = window.UIComponents?.createWordCard?.(currentLearningWord, 'learning', actions, true) || '';
-    
-    learningContent.innerHTML = `
-        ${cardHtml}
-        
-        <!-- Action Button -->
-        <div id="showAnswerButton" style="margin-bottom: 12px;">
-            ${window.UIComponents?.createButton?.('Show Answer', 'showTranslation()', 'primary', false, '', '', 'btn-block') || ''}
-        </div>
-        
-        <!-- Translation Card Placeholder -->
-        <div id="cardTranslation" style="text-align: center;">
-            <div class="section-subtitle">💭 Tap to reveal answer</div>
-        </div>
-        
-        <!-- Session Progress -->
-        ${window.UIComponents?.createSessionProgress?.(
-            learningSession.length - learningSession.indexOf(currentLearningWord), 
-            learningSession.length
-        ) || ''}
-    `;
+    const cardHtml = window.UIComponents?.createWordCard?.(AppState.currentLearningWord, 'learning', actions, true) || '';
+    mainEl.insertAdjacentHTML('beforeend', cardHtml);
+    mainEl.insertAdjacentHTML('beforeend', `
+        ${window.UIComponents?.createButtonGroup?.([
+            { text: 'Show Answer', onclick: 'showTranslation()', type: 'primary', id: 'showAnswerButton' }
+        ]) || ''}
+        <div id="cardTranslation" style="text-align: center;"></div>
+    `);
+    if (progressEl) progressEl.innerHTML = window.UIComponents?.createSessionProgress?.(
+        AppState.learningSession.length - AppState.learningSession.indexOf(AppState.currentLearningWord),
+        AppState.learningSession.length
+    ) || '';
     
     // Auto-play pronunciation when showing new word
     const speechSettings = window.SpeechManager?.speechSettings;
     if (speechSettings?.enabled && speechSettings?.autoPlay) {
         setTimeout(() => {
-            window.speakWord?.(currentLearningWord.english);
+            window.speakWord?.(AppState.currentLearningWord.english);
         }, 500); // Delay for DOM initialization
     }
 }
 
 async function showTranslation() {
     const card = document.getElementById('cardTranslation');
-    
-    // Prepare metadata for current learning word
-    const userProgress = window.DataManager?.userProgress || {};
-    const progress = userProgress[currentLearningWord.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
-    const extendedProgress = {
-        ...progress,
-        repetitions: currentLearningWord.repetition || 0,
-        addedDate: new Date(currentLearningWord.addedDate || currentLearningWord.createdAt)
-    };
-    
-    // Use unified function to create complete answer content
-    const content = window.UIComponents?.createLearningAnswerContent?.(currentLearningWord, extendedProgress, 'learning') || '';
-    
-    // Add difficulty buttons to the content using unified component
-    const difficultyButtonsHtml = window.UIComponents?.createDifficultyButtons?.() || '';
-    
-    card.innerHTML = content + difficultyButtonsHtml;
+
+    // Build specific block for direct translation: compact translation header
+    const specificHtml = window.UIComponents?.createTranslationBlock?.(AppState.currentLearningWord, 'learning') || '';
+    const layoutHtml = window.UIComponents?.createAnswerLayout?.({
+        specificHtml,
+        word: AppState.currentLearningWord,
+        variant: 'learning'
+    }) || '';
+
+    card.innerHTML = layoutHtml;
     card.style.opacity = '1';
-    
-    // Hide Show Answer button
-    document.getElementById('showAnswerButton').style.display = 'none';
+
+    const showBtn = document.getElementById('showAnswerButton');
+    if (showBtn) showBtn.style.display = 'none';
+
+    window.speakWord?.(AppState.currentLearningWord.english);
+    renderSessionProgressBottom();
 }
 
 function markDifficulty(difficulty) {
-    const word = currentLearningWord;
+    const word = AppState.currentLearningWord;
     const reviewData = window.SpacedRepetition?.calculateNextReview?.(
         difficulty, 
         word.repetition, 
@@ -231,17 +257,17 @@ function markDifficulty(difficulty) {
     }
 
     // Update session stats
-    sessionStats.total++;
+    AppState.sessionStats.total++;
     if (difficulty === 'easy' || difficulty === 'perfect') {
-        sessionStats.correct++;
-        sessionStats.streak++;
+        AppState.sessionStats.correct++;
+        AppState.sessionStats.streak++;
     } else {
-        sessionStats.streak = 0;
+        AppState.sessionStats.streak = 0;
     }
 
     // Move to next word
-    learningSession.shift();
-    currentLearningWord = learningSession[0];
+    AppState.learningSession.shift();
+    AppState.currentLearningWord = AppState.learningSession[0];
 
     window.DataManager?.saveUserProgress?.();
     showLearningCard();
@@ -250,8 +276,8 @@ function markDifficulty(difficulty) {
 function endLearningSession() {
     const learningContent = document.getElementById('learningContent');
     
-    const accuracy = sessionStats.total > 0 ? Math.round((sessionStats.correct / sessionStats.total) * 100) : 0;
-    const message = `Great work! You reviewed ${sessionStats.total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${sessionStats.streak}`;
+    const accuracy = AppState.sessionStats.total > 0 ? Math.round((AppState.sessionStats.correct / AppState.sessionStats.total) * 100) : 0;
+    const message = `Great work! You reviewed ${AppState.sessionStats.total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${AppState.sessionStats.streak}`;
     
     const emptyStateHtml = window.UIComponents?.createEmptyState?.(
         'Session Complete! 🎉',
@@ -263,7 +289,7 @@ function endLearningSession() {
     ) || '';
     
     learningContent.innerHTML = emptyStateHtml;
-    sessionStats = { correct: 0, total: 0, streak: 0 };
+    AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
 }
 
 // ============================================================================
@@ -311,7 +337,7 @@ function determineExerciseType(word) {
     }
     
     // Check if this word has already been shown in this session
-    const sessionWords = window.learningSession || learningSession || [];
+    const sessionWords = window.AppState?.learningSession || AppState.learningSession || [];
     // const wordIndex = sessionWords.findIndex(w => w.id === word.id); // Unused variable
     
     // If this is the only word in session, alternate between regular and reverse
@@ -392,115 +418,91 @@ function levenshteinDistance(str1, str2) {
 }
 
 function showReverseTranslationCard() {
-    if (!currentLearningWord) {
+    if (!AppState.currentLearningWord) {
         endLearningSession();
         return;
     }
 
-    const learningContent = document.getElementById('learningContent');
+    const { mainEl, progressEl } = ensureLearningLayout();
     
-    // Calculate progress data for enhanced display
-    const progressPercentage = Math.round(((currentLearningWord.easeFactor - 1.3) / (3.5 - 1.3)) * 100);
+    // Progress percentage computed by UI components as needed
     
-    // Define actions for learning card
-    const actions = [
-        {
-            type: 'primary',
-            icon: '🔊',
-            onclick: `speakWord('${currentLearningWord.russian}', 'ru')`,
-            title: 'Pronounce Russian word'
-        }
-    ];
+    // No pronounce button in reverse translation exercise
+    const actions = [];
     
-    // Prepare progress data
-    const userProgress = window.DataManager?.userProgress || {};
-    const progress = userProgress[currentLearningWord.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
-    // Extended progress data (unused but kept for potential future use)
-    // const extendedProgress = {
-    //     ...progress,
-    //     repetitions: currentLearningWord.repetition || 0,
-    //     addedDate: new Date(currentLearningWord.addedDate || currentLearningWord.createdAt)
-    // };
+    // Progress metadata is handled by UI components when rendering
     
     // Create reverse translation word object for display
     const reverseWord = {
-        ...currentLearningWord,
-        english: currentLearningWord.russian,
-        russian: currentLearningWord.english
+        ...AppState.currentLearningWord,
+        english: AppState.currentLearningWord.russian,
+        russian: AppState.currentLearningWord.english
     };
     
     // Create unified word card for reverse translation
     const cardHtml = window.UIComponents?.createWordCard?.(reverseWord, 'learning', actions, true) || '';
     
-    learningContent.innerHTML = `
+    mainEl.innerHTML = `
         ${cardHtml}
         
-
-            
         <!-- Translation Input -->
         <div style="margin: 20px 0;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--color-text);">
                 Type the English translation:
             </label>
             <input type="text" 
                    id="reverseTranslationInput" 
-                   class="translation-input"
+                   class="form-control"
                    placeholder="Enter English word or phrase..."
                    autocomplete="off"
                    autocorrect="off"
                    autocapitalize="off"
                    spellcheck="false"
+                   autofocus
                    onkeypress="handleReverseInputKeyPress(event)"
                    oninput="validateReverseInput()">
             <div id="typingFeedback" class="typing-feedback"></div>
         </div>
         
-        <!-- Action Buttons -->
+        <!-- Action Button: Show Answer only -->
         ${window.UIComponents?.createButtonGroup?.([
-            { text: '✓ Check Answer', onclick: 'checkReverseTranslation()', type: 'primary', id: 'checkAnswerButton', disabled: true },
-            { text: '👁️ Show Answer', onclick: 'showAnswerForReverse()', type: 'secondary' }
+            { text: 'Show Answer', onclick: 'showAnswerForReverse()', type: 'primary', id: 'showAnswerReverseButton' }
         ]) || ''}
-        
-
-        
-        <!-- Session Progress -->
-        ${window.UIComponents?.createSessionProgress?.(
-            learningSession.length - learningSession.indexOf(currentLearningWord), 
-            learningSession.length
-        ) || ''}
     `;
+    
+    // Render session progress in dedicated container
+    progressEl.innerHTML = window.UIComponents?.createSessionProgress?.(
+        AppState.learningSession.length - AppState.learningSession.indexOf(AppState.currentLearningWord), 
+        AppState.learningSession.length
+    ) || '';
     
     // Focus on input
     setTimeout(() => {
         const input = document.getElementById('reverseTranslationInput');
-        if (input) input.focus();
-    }, 100);
+        if (input && typeof input.focus === 'function') {
+            try {
+                input.focus({ preventScroll: true });
+            } catch {
+                input.focus();
+            }
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
+    }, 50);
 }
 
 function handleReverseInputKeyPress(event) {
     if (event.key === 'Enter') {
-        const button = document.getElementById('checkAnswerButton');
-        if (!button.disabled) {
-            checkReverseTranslation();
-        }
+        showAnswerForReverse();
     }
 }
 
 function validateReverseInput() {
     const input = document.getElementById('reverseTranslationInput');
-    const button = document.getElementById('checkAnswerButton');
     const feedback = document.getElementById('typingFeedback');
-    
-    if (!input || !button) return;
-    
+    if (!input || !feedback) return;
     const userInput = input.value.trim();
-    
     if (userInput.length > 0) {
-        button.disabled = false;
-        button.style.opacity = '1';
-        
-        // Show real-time feedback
-        const accuracy = calculateTypingAccuracy(userInput, currentLearningWord.english);
+        const accuracy = calculateTypingAccuracy(userInput, AppState.currentLearningWord.english);
         if (accuracy.accuracy === 100) {
             feedback.innerHTML = '<span style="color: #28a745;">✓ Perfect match!</span>';
         } else if (accuracy.accuracy >= 90) {
@@ -509,8 +511,6 @@ function validateReverseInput() {
             feedback.innerHTML = '<span style="color: #6c757d;">Keep typing...</span>';
         }
     } else {
-        button.disabled = true;
-        button.style.opacity = '0.5';
         feedback.innerHTML = '';
     }
 }
@@ -520,7 +520,7 @@ function checkReverseTranslation() {
     if (!input) return;
     
     const userInput = input.value.trim();
-    const correctAnswer = currentLearningWord.english;
+    const correctAnswer = AppState.currentLearningWord.english;
     
     const result = calculateTypingAccuracy(userInput, correctAnswer);
     
@@ -537,14 +537,14 @@ function checkReverseTranslation() {
     }
     
     // Store the result for automatic difficulty marking
-    currentLearningWord.reverseTranslationResult = result;
+    AppState.currentLearningWord.reverseTranslationResult = result;
     
     // Hide input and check button
     input.disabled = true;
     document.getElementById('checkAnswerButton').style.display = 'none';
     
-    // Show difficulty buttons for user to choose
-    showDifficultyButtonsForReverse();
+    // Reveal answer blocks (details + metadata) and difficulty buttons
+    showAnswerForReverse();
 }
 
 function showDifficultyButtonsForReverse() {
@@ -558,26 +558,40 @@ function showDifficultyButtonsForReverse() {
 
 function showAnswerForReverse() {
     const feedback = document.getElementById('typingFeedback');
-    feedback.innerHTML = `<span style="color: #007aff; font-weight: 600;">💡 Answer: "${currentLearningWord.english}"</span>`;
-    
-    // Show word details using unified component
-    const detailsHtml = window.UIComponents?.createWordDetailSections?.(currentLearningWord, 'learning') || '';
-    
-    // Add difficulty buttons to the content using unified component
-    const difficultyButtonsHtml = window.UIComponents?.createDifficultyButtons?.() || '';
-    
-    // Add details and buttons after the current content
-    const learningContent = document.getElementById('learningContent');
-    if (detailsHtml) {
-        learningContent.insertAdjacentHTML('beforeend', detailsHtml);
-    }
-    learningContent.insertAdjacentHTML('beforeend', difficultyButtonsHtml);
-    
-    // Hide input and check button
+    // Clear the lightweight "Answer" hint to avoid duplication with the full "Correct answer" block
+    if (feedback) feedback.innerHTML = '';
+
+    const specificHtml = window.UIComponents?.createPrimaryAnswerBlock?.('Correct answer', AppState.currentLearningWord.english) || '';
+    const layoutHtml = window.UIComponents?.createAnswerLayout?.({
+        specificHtml,
+        word: AppState.currentLearningWord,
+        variant: 'learning'
+    }) || '';
+
+    const { mainEl } = ensureLearningLayout();
+    if (mainEl) mainEl.insertAdjacentHTML('beforeend', layoutHtml);
+    renderSessionProgressBottom();
+
     const input = document.getElementById('reverseTranslationInput');
     if (input) input.disabled = true;
-    
-    document.getElementById('checkAnswerButton').style.display = 'none';
+    const showBtn = document.getElementById('showAnswerReverseButton');
+    if (showBtn) showBtn.style.display = 'none';
+    window.speakWord?.(AppState.currentLearningWord.english);
+}
+
+function renderSessionProgressBottom() {
+    const progressEl = document.getElementById('sessionProgressContainer');
+    const learningContent = document.getElementById('learningContent');
+    const currentIndex = AppState.learningSession.length - AppState.learningSession.indexOf(AppState.currentLearningWord);
+    const totalWords = AppState.learningSession.length;
+    const progressHtml = window.UIComponents?.createSessionProgress?.(currentIndex, totalWords) || '';
+    if (progressEl) {
+        progressEl.innerHTML = progressHtml;
+        return;
+    }
+    if (!learningContent) return;
+    learningContent.querySelectorAll('.session-progress').forEach((el) => el.remove());
+    learningContent.insertAdjacentHTML('beforeend', progressHtml);
 }
 
 // Export functions for global access
@@ -596,12 +610,12 @@ window.LearningSession = {
     checkReverseTranslation,
     showAnswerForReverse,
     showDifficultyButtonsForReverse,
-    get currentLearningWord() { return currentLearningWord; },
-    set currentLearningWord(value) { currentLearningWord = value; },
-    get learningSession() { return learningSession; },
-    set learningSession(value) { learningSession = value; },
-    get sessionStats() { return sessionStats; },
-    set sessionStats(value) { sessionStats = value; }
+    get currentLearningWord() { return AppState.currentLearningWord; },
+    set currentLearningWord(value) { AppState.currentLearningWord = value; },
+    get learningSession() { return AppState.learningSession; },
+    set learningSession(value) { AppState.learningSession = value; },
+    get sessionStats() { return AppState.sessionStats; },
+    set sessionStats(value) { AppState.sessionStats = value; }
 };
 
 // Make functions globally available for compatibility
@@ -609,6 +623,7 @@ window.prepareLearningSession = prepareLearningSession;
 window.startLearning = startLearning;
 window.forceStartLearning = forceStartLearning;
 window.showReverseTranslationCard = showReverseTranslationCard;
+window.showLearningCard = showLearningCard;
 window.showTranslation = showTranslation;
 window.markDifficulty = markDifficulty;
 window.handleReverseInputKeyPress = handleReverseInputKeyPress;

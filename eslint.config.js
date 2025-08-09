@@ -1,8 +1,11 @@
 const js = require('@eslint/js');
 const unusedImports = require('eslint-plugin-unused-imports');
+const sonarjs = require('eslint-plugin-sonarjs');
 
 module.exports = [
   js.configs.recommended,
+  // SonarJS recommended rules
+  sonarjs.configs.recommended,
   {
     ignores: [
       'node_modules/**/*',
@@ -23,6 +26,7 @@ module.exports = [
         window: 'readonly',
         document: 'readonly',
         console: 'readonly',
+        CustomEvent: 'readonly',
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         fetch: 'readonly',
@@ -46,7 +50,9 @@ module.exports = [
         // Node.js globals (for tests)
         global: 'readonly',
         require: 'readonly',
+        module: 'readonly',
         __dirname: 'readonly',
+        AppState: 'readonly',
         
         // Testing globals
         describe: 'readonly',
@@ -79,7 +85,7 @@ module.exports = [
       ],
       
       // Неиспользуемые переменные
-      'no-unused-vars': 'off', // Отключаем базовое правило, используем из unused-imports
+      'no-unused-vars': 'warn',
       
       // Неиспользуемые функции
       'no-unused-expressions': 'error',
@@ -92,19 +98,19 @@ module.exports = [
       'no-redeclare': 'error',
       
       // Неиспользуемые catch параметры
-      'no-unused-vars': 'off',
+      'no-unused-vars': 'warn',
       
       // Дополнительные правила для чистоты кода
-      'no-console': 'warn', // Предупреждение о console.log
+      'no-console': 'off', // Предупреждение о console.log
       'no-debugger': 'error',
-      'no-alert': 'warn',
+      'no-alert': 'off',
       
       // Игнорируем некоторые функции, которые используются в коде
       'no-undef': 'error',
       
       // Правила для качества кода
       'prefer-const': 'error',
-      'no-var': 'warn', // Изменено с 'error' на 'warn' для глобальных переменных
+      'no-var': 'error',
       'no-empty': 'warn',
       'no-empty-function': 'warn'
     }

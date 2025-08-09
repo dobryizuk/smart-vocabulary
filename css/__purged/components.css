@@ -98,10 +98,6 @@
     border: 1px solid var(--color-border);
 }
 
-/* In collapsed list cards, hide phonetic; show it only when expanded */
-.word-card--expandable .word-card__phonetic { display: none; }
-.word-card--expandable.word-card--expanded .word-card__phonetic { display: inline-block; }
-
 /* Action Buttons */
 .word-card__actions {
     z-index: 10;
@@ -129,57 +125,11 @@
     color: var(--color-text-secondary);
 }
 
-.action-btn--primary {
-    background: var(--color-accent-blue);
-    color: white;
-    border-color: var(--color-accent-blue);
-}
-
-.action-btn--primary:hover {
-    background: var(--color-accent-blue);
-    opacity: 0.9;
-}
-
-.action-btn--danger {
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition-normal);
-    background: var(--color-accent-red);
-    color: white;
-    border-color: var(--color-accent-red);
-}
-
-.word-card--expanded .action-btn--danger {
-    opacity: 1;
-    visibility: visible;
-}
-
 /* Detail Blocks */
 .detail-block {
     border-radius: var(--radius-md);
     margin: 8px 0;
     padding: 12px 14px;
-}
-
-/* purgecss ignore */
-.detail-block--definition {
-    background: linear-gradient(135deg, rgba(10, 132, 255, 0.12) 0%, rgba(10, 132, 255, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-blue);
-    border: 1px solid rgba(10, 132, 255, 0.25);
-}
-
-/* purgecss ignore */
-.detail-block--synonyms {
-    background: linear-gradient(135deg, rgba(48, 209, 88, 0.12) 0%, rgba(48, 209, 88, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-green);
-    border: 1px solid rgba(48, 209, 88, 0.25);
-}
-
-/* purgecss ignore */
-.detail-block--examples {
-    background: linear-gradient(135deg, rgba(255, 159, 10, 0.12) 0%, rgba(255, 159, 10, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-orange);
-    border: 1px solid rgba(255, 159, 10, 0.25);
 }
 
 .detail-title {
@@ -188,21 +138,6 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 6px;
-}
-
-/* purgecss ignore */
-.detail-block--definition .detail-title {
-    color: var(--color-accent-blue);
-}
-
-/* purgecss ignore */
-.detail-block--synonyms .detail-title {
-    color: var(--color-accent-green);
-}
-
-/* purgecss ignore */
-.detail-block--examples .detail-title {
-    color: var(--color-accent-orange);
 }
 
 .detail-text {
@@ -276,8 +211,8 @@
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    background: var(--color-surface);
-    color: var(--color-text);
+    background: var(--color-surface-elevated);
+    color: var(--color-text-secondary);
     border: 1px solid var(--color-border);
     padding: 4px 8px;
     border-radius: 12px;
@@ -287,27 +222,27 @@
 }
 
 .metadata-chip--repetitions {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-blue);
+    background: var(--color-accent-blue);
+    color: white;
+    border-color: var(--color-accent-blue);
 }
 
 .metadata-chip--review {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-orange);
+    background: var(--color-accent-orange);
+    color: white;
+    border-color: var(--color-accent-orange);
 }
 
 .metadata-chip--added {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-green);
+    background: var(--color-accent-green);
+    color: white;
+    border-color: var(--color-accent-green);
 }
 
 .metadata-chip--accuracy {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-purple);
+    background: var(--color-accent-purple);
+    color: white;
+    border-color: var(--color-accent-purple);
 }
 
 .metadata-chip:hover,
@@ -331,21 +266,6 @@
     text-align: center;
 }
 
-.app-message--success {
-    background: var(--color-accent-green);
-    color: white;
-}
-
-.app-message--error {
-    background: var(--color-accent-red);
-    color: white;
-}
-
-.app-message--info {
-    background: var(--color-accent-blue);
-    color: white;
-}
-
 @keyframes slideInFromTop {
     from {
         transform: translateX(-50%) translateY(-100%);
@@ -358,46 +278,8 @@
 }
 
 /* Next Review Card */
-.next-review-card {
-    background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
-    border-radius: var(--radius-md);
-    padding: 16px 18px;
-    margin: 12px 0;
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-sm);
-}
-
-.next-review-date {
-    font-size: 1.1em;
-    font-weight: 700;
-    color: var(--color-text);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.next-review-date::before {
-    content: "📅";
-    font-size: 1.2em;
-}
 
 /* Progress Indicator */
-.progress-indicator {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--color-surface-elevated);
-    z-index: 1000;
-}
-
-.progress-indicator__fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-progress) 0%, var(--color-accent-blue) 100%);
-    transition: width var(--transition-normal);
-    box-shadow: 0 0 8px rgba(10, 132, 255, 0.5);
-}
 
 /* Word List Header */
 .word-list-header {

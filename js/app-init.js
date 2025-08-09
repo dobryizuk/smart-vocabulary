@@ -72,8 +72,8 @@ function initializeComponents() {
     const dataManagement = document.getElementById('dataManagement');
     if (dataManagement) {
         const resetButton = window.UIComponents?.createButton?.('🗑️ Reset Progress', 'window.DataManager?.resetUserProgress?.()', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;');
-        const exportButton = window.UIComponents?.createButton?.('📤 Save Progress', 'window.ImportExport?.exportData?.()', 'success', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em;');
-        const importButton = window.UIComponents?.createButton?.('📥 Upload Progress', 'window.ImportExport?.importData?.()', 'primary', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em; background: #17a2b8;');
+        const exportButton = window.UIComponents?.createButton?.('Backup', 'window.ImportExport?.exportData?.()', 'success', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em;', '', 'backup-btn');
+        const importButton = window.UIComponents?.createButton?.('Restore', 'window.ImportExport?.importData?.()', 'primary', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em; background: #17a2b8;', '', 'restore-btn');
         
         const importExportButtons = window.UIComponents?.createFlexContainer?.(
             exportButton + importButton,
@@ -99,53 +99,49 @@ function initializeComponents() {
             'margin: 0;'
         ) || '';
         
-        dataManagement.innerHTML = window.UIComponents?.createStyledContainer?.(
-            `<h4 style="margin-bottom: 8px; font-size: 1.1em;">Data Management</h4>
-             ${buttonsContainer}
-             ${infoText}`,
-            '#f8f9fa',
-            '12px',
-            '8px',
-            'text-align: center; margin-bottom: 16px;'
-        ) || '';
+        dataManagement.innerHTML = `
+            <div style="
+                background: var(--color-surface);
+                padding: 12px;
+                border-radius: 8px;
+                text-align: center;
+                margin-bottom: 16px;
+                border: 1px solid var(--color-border);
+            ">
+                <h4 style="margin-bottom: 8px; font-size: 1.1em;">Data Management</h4>
+                ${buttonsContainer}
+                ${infoText}
+            </div>
+        `;
+    }
+    
+    // Initialize theme switcher after data management is created
+    if (window.themeManager) {
+        window.themeManager.createThemeSwitcher();
     }
 }
 
-// APPLICATION INITIALIZATION
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Starting Smart Vocabulary App initialization...');
-    
-    // Initialize UI components
-    initializeComponents();
-    
-    // Initialize speech synthesis
+function initSpeechSettings() {
     window.SpeechManager?.initializeSpeech?.();
-    
-    // Load saved speech settings
     const savedSpeechSettings = localStorage.getItem('speechSettings');
     if (savedSpeechSettings && window.SpeechManager) {
         Object.assign(window.SpeechManager.speechSettings, JSON.parse(savedSpeechSettings));
     }
-    
+}
+
+async function loadUserDataAndStats() {
     try {
-        // Load user progress from localStorage
         console.log('📊 Loading user progress...');
         if (window.DataManager) {
             window.DataManager.userProgress = await window.DataManager.loadUserProgress();
             console.log('✅ User progress loaded:', Object.keys(window.DataManager.userProgress).length, 'entries');
         }
-        
-        // Load word database
         console.log('📚 Loading word database...');
         await window.DataManager?.loadWordDatabase?.();
-        
-        // Update UI
         window.Statistics?.updateStats?.();
         console.log('✅ App initialization complete!');
-        
     } catch (error) {
         console.error('❌ App initialization failed:', error);
-        // Show error to user
         const errorMessage = `
             <div style="text-align: center; padding: 40px; color: #dc3545;">
                 <h3>❌ Initialization Error</h3>
@@ -159,28 +155,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (wordList) wordList.innerHTML = errorMessage;
         if (learningContent) learningContent.innerHTML = errorMessage;
     }
-    
-    // Update speech toggle button state
+}
+
+function updateSpeechToggleButtons() {
     const speechSettings = window.SpeechManager?.speechSettings;
-    if (speechSettings) {
-        const speechBtn = document.getElementById('speechToggle');
-        if (speechBtn) {
-            speechBtn.textContent = speechSettings.enabled ? '🔊 Sound On' : '🔇 Sound Off';
-            speechBtn.className = speechSettings.enabled ? 'btn btn-success' : 'btn btn-secondary';
-        }
-        
-        // Update auto play toggle button state
-        const autoPlayBtn = document.getElementById('autoPlayToggle');
-        if (autoPlayBtn) {
-            autoPlayBtn.textContent = speechSettings.autoPlay ? '🎵 Auto Play On' : '🔇 Auto Play Off';
-            autoPlayBtn.className = speechSettings.autoPlay ? 'btn btn-success' : 'btn btn-secondary';
-        }
+    if (!speechSettings) return;
+    const speechBtn = document.getElementById('speechToggle');
+    if (speechBtn) {
+        speechBtn.textContent = speechSettings.enabled ? '🔊 Sound On' : '🔇 Sound Off';
+        speechBtn.className = speechSettings.enabled ? 'btn btn-success' : 'btn btn-secondary';
     }
-    
-    // Set up enter key for word input
+    const autoPlayBtn = document.getElementById('autoPlayToggle');
+    if (autoPlayBtn) {
+        autoPlayBtn.textContent = speechSettings.autoPlay ? '🎵 Auto Play On' : '🔇 Auto Play Off';
+        autoPlayBtn.className = speechSettings.autoPlay ? 'btn btn-success' : 'btn btn-secondary';
+    }
+}
+
+function setupEnterKeyBindings() {
     const englishWordInput = document.getElementById('englishWord');
     const russianTranslationInput = document.getElementById('russianTranslation');
-    
     if (englishWordInput) {
         englishWordInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -189,7 +183,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
-
     if (russianTranslationInput) {
         russianTranslationInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -197,4 +190,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
-});
+}
+
+async function bootApp() {
+    console.log('🚀 Starting Smart Vocabulary App initialization...');
+    initializeComponents();
+    initSpeechSettings();
+    await loadUserDataAndStats();
+    updateSpeechToggleButtons();
+    setupEnterKeyBindings();
+}
+
+// APPLICATION INITIALIZATION
+document.addEventListener('DOMContentLoaded', bootApp);

@@ -70,7 +70,7 @@ async function exportData() {
         
     } catch (error) {
         console.error('❌ Export failed:', error);
-        alert('Export failed. Please try again.');
+        window.showMessage?.('Export failed. Please try again.', 'error');
     }
 }
 
@@ -170,14 +170,14 @@ function importData() {
             if (window.updateStats) window.updateStats();
             
             console.log('📥 Data imported successfully');
-            alert(`Data imported successfully!\n${processedData.totalWords} words loaded\nReloading app...`);
+            window.showMessage?.(`Data imported successfully! ${processedData.totalWords} words loaded. Reloading...`, 'success');
             
             // Reload app to reflect changes
             location.reload();
             
         } catch (error) {
             console.error('❌ Import failed:', error);
-            alert('Import failed. Please check the file format.');
+            window.showMessage?.('Import failed. Please check the file format.', 'error');
         }
     };
     

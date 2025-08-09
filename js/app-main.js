@@ -2,19 +2,7 @@
 // MAIN APPLICATION CONTROLLER
 // ============================================================================
 
-// Global state (only if not already declared)
-if (typeof currentLearningWord === 'undefined') {
-    var currentLearningWord = null;
-}
-if (typeof learningSession === 'undefined') {
-    var learningSession = [];
-}
-if (typeof sessionStats === 'undefined') {
-    var sessionStats = { correct: 0, total: 0, streak: 0 };
-}
-if (typeof currentDictionaryData === 'undefined') {
-    var currentDictionaryData = null;
-}
+// Global state is provided by AppState (see js/app-state.js)
 
 // ============================================================================
 // UI MANAGEMENT FUNCTIONS
@@ -40,163 +28,43 @@ function showTab(tabName) {
     }
 }
 
-// Dictionary lookup functions
+// Dictionary lookup: directly fill form fields without preview
 async function lookupInDictionary() {
     const englishWord = document.getElementById('englishWord').value.trim();
-    
     if (!englishWord) {
-        alert('Please enter an English word first!');
+        showMessage('Please enter an English word first!', 'error');
         return;
     }
-
-    // Show loading state
-    const dictionaryResults = document.getElementById('dictionaryResults');
-    if (!dictionaryResults) {
-        console.error('Dictionary results container not found');
-        return;
-    }
-
-    const loadingContent = window.UIComponents?.createInfoBox?.(
-        '<div style="text-align: center; padding: 20px;">🔍 Looking up word...</div>',
-        'info',
-        'margin: 10px 0;'
-    ) || '<div style="text-align: center; padding: 20px;">🔍 Looking up word...</div>';
-    
-    dictionaryResults.innerHTML = loadingContent;
-    dictionaryResults.style.display = 'block';
 
     try {
-        currentDictionaryData = await window.DictionaryService.lookupWithTranslation(englishWord);
-        displayDictionaryResults(currentDictionaryData);
+        const data = await window.DictionaryService.lookupWithTranslation(englishWord);
+        // Ensure additional fields are visible
+        const additionalFields = document.getElementById('additionalFields');
+        if (additionalFields && (additionalFields.style.display === 'none' || !additionalFields.style.display)) {
+            toggleAdditionalFields();
+        }
+
+        // Fill form fields from dictionary data
+        document.getElementById('russianTranslation').value = data.translation || '';
+        document.getElementById('wordDefinition').value = data.definition || '';
+        document.getElementById('wordPhonetic').value = data.phonetic || '';
+
+        if (Array.isArray(data.synonyms) && data.synonyms.length > 0) {
+            document.getElementById('wordSynonyms').value = data.synonyms.join(', ');
+        }
+        if (Array.isArray(data.examples) && data.examples.length > 0) {
+            const exampleTexts = data.examples.map(example =>
+                typeof example === 'string' ? example : (example.text || String(example))
+            );
+            document.getElementById('wordExamples').value = exampleTexts.join('\n');
+        }
+
+        // Optional toast
+        showMessage('Dictionary data inserted. Review and Save.', 'info');
     } catch (error) {
         console.error('Dictionary lookup failed:', error);
-        const errorContent = window.UIComponents?.createInfoBox?.(
-            `<div style="color: #dc3545; text-align: center; padding: 20px;">
-                ❌ Dictionary lookup failed: ${error.message}
-                <br><small>Try checking your internet connection or use manual entry.</small>
-            </div>`,
-            'error',
-            'margin: 10px 0;'
-        ) || `<div style="color: #dc3545; text-align: center; padding: 20px;">
-                ❌ Dictionary lookup failed: ${error.message}
-                <br><small>Try checking your internet connection or use manual entry.</small>
-            </div>`;
-        
-        dictionaryResults.innerHTML = errorContent;
+        showMessage(`Dictionary lookup failed: ${error.message}`, 'error');
     }
-}
-
-function displayDictionaryResults(data) {
-    const dictionaryResults = document.getElementById('dictionaryResults');
-    if (!dictionaryResults) {
-        console.error('Dictionary results container not found');
-        return;
-    }
-    
-    // Build content using components
-    let content = `
-        <div style="line-height: 1.6;">
-            <div style="margin-bottom: 15px;">
-                <strong style="font-size: 1.2em; color: #2e7d32;">${data.word}</strong>
-                ${data.phonetic ? `<span style="color: #666; margin-left: 10px;">${data.phonetic}</span>` : ''}
-                ${data.partOfSpeech ? `<span style="background: #e3f2fd; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 10px;">${data.partOfSpeech}</span>` : ''}
-            </div>
-    `;
-    
-    if (data.definition) {
-        content += `<div style="margin-bottom: 10px;"><strong>Definition:</strong> ${data.definition}</div>`;
-    }
-    
-    if (data.translation) {
-        content += window.UIComponents?.createInfoBox?.(
-            `<strong>🇷🇺 Translation:</strong> ${data.translation}`,
-            'info',
-            'margin-bottom: 10px;'
-        ) || `<div style="margin-bottom: 10px; background: #f0f8ff; padding: 10px; border-radius: 6px;"><strong>🇷🇺 Translation:</strong> ${data.translation}</div>`;
-    }
-    
-    if (data.examples && data.examples.length > 0) {
-        const examplesHtml = data.examples.map(example => 
-            window.UIComponents?.createInfoBox?.(
-                `<div style="font-style: italic; margin-bottom: 4px;">"${example.text}"</div>
-                 ${window.UIComponents?.createSmallText?.(
-                     `<span style="background: #e8f5e8; padding: 1px 6px; border-radius: 8px;">${example.partOfSpeech}</span>`,
-                     '#666',
-                     '0.8em'
-                 ) || ''}`,
-                'success'
-            ) || ''
-        ).join('');
-        
-        content += `<div style="margin-bottom: 15px;"><strong>📚 Usage Examples:</strong>${examplesHtml}</div>`;
-    } else if (data.example) {
-        content += `<div style="margin-bottom: 10px;"><strong>Example:</strong> <em>"${data.example}"</em></div>`;
-    }
-    
-    if (data.synonyms && data.synonyms.length > 0) {
-        content += `<div style="margin-bottom: 10px;"><strong>Synonyms:</strong> ${data.synonyms.join(', ')}</div>`;
-    }
-    
-    const sourceText = `Source: ${data.source === 'dictionary-api' ? '📚 Dictionary API' : '💾 Local Database'}`;
-    const examplesCount = data.examples && data.examples.length > 0 ? ` • ${data.examples.length} example${data.examples.length !== 1 ? 's' : ''}` : '';
-    
-    content += window.UIComponents?.createSmallText?.(sourceText + examplesCount, '#666', '0.8em', 'margin-top: 10px;') || '';
-    
-    content += '</div>';
-    
-    // Create container with buttons
-    const containerContent = window.UIComponents?.createInfoBox?.(
-        `<h4 style="margin-top: 0; color: #2e7d32;">📖 Dictionary Results</h4>
-         ${content}
-         ${window.UIComponents?.createFlexContainer?.(
-             window.UIComponents?.createButton?.('✅ Use Dictionary Data', 'acceptDictionaryResults()', 'success') +
-             window.UIComponents?.createButton?.('❌ Cancel', 'hideDictionaryResults()', 'secondary'),
-             'row',
-             'flex-start',
-             'center',
-             '10px',
-             'margin-top: 15px;'
-         ) || ''}`,
-        'info',
-        'margin: 10px 0;'
-    ) || '';
-    
-    dictionaryResults.innerHTML = containerContent;
-}
-
-function acceptDictionaryResults() {
-    if (!currentDictionaryData) return;
-    
-    // Show additional fields if they're hidden
-    const additionalFields = document.getElementById('additionalFields');
-    if (additionalFields.style.display === 'none' || !additionalFields.style.display) {
-        toggleAdditionalFields();
-    }
-    
-    // Auto-fill form with dictionary data
-    document.getElementById('russianTranslation').value = currentDictionaryData.translation || '';
-    document.getElementById('wordDefinition').value = currentDictionaryData.definition || '';
-    document.getElementById('wordPhonetic').value = currentDictionaryData.phonetic || '';
-    
-    // Fill synonyms if available
-    if (currentDictionaryData.synonyms && currentDictionaryData.synonyms.length > 0) {
-        document.getElementById('wordSynonyms').value = currentDictionaryData.synonyms.join(', ');
-    }
-    
-    // Fill examples if available
-    if (currentDictionaryData.examples && currentDictionaryData.examples.length > 0) {
-        const exampleTexts = currentDictionaryData.examples.map(example => 
-            typeof example === 'string' ? example : example.text || example.toString()
-        );
-        document.getElementById('wordExamples').value = exampleTexts.join('\n');
-    }
-    
-    hideDictionaryResults();
-}
-
-function hideDictionaryResults() {
-    document.getElementById('dictionaryResults').style.display = 'none';
-    currentDictionaryData = null;
 }
 
 async function addWord() {
@@ -215,7 +83,7 @@ async function addWord() {
     // Check for duplicates
     const vocabulary = window.DataManager?.vocabulary || [];
     if (vocabulary.some(word => word.english.toLowerCase() === english.toLowerCase())) {
-        alert('This word already exists in your vocabulary!');
+        showMessage('This word already exists in your vocabulary!', 'error');
         return;
     }
 
@@ -254,9 +122,7 @@ async function addWord() {
     clearForm();
     showMessage('Word added successfully', 'success');
     
-    // Reset dictionary data
-    currentDictionaryData = null;
-    hideDictionaryResults();
+    // Nothing to reset for dictionary preview anymore
 }
 
 function clearForm() {
@@ -266,8 +132,6 @@ function clearForm() {
     document.getElementById('wordPhonetic').value = '';
     document.getElementById('wordSynonyms').value = '';
     document.getElementById('wordExamples').value = '';
-    hideDictionaryResults();
-    currentDictionaryData = null;
 }
 
 function toggleAdditionalFields() {
@@ -303,17 +167,13 @@ function renderWordList() {
         return;
     }
 
-    const sortedWords = [...vocabulary].sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-    );
+    const sortedWords = [...vocabulary].sort((a, b) => {
+        const aDate = new Date(a.createdAt);
+        const bDate = new Date(b.createdAt);
+        return bDate - aDate;
+    });
 
     wordList.innerHTML = sortedWords.map(word => {
-        // Calculate progress data
-        const userProgress = window.DataManager?.userProgress || {};
-        const progress = userProgress[word.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
-        // Calculate progress data (unused but kept for potential future use)
-        // const progressPercentage = window.SpacedRepetition?.calculateLearningProgress?.(word.easeFactor || 1.3) || 0;
-        
         // Define actions for this word (delete first, speak second - so speak is always in corner)
         const actions = [
             {
@@ -330,22 +190,8 @@ function renderWordList() {
             }
         ];
         
-        // Create metadata with review status
-        const nextReview = word.nextReview ? new Date(word.nextReview) : null;
-        const isReady = !nextReview || isNaN(nextReview.getTime()) || nextReview <= new Date();
-        const reviewText = nextReview && !isNaN(nextReview.getTime()) ? 
-            (isReady ? 'Ready for review' : `Review: ${nextReview.toLocaleDateString()}`) :
-            'New word';
-            
-        // Extended progress data (unused but kept for potential future use)
-        // const extendedProgress = {
-        //     ...progress,
-        //     repetitions: word.repetition || 0,
-        //     reviewStatus: reviewText,
-        //     isReady: isReady,
-        //     addedDate: new Date(word.createdAt || word.addedDate)
-        // };
-        
+        // Metadata is computed within UI components if needed
+
         // Use unified word card component with expandable functionality
         const cardHtml = window.UIComponents?.createWordCard?.(word, 'compact', actions, true, true) || '';
         
@@ -369,7 +215,7 @@ function deleteWord(id) {
     
     if (!wordToDelete) {
         console.error('❌ Word not found with ID:', id);
-        alert('Error: Word not found!');
+        showMessage('Error: Word not found!', 'error');
         return;
     }
     
@@ -444,8 +290,6 @@ function showMessage(text, type = 'info') {
 // Export key functions for global access
 window.showTab = showTab;
 window.lookupInDictionary = lookupInDictionary;
-window.acceptDictionaryResults = acceptDictionaryResults;
-window.hideDictionaryResults = hideDictionaryResults;
 window.addWord = addWord;
 window.clearForm = clearForm;
 window.toggleAdditionalFields = toggleAdditionalFields;

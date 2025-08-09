@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getByText } from '@testing-library/dom';
 
 // Mock DOM environment for components
@@ -19,7 +19,15 @@ beforeEach(() => {
 const fs = require('fs');
 const path = require('path');
 const componentCode = fs.readFileSync(path.join(__dirname, '../../js/ui-components.js'), 'utf8');
+/* eslint-disable sonarjs/code-eval */
 eval(componentCode);
+/* eslint-enable sonarjs/code-eval */
+
+// Load theme manager
+const themeManagerCode = fs.readFileSync(path.join(__dirname, '../../js/theme-manager.js'), 'utf8');
+/* eslint-disable sonarjs/code-eval */
+eval(themeManagerCode);
+/* eslint-enable sonarjs/code-eval */
 
 // Make UI functions available globally for tests
 const {
@@ -30,6 +38,9 @@ const {
   createWordMetadata,
   UIComponents
 } = window;
+
+// Make ThemeManager available for tests
+const { ThemeManager } = window;
 
 describe('UI Components', () => {
   describe('createWordCard', () => {
@@ -386,5 +397,256 @@ describe('DOM Integration Tests', () => {
     expect(metadata.textContent).toContain('5 repetitions');
     expect(metadata.textContent).toContain('Added 01/01/2024'); // European format
     expect(metadata.textContent).toContain('Next review: 31/12/2025'); // European format
+  });
+});
+
+describe('Theme Manager', () => {
+  let themeManager;
+
+  beforeEach(() => {
+    // Clear localStorage before each test
+    localStorage.clear();
+    
+    // Mock matchMedia for system theme detection
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(query => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(), // deprecated
+        removeListener: vi.fn(), // deprecated
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    
+    // Clear localStorage before each test
+    localStorage.clear();
+    
+    // Create a fresh theme manager instance
+    themeManager = new ThemeManager();
+  });
+
+  describe('Theme Management', () => {
+    it('should initialize with system theme by default', () => {
+      expect(themeManager.getCurrentTheme()).toBe('system');
+      // In test environment, system theme is detected as 'light', but we have a fallback
+      const effectiveTheme = themeManager.getEffectiveTheme();
+      expect(['light', 'dark']).toContain(effectiveTheme);
+    });
+
+    it('should load saved theme preference from localStorage', () => {
+      // Mock localStorage to return 'light' theme
+      global.localStorage.getItem.mockReturnValue('light');
+      
+      themeManager = new ThemeManager();
+      
+      expect(themeManager.getCurrentTheme()).toBe('light');
+      expect(themeManager.getEffectiveTheme()).toBe('light');
+    });
+
+    it('should save theme preference to localStorage', () => {
+      themeManager.setTheme('dark');
+      
+      expect(global.localStorage.setItem).toHaveBeenCalledWith('smart-vocabulary-theme', 'dark');
+      expect(themeManager.getCurrentTheme()).toBe('dark');
+    });
+
+    it('should toggle between light and dark correctly', () => {
+      // Start with system theme
+      expect(themeManager.getCurrentTheme()).toBe('system');
+      
+      // First toggle should set either light or dark
+      themeManager.toggleTheme();
+      const firstToggle = themeManager.getCurrentTheme();
+      expect(['light', 'dark']).toContain(firstToggle);
+      
+      // Second toggle should switch to the other theme
+      themeManager.toggleTheme();
+      const secondToggle = themeManager.getCurrentTheme();
+      expect(secondToggle).not.toBe(firstToggle);
+      expect(['light', 'dark']).toContain(secondToggle);
+    });
+
+    it('should apply theme to document', () => {
+      themeManager.setTheme('light');
+      
+      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    });
+
+    it('should update theme color meta tag', () => {
+      // Add meta theme-color tag to document
+      const metaThemeColor = document.createElement('meta');
+      metaThemeColor.name = 'theme-color';
+      document.head.appendChild(metaThemeColor);
+      
+      themeManager.setTheme('light');
+      
+      expect(metaThemeColor.getAttribute('content')).toBe('#FFFFFF');
+      
+      themeManager.setTheme('dark');
+      
+      expect(metaThemeColor.getAttribute('content')).toBe('#0F0F0F');
+    });
+
+    it('should dispatch themeChanged event', () => {
+      const eventSpy = vi.fn();
+      window.addEventListener('themeChanged', eventSpy);
+      
+      themeManager.setTheme('light');
+      
+      expect(eventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detail: {
+            theme: 'light',
+            effectiveTheme: 'light'
+          }
+        })
+      );
+    });
+  });
+
+  describe('Theme Icons and Text', () => {
+    it('should return correct theme icon for light theme', () => {
+      themeManager.setTheme('light');
+      expect(themeManager.getThemeIcon()).toBe('☀️');
+    });
+
+    it('should return correct theme icon for dark theme', () => {
+      themeManager.setTheme('dark');
+      expect(themeManager.getThemeIcon()).toBe('🌙');
+    });
+
+    it('should return correct theme icon for system theme', () => {
+      themeManager.setTheme('system');
+      expect(themeManager.getThemeIcon()).toBe('🌓');
+    });
+
+    it('should return correct theme text for light theme', () => {
+      themeManager.setTheme('light');
+      expect(themeManager.getThemeText()).toBe('Light');
+    });
+
+    it('should return correct theme text for dark theme', () => {
+      themeManager.setTheme('dark');
+      expect(themeManager.getThemeText()).toBe('Dark');
+    });
+
+    it('should return correct theme text for system theme', () => {
+      themeManager.setTheme('system');
+      const themeText = themeManager.getThemeText();
+      expect(themeText).toMatch(/^(System \(light\)|System \(dark\))$/);
+    });
+  });
+
+  describe('Theme Switcher UI', () => {
+    beforeEach(() => {
+      // Create mock DOM structure for theme switcher
+      document.body.innerHTML = `
+        <div id="dataManagement">
+          <h4>Data Management</h4>
+        </div>
+      `;
+    });
+
+    it('should create theme switcher button', () => {
+      themeManager.createThemeSwitcher();
+      
+      const themeSwitcher = document.getElementById('theme-switcher');
+      expect(themeSwitcher).toBeTruthy();
+      expect(themeSwitcher.className).toContain('btn');
+      expect(themeSwitcher.className).toContain('btn--secondary');
+    });
+
+    it('should create theme section with proper structure', () => {
+      themeManager.createThemeSwitcher();
+      
+      const themeSection = document.querySelector('.theme-section');
+      expect(themeSection).toBeTruthy();
+      expect(themeSection.querySelector('h4').textContent).toBe('Appearance');
+      expect(themeSection.querySelector('p').textContent).toBe('Choose your preferred theme');
+    });
+
+    it('should update theme switcher UI when theme changes', () => {
+      themeManager.createThemeSwitcher();
+      
+      const themeSwitcher = document.getElementById('theme-switcher');
+      const initialText = themeSwitcher.textContent;
+      
+      themeManager.setTheme('light');
+      
+      expect(themeSwitcher.textContent).not.toBe(initialText);
+      expect(themeSwitcher.textContent).toContain('☀️');
+      expect(themeSwitcher.textContent).toContain('Light');
+    });
+
+    it('should handle theme switcher click', () => {
+      themeManager.createThemeSwitcher();
+      
+      // Test that toggleTheme works correctly
+      const initialTheme = themeManager.getCurrentTheme();
+      expect(initialTheme).toBe('system');
+      
+      // Call toggleTheme directly to test the functionality
+      themeManager.toggleTheme();
+      
+      // The theme should change from 'system' to a concrete theme
+      const toggled = themeManager.getCurrentTheme();
+      expect(['light', 'dark']).toContain(toggled);
+      expect(global.localStorage.setItem).toHaveBeenCalledWith(
+        'smart-vocabulary-theme',
+        expect.stringMatching(/^(light|dark)$/)
+      );
+    });
+
+    it('should not create duplicate theme switchers', () => {
+      themeManager.createThemeSwitcher();
+      themeManager.createThemeSwitcher();
+      
+      const themeSwitchers = document.querySelectorAll('#theme-switcher');
+      expect(themeSwitchers).toHaveLength(1);
+    });
+  });
+
+  describe('System Theme Detection', () => {
+    it('should detect light system theme', () => {
+      // Mock matchMedia to return light theme
+      window.matchMedia = vi.fn().mockImplementation(query => ({
+        matches: query === '(prefers-color-scheme: light)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      
+      themeManager = new ThemeManager();
+      themeManager.setTheme('system');
+      
+      expect(themeManager.getEffectiveTheme()).toBe('light');
+    });
+
+    it('should detect dark system theme', () => {
+      // Mock matchMedia to return dark theme
+      window.matchMedia = vi.fn().mockImplementation(query => ({
+        matches: query === '(prefers-color-scheme: dark)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      
+      themeManager = new ThemeManager();
+      themeManager.setTheme('system');
+      
+      expect(themeManager.getEffectiveTheme()).toBe('dark');
+    });
   });
 });

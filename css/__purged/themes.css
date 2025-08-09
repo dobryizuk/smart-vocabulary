@@ -1,0 +1,163 @@
+/* ============================================================================
+   THEME SYSTEM - CSS Variables for Light, Dark, and System Themes
+   ============================================================================ */
+
+/* Light Theme Variables */
+[data-theme="light"] {
+    /* Background colors */
+    --color-bg: #FFFFFF;
+    --color-surface: #F8F9FA;
+    --color-surface-elevated: #FFFFFF;
+    --color-border: #E1E5E9;
+    
+    /* Text colors */
+    --color-text: #1A1A1A;
+    --color-text-secondary: #6C757D;
+    --color-text-tertiary: #ADB5BD;
+    
+    /* Accent colors */
+    --color-accent-blue: #0D6EFD;
+    --color-accent-green: #198754;
+    --color-accent-orange: #FD7E14;
+    --color-accent-red: #DC3545;
+    --color-accent-purple: #6F42C1;
+    --color-accent-yellow: #FFC107;
+    
+    /* Semantic colors for synonyms */
+    --color-synonym-1: #0D6EFD;
+    --color-synonym-2: #198754;
+    --color-synonym-3: #FD7E14;
+    --color-synonym-4: #6F42C1;
+    
+    /* Progress indicator */
+    --color-progress: #0D6EFD;
+    
+    /* Shadows for light theme */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.2);
+    --shadow-glow: 0 0 20px rgba(13, 110, 253, 0.15);
+}
+
+/* Light theme specific overrides */
+[data-theme="light"] .word-card__phonetic {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .action-btn {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .metadata-chip {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .progress-component__bar {
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    /* Background colors */
+    --color-bg: #0F0F0F;
+    --color-surface: #1C1C1E;
+    --color-surface-elevated: #2C2C2E;
+    --color-border: #38383A;
+    
+    /* Text colors */
+    --color-text: #FFFFFF;
+    --color-text-secondary: #98989A;
+    --color-text-tertiary: #636366;
+    
+    /* Accent colors */
+    --color-accent-blue: #0A84FF;
+    --color-accent-green: #30D158;
+    --color-accent-orange: #FF9F0A;
+    --color-accent-red: #FF453A;
+    --color-accent-purple: #BF5AF2;
+    --color-accent-yellow: #FFD60A;
+    
+    /* Semantic colors for synonyms */
+    --color-synonym-1: #0A84FF;
+    --color-synonym-2: #30D158;
+    --color-synonym-3: #FF9F0A;
+    --color-synonym-4: #BF5AF2;
+    
+    /* Progress indicator */
+    --color-progress: #0A84FF;
+    
+    /* Shadows for dark theme */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.1);
+}
+
+/* System Theme - follows OS preference */
+[data-theme="system"] {
+    /* These will be overridden by JavaScript based on system preference */
+}
+
+/* Common variables for all themes */
+:root {
+    /* Border radius */
+    --radius-sm: 10px;
+    --radius-md: 12px;
+    --radius-lg: 14px;
+    --radius-pill: 9999px;
+    
+    /* Spacing */
+    --space-1: 6px;
+    --space-2: 10px;
+    --space-3: 14px;
+    --space-4: 18px;
+    
+    /* Blur effects */
+    --blur-backdrop: blur(20px);
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* Default theme (dark) only when no explicit data-theme is set */
+:root:not([data-theme]) {
+    /* Background colors */
+    --color-bg: #0F0F0F;
+    --color-surface: #1C1C1E;
+    --color-surface-elevated: #2C2C2E;
+    --color-border: #38383A;
+    
+    /* Text colors */
+    --color-text: #FFFFFF;
+    --color-text-secondary: #98989A;
+    --color-text-tertiary: #636366;
+    
+    /* Accent colors */
+    --color-accent-blue: #0A84FF;
+    --color-accent-green: #30D158;
+    --color-accent-orange: #FF9F0A;
+    --color-accent-red: #FF453A;
+    --color-accent-purple: #BF5AF2;
+    --color-accent-yellow: #FFD60A;
+    
+    /* Semantic colors for synonyms */
+    --color-synonym-1: #0A84FF;
+    --color-synonym-2: #30D158;
+    --color-synonym-3: #FF9F0A;
+    --color-synonym-4: #BF5AF2;
+    
+    /* Progress indicator */
+    --color-progress: #0A84FF;
+    
+    /* Shadows for dark theme */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.1);
+}

@@ -80,10 +80,10 @@ async function resetUserProgress() {
             await initializeVocabulary();
             if (window.renderWordList) window.renderWordList();
             if (window.updateStats) window.updateStats();
-            alert('Learning progress reset!');
+            window.showMessage?.('Learning progress reset!', 'success');
         } catch (error) {
             console.error('❌ Failed to reset progress:', error.message);
-            alert('Failed to reset progress. Please try again.');
+            window.showMessage?.('Failed to reset progress. Please try again.', 'error');
         }
     }
 }
