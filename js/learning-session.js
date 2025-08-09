@@ -178,7 +178,7 @@ function showLearningCard() {
         {
             type: 'primary',
             icon: '🔊',
-            onclick: `speakWord('${AppState.currentLearningWord.english}')`,
+            onclick: `speakWord('${AppState.currentLearningWord.original}')`,
             title: 'Pronounce word'
         }
     ];
@@ -203,7 +203,7 @@ function showLearningCard() {
     const speechSettings = window.SpeechManager?.speechSettings;
     if (speechSettings?.enabled && speechSettings?.autoPlay) {
         setTimeout(() => {
-            window.speakWord?.(AppState.currentLearningWord.english);
+            window.speakWord?.(AppState.currentLearningWord.original);
         }, 500); // Delay for DOM initialization
     }
 }
@@ -225,7 +225,7 @@ async function showTranslation() {
     const showBtn = document.getElementById('showAnswerButton');
     if (showBtn) showBtn.style.display = 'none';
 
-    window.speakWord?.(AppState.currentLearningWord.english);
+    window.speakWord?.(AppState.currentLearningWord.original);
     renderSessionProgressBottom();
 }
 
@@ -435,8 +435,8 @@ function showReverseTranslationCard() {
     // Create reverse translation word object for display
     const reverseWord = {
         ...AppState.currentLearningWord,
-        english: AppState.currentLearningWord.russian,
-        russian: AppState.currentLearningWord.english
+        original: AppState.currentLearningWord.translation,
+        translation: AppState.currentLearningWord.original
     };
     
     // Create unified word card for reverse translation
@@ -444,8 +444,8 @@ function showReverseTranslationCard() {
     
     const inputBlock = window.UIComponents?.createLabeledTextInput?.({
         inputId: 'reverseTranslationInput',
-        label: 'Type the English translation:',
-        placeholder: 'Enter English word or phrase...',
+        label: 'Type the Original word:',
+        placeholder: 'Enter original word or phrase...',
         onKeyPress: 'handleReverseInputKeyPress(event)',
         onInput: 'validateReverseInput()'
     }) || '';
@@ -492,7 +492,7 @@ function validateReverseInput() {
     if (!input || !feedback) return;
     const userInput = input.value.trim();
     if (userInput.length > 0) {
-        const accuracy = calculateTypingAccuracy(userInput, AppState.currentLearningWord.english);
+        const accuracy = calculateTypingAccuracy(userInput, AppState.currentLearningWord.original);
         if (accuracy.accuracy === 100) {
             feedback.innerHTML = '<span style="color: #28a745;">✓ Perfect match!</span>';
         } else if (accuracy.accuracy >= 90) {
@@ -510,7 +510,7 @@ function checkReverseTranslation() {
     if (!input) return;
     
     const userInput = input.value.trim();
-    const correctAnswer = AppState.currentLearningWord.english;
+    const correctAnswer = AppState.currentLearningWord.original;
     
     const result = calculateTypingAccuracy(userInput, correctAnswer);
     
@@ -551,7 +551,7 @@ function showAnswerForReverse() {
     // Clear the lightweight "Answer" hint to avoid duplication with the full "Correct answer" block
     if (feedback) feedback.innerHTML = '';
 
-    const specificHtml = window.UIComponents?.createPrimaryAnswerBlock?.('Correct answer', AppState.currentLearningWord.english) || '';
+    const specificHtml = window.UIComponents?.createPrimaryAnswerBlock?.('Correct answer', AppState.currentLearningWord.original) || '';
     const layoutHtml = window.UIComponents?.createAnswerLayout?.({
         specificHtml,
         word: AppState.currentLearningWord,
@@ -566,7 +566,7 @@ function showAnswerForReverse() {
     if (input) input.disabled = true;
     const showBtn = document.getElementById('showAnswerReverseButton');
     if (showBtn) showBtn.style.display = 'none';
-    window.speakWord?.(AppState.currentLearningWord.english);
+    window.speakWord?.(AppState.currentLearningWord.original);
 }
 
 function renderSessionProgressBottom() {

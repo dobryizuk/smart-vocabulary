@@ -30,14 +30,14 @@ function showTab(tabName) {
 
 // Dictionary lookup: directly fill form fields without preview
 async function lookupInDictionary() {
-    const englishWord = document.getElementById('englishWord').value.trim();
-    if (!englishWord) {
-        showMessage('Please enter an English word first!', 'error');
+    const originalWord = document.getElementById('originalWord').value.trim();
+    if (!originalWord) {
+        showMessage('Please enter the Original word first!', 'error');
         return;
     }
 
     try {
-        const data = await window.DictionaryService.lookupWithTranslation(englishWord);
+        const data = await window.DictionaryService.lookupWithTranslation(originalWord);
         // Ensure additional fields are visible
         const additionalFields = document.getElementById('additionalFields');
         if (additionalFields && (additionalFields.style.display === 'none' || !additionalFields.style.display)) {
@@ -45,7 +45,7 @@ async function lookupInDictionary() {
         }
 
         // Fill form fields from dictionary data
-        document.getElementById('russianTranslation').value = data.translation || '';
+        document.getElementById('translation').value = data.translation || '';
         document.getElementById('wordDefinition').value = data.definition || '';
         document.getElementById('wordPhonetic').value = data.phonetic || '';
 
@@ -68,21 +68,21 @@ async function lookupInDictionary() {
 }
 
 async function addWord() {
-    const english = document.getElementById('englishWord').value.trim();
-    const russian = document.getElementById('russianTranslation').value.trim();
+    const original = document.getElementById('originalWord').value.trim();
+    const translation = document.getElementById('translation').value.trim();
     const definition = document.getElementById('wordDefinition').value.trim();
     const phonetic = document.getElementById('wordPhonetic').value.trim();
     const synonymsText = document.getElementById('wordSynonyms').value.trim();
     const examplesText = document.getElementById('wordExamples').value.trim();
 
-    if (!english || !russian) {
-        showMessage('Please fill in both English and Russian fields', 'error');
+    if (!original || !translation) {
+        showMessage('Please fill in both Original and Translation fields', 'error');
         return;
     }
 
     // Check for duplicates
     const vocabulary = window.DataManager?.vocabulary || [];
-    if (vocabulary.some(word => word.english.toLowerCase() === english.toLowerCase())) {
+    if (vocabulary.some(word => word.original.toLowerCase() === original.toLowerCase())) {
         showMessage('This word already exists in your vocabulary!', 'error');
         return;
     }
@@ -93,8 +93,8 @@ async function addWord() {
 
     const newWord = {
         id: `custom_${Date.now()}`,
-        english,
-        russian,
+        original,
+        translation,
         definition,
         phonetic,
         examples,
@@ -126,8 +126,8 @@ async function addWord() {
 }
 
 function clearForm() {
-    document.getElementById('englishWord').value = '';
-    document.getElementById('russianTranslation').value = '';
+    document.getElementById('originalWord').value = '';
+    document.getElementById('translation').value = '';
     document.getElementById('wordDefinition').value = '';
     document.getElementById('wordPhonetic').value = '';
     document.getElementById('wordSynonyms').value = '';
@@ -185,7 +185,7 @@ function renderWordList() {
             {
                 type: 'primary',
                 icon: '🔊',
-                onclick: `speakWord('${word.english}')`,
+                onclick: `speakWord('${word.original}')`,
                 title: 'Pronounce word'
             }
         ];
@@ -250,7 +250,7 @@ function deleteWord(id) {
             if (window.updateStats) window.updateStats();
             
             const newLength = (dm?.vocabulary?.length ?? 0) || (Array.isArray(window.vocabulary) ? window.vocabulary.length : 0);
-            console.log('🗑️ Word deleted successfully:', wordToDelete.english);
+            console.log('🗑️ Word deleted successfully:', wordToDelete.original);
             console.log('🗑️ New vocabulary length:', newLength);
         });
     }

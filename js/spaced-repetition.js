@@ -63,14 +63,14 @@ class SpacedRepetition {
         const wordsForReview = vocabulary.filter(word => {
             // Always include new words (no nextReview date)
             if (!word.nextReview) {
-                console.log('✅ New word ready:', word.english);
+                console.log('✅ New word ready:', word.original);
                 return true;
             }
             
             const reviewDate = new Date(word.nextReview);
             const isReady = reviewDate <= now;
             
-            console.log(`${isReady ? '✅' : '⏰'} ${word.english}: review ${reviewDate.toISOString()} vs now ${now.toISOString()}`);
+            console.log(`${isReady ? '✅' : '⏰'} ${word.original}: review ${reviewDate.toISOString()} vs now ${now.toISOString()}`);
             
             return isReady;
         });

@@ -4,7 +4,7 @@
 
 /**
  * Creates a unified word card component
- * @param {Object} word - Word object with english, russian, phonetic, etc.
+ * @param {Object} word - Word object with original, translation, phonetic, etc.
  * @param {string} variant - 'compact', 'learning', or 'default'
  * @param {Array} actions - Array of action button objects
  * @param {boolean} showProgress - Whether to show progress component
@@ -38,8 +38,8 @@ function computeReview(nextReview) {
 function buildVariantClasses(variant, expandable) {
     const cardClasses = ['word-card'];
     const headerClasses = ['word-card__header'];
-    const englishClasses = ['word-card__english'];
-    const russianClasses = ['word-card__russian'];
+    const originalClasses = ['word-card__original'];
+    const translationClasses = ['word-card__translation'];
     const actionsClasses = ['word-card__actions'];
     switch (variant) {
         case 'compact':
@@ -49,14 +49,14 @@ function buildVariantClasses(variant, expandable) {
             break;
         case 'learning':
             cardClasses.push('word-card--learning');
-            englishClasses.push('word-card__english--learning');
-            russianClasses.push('word-card__russian--learning');
+            originalClasses.push('word-card__original--learning');
+            translationClasses.push('word-card__translation--learning');
             break;
         default:
             break;
     }
     if (expandable) cardClasses.push('word-card--expandable');
-    return { cardClasses, headerClasses, englishClasses, russianClasses, actionsClasses };
+    return { cardClasses, headerClasses, originalClasses, translationClasses, actionsClasses };
 }
 
 function buildNonExpandableDetails(word, variant) {
@@ -76,28 +76,28 @@ function buildPhoneticHtml(word, variant) {
     return `<span class="word-card__phonetic">${word.phonetic}</span>`;
 }
 
-function buildEnglishHtml(word, englishClasses, variant) {
+function buildOriginalHtml(word, originalClasses, variant) {
     const phoneticHtml = buildPhoneticHtml(word, variant);
     return `
-        <div class="${englishClasses.join(' ')}">
-            ${word.english}
+        <div class="${originalClasses.join(' ')}">
+            ${word.original}
             ${phoneticHtml}
         </div>
     `;
 }
 
-function buildRussianHtml(word, russianClasses, variant) {
+function buildTranslationHtml(word, translationClasses, variant) {
     if (variant === 'learning') return '';
-    return `<div class="${russianClasses.join(' ')}">${word.russian}</div>`;
+    return `<div class="${translationClasses.join(' ')}">${word.translation}</div>`;
 }
 
-function buildHeaderSection(word, variant, englishClasses, russianClasses, headerClasses) {
-    const englishHtml = buildEnglishHtml(word, englishClasses, variant);
-    const russianHtml = buildRussianHtml(word, russianClasses, variant);
+function buildHeaderSection(word, variant, originalClasses, translationClasses, headerClasses) {
+    const originalHtml = buildOriginalHtml(word, originalClasses, variant);
+    const translationHtml = buildTranslationHtml(word, translationClasses, variant);
     return `
         <div class="${headerClasses.join(' ')}" style="flex: 1;">
-            ${englishHtml}
-            ${russianHtml}
+            ${originalHtml}
+            ${translationHtml}
         </div>
     `;
 }
@@ -122,7 +122,7 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
     const progressPercentage = window.SpacedRepetition?.calculateLearningProgress?.(word.easeFactor || 1.3) || 0;
     
     // Determine card classes based on variant
-    const { cardClasses, headerClasses, englishClasses, russianClasses, actionsClasses } = buildVariantClasses(variant, expandable);
+    const { cardClasses, headerClasses, originalClasses, translationClasses, actionsClasses } = buildVariantClasses(variant, expandable);
     
     // Build actions HTML (with event stopping for expandable cards)
     const actionsHtml = buildActionsHtml(actions, expandable);
@@ -145,7 +145,7 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
     
     const headerHtml = `
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            ${buildHeaderSection(word, variant, englishClasses, russianClasses, headerClasses)}
+            ${buildHeaderSection(word, variant, originalClasses, translationClasses, headerClasses)}
             ${actionsHtml ? `<div class="${actionsClasses.join(' ')}">${actionsHtml}</div>` : ''}
         </div>
     `;
@@ -358,11 +358,11 @@ function createPrimaryAnswerBlock(label, value) {
  * @returns {string} HTML string for translation block
  */
 function createTranslationBlock(word, variant = 'learning') {
-    if (!word.russian) return '';
+    if (!word.translation) return '';
     
     const isCompact = variant === 'learning';
     
-    return createPrimaryAnswerBlock(isCompact ? 'Translation' : '🔤 Translation', word.russian);
+    return createPrimaryAnswerBlock(isCompact ? 'Translation' : '🔤 Translation', word.translation);
 }
 
 /**
@@ -530,7 +530,7 @@ function showDeleteConfirmation(word, onConfirm) {
     dialog.innerHTML = `
         <h3 style="margin: 0 0 16px 0; color: #e53e3e;">🗑️ Delete Word</h3>
         <p style="margin: 0 0 20px 0; color: #333;">
-            Delete "<strong>${word.english}</strong>"?<br>
+            Delete "<strong>${word.original}</strong>"?<br>
             <small style="color: #666;">This action cannot be undone.</small>
         </p>
         <div style="display: flex; gap: 12px;">

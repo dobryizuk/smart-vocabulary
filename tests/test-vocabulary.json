@@ -2,8 +2,8 @@
   "vocabulary": [
     {
       "id": "test_word_1",
-      "english": "test",
-      "russian": "тест",
+      "original": "test",
+      "translation": "тест",
       "definition": "A procedure to check functionality",
       "examples": ["Run a test to verify the code works", "This is just a test"],
       "phonetic": "/test/",
@@ -27,8 +27,8 @@
     },
     {
       "id": "test_word_2", 
-      "english": "function",
-      "russian": "функция",
+      "original": "function",
+      "translation": "функция",
       "definition": "A piece of code that performs a specific task",
       "examples": ["This function calculates the sum", "Call the function with parameters"],
       "phonetic": "/ˈfʌŋkʃən/",
@@ -62,8 +62,8 @@
     },
     {
       "id": "test_word_3",
-      "english": "vocabulary", 
-      "russian": "словарь",
+      "original": "vocabulary", 
+      "translation": "словарь",
       "definition": "A collection of words and their meanings",
       "examples": ["Expand your vocabulary by reading", "This app helps build vocabulary"],
       "phonetic": "/vəˈkæbjʊləri/",

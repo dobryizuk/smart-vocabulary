@@ -163,18 +163,18 @@ function updateSpeechToggleButtons() {
 }
 
 function setupEnterKeyBindings() {
-    const englishWordInput = document.getElementById('englishWord');
-    const russianTranslationInput = document.getElementById('russianTranslation');
-    if (englishWordInput) {
-        englishWordInput.addEventListener('keypress', function(e) {
+    const originalWordInput = document.getElementById('originalWord');
+    const translationInput = document.getElementById('translation');
+    if (originalWordInput) {
+        originalWordInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                const russianInput = document.getElementById('russianTranslation');
-                if (russianInput) russianInput.focus();
+                const translationInput = document.getElementById('translation');
+                if (translationInput) translationInput.focus();
             }
         });
     }
-    if (russianTranslationInput) {
-        russianTranslationInput.addEventListener('keypress', function(e) {
+    if (translationInput) {
+        translationInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 window.addWord?.();
             }

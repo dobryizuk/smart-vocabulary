@@ -33,13 +33,13 @@ test.describe('Smart Vocabulary App', () => {
 
   test('should add a new word successfully', async ({ page }) => {
     // Fill in word form
-    await page.getByTestId('english-word-input').fill('beautiful');
+    await page.getByTestId('original-word-input').fill('beautiful');
     
     // Expand additional fields
     await page.getByTestId('toggle-fields-btn').click();
     
-    // Fill Russian translation (required)
-    await page.getByRole('textbox', { name: /russian translation/i }).fill('красивый');
+    // Fill translation (required)
+    await page.getByRole('textbox', { name: /translation/i }).fill('красивый');
     
     // Fill optional fields
     await page.getByRole('textbox', { name: /definition/i }).fill('Pleasing to look at');
@@ -111,21 +111,21 @@ test.describe('Smart Vocabulary App', () => {
     await page.getByTestId('save-word-btn').click();
     
     // Should show validation error
-    await expect(page.locator('text=Please fill in both English and Russian fields')).toBeVisible();
+    await expect(page.locator('text=Please fill in both Original and Translation fields')).toBeVisible();
     
-    // Fill only English word
-    await page.getByTestId('english-word-input').fill('test');
+    // Fill only Original word
+    await page.getByTestId('original-word-input').fill('test');
     await page.getByTestId('save-word-btn').click();
     
     // Should still show validation error
-    await expect(page.locator('text=Please fill in both English and Russian fields')).toBeVisible();
+    await expect(page.locator('text=Please fill in both Original and Translation fields')).toBeVisible();
   });
 
   test('should handle learning flow when words exist', async ({ page }) => {
     // First add a word
-    await page.getByTestId('english-word-input').fill('hello');
+    await page.getByTestId('original-word-input').fill('hello');
     await page.getByTestId('toggle-fields-btn').click();
-    await page.getByRole('textbox', { name: /russian translation/i }).fill('привет');
+    await page.getByRole('textbox', { name: /translation/i }).fill('привет');
     await page.getByTestId('save-word-btn').click();
     
     // Go to learn tab
@@ -156,20 +156,20 @@ test.describe('Smart Vocabulary App', () => {
     
     // Check form is usable on mobile
     await page.getByTestId('add-tab-btn').click();
-    const englishInput = page.getByTestId('english-word-input');
-    await expect(englishInput).toBeVisible();
-    await englishInput.fill('mobile test');
+    const originalInput = page.getByTestId('original-word-input');
+    await expect(originalInput).toBeVisible();
+    await originalInput.fill('mobile test');
     
     // Font size should be 16px to prevent zoom on iOS
-    const fontSize = await englishInput.evaluate(el => getComputedStyle(el).fontSize);
+    const fontSize = await originalInput.evaluate(el => getComputedStyle(el).fontSize);
     expect(fontSize).toBe('16px');
   });
 
   test('should toggle word card expand/collapse functionality', async ({ page }) => {
     // First add a word with details to test toggle
-    await page.getByTestId('english-word-input').fill('expandable');
+    await page.getByTestId('original-word-input').fill('expandable');
     await page.getByTestId('toggle-fields-btn').click();
-    await page.getByRole('textbox', { name: /russian translation/i }).fill('раскрываемый');
+    await page.getByRole('textbox', { name: /translation/i }).fill('раскрываемый');
     await page.getByRole('textbox', { name: /definition/i }).fill('Able to be expanded or extended');
     await page.getByRole('textbox', { name: /synonyms/i }).fill('extensible, expandible');
     await page.getByTestId('save-word-btn').click();
@@ -378,8 +378,8 @@ test.describe.skip('Visual Regression Tests', () => {
         window.DataManager.vocabulary = [
           {
             id: 'test1',
-            english: 'beautiful',
-            russian: 'красивый',
+            original: 'beautiful',
+            translation: 'красивый',
             definition: 'Pleasing to look at',
             phonetic: '/ˈbjuːtɪfəl/',
             easeFactor: 1.8,
@@ -387,8 +387,8 @@ test.describe.skip('Visual Regression Tests', () => {
           },
           {
             id: 'test2', 
-            english: 'challenge',
-            russian: 'вызов',
+            original: 'challenge',
+            translation: 'вызов',
             definition: 'A demanding task',
             easeFactor: 1.4,
             repetition: 1
@@ -412,8 +412,8 @@ test.describe.skip('Visual Regression Tests', () => {
       if (window.DataManager) {
         window.DataManager.vocabulary = [{
           id: 'learn_test',
-          english: 'learning',
-          russian: 'обучение',
+          original: 'learning',
+          translation: 'обучение',
           definition: 'The process of acquiring knowledge',
           easeFactor: 1.3,
           repetition: 0

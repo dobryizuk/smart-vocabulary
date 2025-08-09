@@ -56,7 +56,7 @@ function updateStats() {
         vocabulary.slice(0, 5).forEach(word => {
             const nextReview = word.nextReview ? new Date(word.nextReview) : null;
             // const now = new Date(); // Unused variable
-            console.log(`${word.english}: next review ${nextReview ? nextReview.toLocaleString() : 'never'} (repetition: ${word.repetition})`);
+            console.log(`${word.original}: next review ${nextReview ? nextReview.toLocaleString() : 'never'} (repetition: ${word.repetition})`);
         });
     }
 }

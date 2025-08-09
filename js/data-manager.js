@@ -10,14 +10,14 @@ let vocabulary = [];
 // UTILITY FUNCTIONS
 // ============================================================================
 
-function getTranslationSuggestion(englishWord) {
+function getTranslationSuggestion(originalWord) {
     if (!wordDatabase || !wordDatabase.words) return null;
     
     const word = wordDatabase.words.find(w => 
-        w.english.toLowerCase() === englishWord.toLowerCase().trim()
+        w.original.toLowerCase() === originalWord.toLowerCase().trim()
     );
     
-    return word ? word.russian : null;
+    return word ? word.translation : null;
 }
 
 // ============================================================================

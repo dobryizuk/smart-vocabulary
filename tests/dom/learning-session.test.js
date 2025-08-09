@@ -161,8 +161,8 @@ describe('Learning Answer Screen Layout', () => {
   function setupWord() {
     return {
       id: 'w1',
-      english: 'apple',
-      russian: 'яблоко',
+      original: 'apple',
+      translation: 'яблоко',
       definition: 'A round fruit with red or green skin.',
       examples: ['I eat an apple every day.', 'Apple pie is delicious.'],
       synonyms: ['pome', 'fruit'],

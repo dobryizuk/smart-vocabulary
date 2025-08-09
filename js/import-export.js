@@ -17,8 +17,8 @@ function createExportData(vocabularyData = null) {
     // Ensure all words have complete progress data
     const vocabularyWithProgress = vocabularyToExport.map(word => ({
         id: word.id,
-        english: word.english,
-        russian: word.russian,
+        original: word.original,
+        translation: word.translation,
         definition: word.definition,
         examples: word.examples,
         phonetic: word.phonetic,
@@ -89,11 +89,11 @@ function validateAndProcessImportData(dataToImport) {
         if (!word.id || typeof word.id !== 'string') {
             throw new Error(`Word ${index + 1}: Missing or invalid id`);
         }
-        if (!word.english || typeof word.english !== 'string') {
-            throw new Error(`Word ${index + 1}: Missing or invalid english field`);
+        if (!word.original || typeof word.original !== 'string') {
+            throw new Error(`Word ${index + 1}: Missing or invalid original field`);
         }
-        if (!word.russian || typeof word.russian !== 'string') {
-            throw new Error(`Word ${index + 1}: Missing or invalid russian field`);
+        if (!word.translation || typeof word.translation !== 'string') {
+            throw new Error(`Word ${index + 1}: Missing or invalid translation field`);
         }
         if (typeof word.easeFactor !== 'number') {
             throw new Error(`Word ${index + 1}: Missing or invalid easeFactor`);

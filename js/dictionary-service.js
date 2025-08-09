@@ -92,16 +92,16 @@ class DictionaryService {
     }
 
     // Translation service with Google Translate API
-    static async translateWord(englishWord) {
+    static async translateWord(originalWord) {
         // First check local database
-        const localTranslation = window.DataManager?.getTranslationSuggestion?.(englishWord);
+        const localTranslation = window.DataManager?.getTranslationSuggestion?.(originalWord);
         if (localTranslation) {
             return localTranslation;
         }
 
         // Try Google Translate API (free tier)
         try {
-            const response = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(englishWord));
+            const response = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(originalWord));
             const data = await response.json();
             
             if (data && data[0] && data[0][0] && data[0][0][0]) {
@@ -113,7 +113,7 @@ class DictionaryService {
 
         // Fallback to MyMemory API
         try {
-            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(englishWord)}&langpair=en|ru`);
+            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalWord)}&langpair=en|ru`);
             const data = await response.json();
             
             if (data && data.responseData && data.responseData.translatedText) {
@@ -124,7 +124,7 @@ class DictionaryService {
         }
 
         // Final fallback
-        return `перевод слова "${englishWord}"`;
+        return `перевод слова "${originalWord}"`;
     }
 
     static async lookupWithTranslation(word) {

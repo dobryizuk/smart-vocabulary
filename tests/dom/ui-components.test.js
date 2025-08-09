@@ -47,8 +47,8 @@ describe('UI Components', () => {
     it('should create a basic word card', () => {
       const word = {
         id: 'test1',
-        english: 'hello',
-        russian: 'привет',
+        original: 'hello',
+        translation: 'привет',
         phonetic: '/həˈloʊ/',
         definition: 'A greeting'
       };
@@ -65,8 +65,8 @@ describe('UI Components', () => {
     it('should create a compact word card', () => {
       const word = {
         id: 'test2',
-        english: 'test',
-        russian: 'тест'
+        original: 'test',
+        translation: 'тест'
       };
       
       const actions = [
@@ -84,8 +84,8 @@ describe('UI Components', () => {
     it('should create a learning variant card', () => {
       const word = {
         id: 'learn1',
-        english: 'beautiful',
-        russian: 'красивый'
+        original: 'beautiful',
+        translation: 'красивый'
       };
       
       const cardHtml = createWordCard(word, 'learning', [], false);
@@ -98,8 +98,8 @@ describe('UI Components', () => {
     it('should handle missing phonetic gracefully', () => {
       const word = {
         id: 'test3',
-        english: 'word',
-        russian: 'слово'
+        original: 'word',
+        translation: 'слово'
         // no phonetic
       };
       
@@ -215,8 +215,8 @@ describe('UI Components', () => {
 
     it('should return empty string when no details provided', () => {
       const word = {
-        english: 'test',
-        russian: 'тест'
+        original: 'test',
+        translation: 'тест'
         // no definition, synonyms, or examples
       };
       
@@ -273,8 +273,8 @@ describe('UI Components', () => {
 describe('Translation Components', () => {
     const mockWord = {
         id: 'test-word',
-        english: 'test',
-        russian: 'тест',
+        original: 'test',
+        translation: 'тест',
         definition: 'A trial or examination',
         synonyms: ['trial', 'exam'],
         examples: ['This is a test', 'Test your knowledge']
@@ -296,8 +296,8 @@ describe('Translation Components', () => {
     });
 
     test('createTranslationBlock should handle missing translation', () => {
-        const wordWithoutRussian = { ...mockWord, russian: '' };
-        const result = UIComponents.createTranslationBlock(wordWithoutRussian);
+        const wordWithoutTranslation = { ...mockWord, translation: '' };
+        const result = UIComponents.createTranslationBlock(wordWithoutTranslation);
         
         expect(result).toBe('');
     });
@@ -325,23 +325,23 @@ describe('DOM Integration Tests', () => {
   it('should render word card in DOM and be visible', () => {
     const word = {
       id: 'dom_test',
-      english: 'visible',
-      russian: 'видимый'
+      original: 'visible',
+      translation: 'видимый'
     };
     
     const cardHtml = createWordCard(word, 'compact', [], true);
     document.body.innerHTML = cardHtml;
     
     // Check elements are in DOM
-    const englishElement = getByText(document.body, 'visible');
-    const russianElement = getByText(document.body, 'видимый');
+    const originalElement = getByText(document.body, 'visible');
+    const translationElement = getByText(document.body, 'видимый');
     
-    expect(englishElement).toBeTruthy();
-    expect(russianElement).toBeTruthy();
+    expect(originalElement).toBeTruthy();
+    expect(translationElement).toBeTruthy();
     
     // Check visibility (these elements should not have display: none)
-    expect(englishElement.style.display).not.toBe('none');
-    expect(russianElement.style.display).not.toBe('none');
+    expect(originalElement.style.display).not.toBe('none');
+    expect(translationElement.style.display).not.toBe('none');
   });
 
   it('should render progress component with proper attributes', () => {
@@ -357,7 +357,7 @@ describe('DOM Integration Tests', () => {
   });
 
   it('should handle action buttons with proper attributes', () => {
-    const word = { id: 'action_test', english: 'click', russian: 'клик' };
+    const word = { id: 'action_test', original: 'click', translation: 'клик' };
     const actions = [
       { type: 'primary', icon: '🔊', onclick: 'testFunction()', title: 'Test Action' }
     ];
@@ -375,8 +375,8 @@ describe('DOM Integration Tests', () => {
   it('should render expandable card with metadata', () => {
     const word = { 
       id: 'expandable_test', 
-      english: 'expandable', 
-      russian: 'раскрываемый',
+      original: 'expandable', 
+      translation: 'раскрываемый',
       repetition: 5,
       nextReview: '2025-12-31T00:00:00.000Z', // Future date
       createdAt: '2024-01-01T00:00:00.000Z'
