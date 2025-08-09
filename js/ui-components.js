@@ -326,12 +326,12 @@ function createSynonymsSection(word, isLearning = false) {
  * 4) examples
  * 5) synonyms
  */
-function createAnswerLayout({ specificHtml = '', word, variant = 'learning' }) {
-    const isLearning = variant === 'learning';
+function createAnswerLayout({ specificHtml = '', word }) {
     const buttons = createDifficultyButtons();
-    const definition = createDefinitionSection(word, isLearning);
-    const examples = createExamplesSection(word, isLearning);
-    const synonyms = createSynonymsSection(word, isLearning);
+    // Borrow list-view styles for detail blocks in learning
+    const definition = createDefinitionSection(word, false);
+    const examples = createExamplesSection(word, false);
+    const synonyms = createSynonymsSection(word, false);
     return [specificHtml, buttons, definition, examples, synonyms].join('');
 }
 
@@ -344,9 +344,9 @@ function createAnswerLayout({ specificHtml = '', word, variant = 'learning' }) {
 function createPrimaryAnswerBlock(label, value) {
     if (!value) return '';
     return `
-        <div class="card-translation">
-            <div class="section-subtitle">${label}</div>
-            <div style="font-size: 1.3em; font-weight: 700;">${value}</div>
+        <div class="detail-block detail-block--translation">
+            <div class="detail-title">${label}</div>
+            <div class="detail-text" style="font-size: 1.3em; font-weight: 700;">${value}</div>
         </div>
     `;
 }
@@ -479,7 +479,7 @@ function createWordMetadata(word, progress) {
  */
 function createDifficultyButtons() {
     const buttonsHtml = `
-        <div class="difficulty-buttons" style="margin-top: 20px;">
+        <div class="difficulty-buttons" style="margin-top: 20px; margin-left: 18px; margin-right: 18px;">
             <button class="difficulty-btn difficulty-btn--hard" onclick="markDifficulty('hard')">
                 <div class="difficulty-emoji">😰</div>
                 <div>Hard</div>
@@ -656,6 +656,37 @@ function createButton(text, onclick, type = 'primary', disabled = false, id = ''
 }
 
 /**
+ * Creates a labeled text input block
+ * @param {Object} options
+ * @param {string} options.inputId - ID for the input element
+ * @param {string} options.label - Label text
+ * @param {string} options.placeholder - Placeholder text
+ * @param {string} options.onKeyPress - onkeypress handler string
+ * @param {string} options.onInput - oninput handler string
+ * @returns {string} HTML string for labeled input
+ */
+function createLabeledTextInput({
+    inputId,
+    label,
+    placeholder = '',
+    onKeyPress = '',
+    onInput = ''
+}) {
+    const keypressAttr = onKeyPress ? ` onkeypress="${onKeyPress}"` : '';
+    const inputAttr = onInput ? ` oninput="${onInput}"` : '';
+    return `
+        <div class="learning-input-block">
+            <label>
+                ${label}
+            </label>
+            <input type="text" id="${inputId}" class="form-control" placeholder="${placeholder}"
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus${keypressAttr}${inputAttr}>
+            <div id="typingFeedback" class="typing-feedback"></div>
+        </div>
+    `;
+}
+
+/**
  * Creates a flex container with common patterns
  * @param {string} content - HTML content
  * @param {string} direction - flex-direction (row, column)
@@ -758,6 +789,7 @@ window.UIComponents = {
     createSessionProgress,
     createButtonGroup,
     createButton,
+    createLabeledTextInput,
     createFlexContainer,
     createInfoBox,
     createSmallText
@@ -778,6 +810,7 @@ window.createEmptyState = createEmptyState;
 window.createSessionProgress = createSessionProgress;
 window.createButtonGroup = createButtonGroup;
 window.createButton = createButton;
+window.createLabeledTextInput = createLabeledTextInput;
 window.createFlexContainer = createFlexContainer;
 window.createInfoBox = createInfoBox;
 window.createSmallText = createSmallText;

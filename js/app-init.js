@@ -142,18 +142,8 @@ async function loadUserDataAndStats() {
         console.log('✅ App initialization complete!');
     } catch (error) {
         console.error('❌ App initialization failed:', error);
-        const errorMessage = `
-            <div style="text-align: center; padding: 40px; color: #dc3545;">
-                <h3>❌ Initialization Error</h3>
-                <p>Failed to load application data. Please refresh the page.</p>
-                <p><strong>Error:</strong> ${error.message}</p>
-                <button class="btn btn-primary" onclick="location.reload()">🔄 Refresh Page</button>
-            </div>
-        `;
-        const wordList = document.getElementById('wordList');
-        const learningContent = document.getElementById('learningContent');
-        if (wordList) wordList.innerHTML = errorMessage;
-        if (learningContent) learningContent.innerHTML = errorMessage;
+        // Show a global toast only; no inline fallback blocks
+        window.showMessage?.(`Initialization failed: ${error.message}`, 'error');
     }
 }
 

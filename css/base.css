@@ -42,9 +42,9 @@ body {
     color: var(--color-text-secondary);
     background: var(--color-surface);
     border-radius: var(--radius-md);
-    /* Match learning blocks width and centering */
-    max-width: 600px;
-    margin: 20px auto;
+    /* Full-width in learning tab to match word list */
+    max-width: none;
+    margin: 20px 0;
 }
 
 .empty-state h3 {

@@ -63,20 +63,8 @@ function updateStats() {
 
 // Show error when database fails to load
 function showDatabaseError() {
-    const errorMessage = `
-        <div style="text-align: center; padding: 40px; color: #dc3545;">
-            <h3>❌ Database Loading Error</h3>
-            <p>Could not load the embedded word database. This should not happen in normal use.</p>
-            <p>Please try refreshing the app or contact support if the issue persists.</p>
-            <button class="btn btn-primary" onclick="location.reload()">🔄 Retry</button>
-        </div>
-    `;
-    
-    // Show error in all relevant places
-    const wordList = document.getElementById('wordList');
-    const learningContent = document.getElementById('learningContent');
-    if (wordList) wordList.innerHTML = errorMessage;
-    if (learningContent) learningContent.innerHTML = errorMessage;
+    // Show toast only; avoid inline error blocks
+    window.showMessage?.('Database loading error. Please try again.', 'error');
 }
 
 // Export functions

@@ -96,4 +96,9 @@
     background: var(--color-bg);
 }
 
+/* Make learning tab edge-to-edge like the word list */
+#learn-tab .tab-content-inner {
+    padding: 0;
+}
+
 /* Mobile-first defaults applied; media queries removed for iPhone 14 baseline */

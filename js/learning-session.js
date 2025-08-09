@@ -192,7 +192,7 @@ function showLearningCard() {
         ${window.UIComponents?.createButtonGroup?.([
             { text: 'Show Answer', onclick: 'showTranslation()', type: 'primary', id: 'showAnswerButton' }
         ]) || ''}
-        <div id="cardTranslation" style="text-align: center;"></div>
+        <div id="cardTranslation"></div>
     `);
     if (progressEl) progressEl.innerHTML = window.UIComponents?.createSessionProgress?.(
         AppState.learningSession.length - AppState.learningSession.indexOf(AppState.currentLearningWord),
@@ -442,27 +442,17 @@ function showReverseTranslationCard() {
     // Create unified word card for reverse translation
     const cardHtml = window.UIComponents?.createWordCard?.(reverseWord, 'learning', actions, true) || '';
     
+    const inputBlock = window.UIComponents?.createLabeledTextInput?.({
+        inputId: 'reverseTranslationInput',
+        label: 'Type the English translation:',
+        placeholder: 'Enter English word or phrase...',
+        onKeyPress: 'handleReverseInputKeyPress(event)',
+        onInput: 'validateReverseInput()'
+    }) || '';
+
     mainEl.innerHTML = `
         ${cardHtml}
-        
-        <!-- Translation Input -->
-        <div style="margin: 20px 0;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--color-text);">
-                Type the English translation:
-            </label>
-            <input type="text" 
-                   id="reverseTranslationInput" 
-                   class="form-control"
-                   placeholder="Enter English word or phrase..."
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   autofocus
-                   onkeypress="handleReverseInputKeyPress(event)"
-                   oninput="validateReverseInput()">
-            <div id="typingFeedback" class="typing-feedback"></div>
-        </div>
+        ${inputBlock}
         
         <!-- Action Button: Show Answer only -->
         ${window.UIComponents?.createButtonGroup?.([
