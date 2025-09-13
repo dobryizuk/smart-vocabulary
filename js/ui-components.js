@@ -187,14 +187,18 @@ function createProgressComponent(percentage, variant = 'default', label = 'Learn
     const isCompact = variant === 'compact';
     const barHeight = isCompact ? '6px' : '8px';
     
+    // Clamp and sanitize percentage
+    const numeric = Number(percentage);
+    const safePercentage = Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 0;
+
     const headerHtml = label ? `
         <div class="progress-component__header">
             <span class="progress-component__label">${label}</span>
-            <span class="${percentageClasses.join(' ')}">${percentage}%</span>
+            <span class="${percentageClasses.join(' ')}">${safePercentage}%</span>
         </div>
     ` : `
         <div class="progress-component__header">
-            <span class="${percentageClasses.join(' ')}">${percentage}%</span>
+            <span class="${percentageClasses.join(' ')}">${safePercentage}%</span>
         </div>
     `;
 
@@ -202,7 +206,7 @@ function createProgressComponent(percentage, variant = 'default', label = 'Learn
         <div class="${componentClasses.join(' ')}">
             ${headerHtml}
             <div class="${barClasses.join(' ')}" style="height: ${barHeight};">
-                <div class="progress-component__fill" style="width: ${percentage}%;"></div>
+                <div class="progress-component__fill" style="width: ${safePercentage}%;"></div>
             </div>
         </div>
     `;
@@ -217,7 +221,7 @@ function createStatusBadge(percentage) {
     let status = 'new';
     let statusText = 'New';
     
-    if (percentage >= 75) {
+    if (percentage >= 80) {
         status = 'mastered';
         statusText = 'Mastered';
     } else if (percentage >= 50) {
@@ -228,7 +232,7 @@ function createStatusBadge(percentage) {
         statusText = 'Learning';
     }
     
-    return `<span class="status-badge status-badge--${status}">${statusText}</span>`;
+    return `<span class="status-badge status-badge--${status}" role="status" aria-label="${statusText}" title="${statusText}">${statusText}</span>`;
 }
 
 /**
@@ -816,3 +820,30 @@ window.createInfoBox = createInfoBox;
 window.createSmallText = createSmallText;
 window.showDeleteConfirmation = showDeleteConfirmation;
 window.toggleWordCard = toggleWordCard;
+
+// Export for CommonJS (Node/Vitest)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        createWordCard,
+        createProgressComponent,
+        createStatusBadge,
+        createWordDetailSections,
+        createTranslationBlock,
+        createLearningAnswerContent,
+        createAnswerLayout,
+        createPrimaryAnswerBlock,
+        createWordMetadata,
+        createDifficultyButtons,
+        showDeleteConfirmation,
+        toggleWordCard,
+        createEmptyState,
+        createSessionProgress,
+        createButtonGroup,
+        createButton,
+        createLabeledTextInput,
+        createFlexContainer,
+        createInfoBox,
+        createSmallText,
+        UIComponents: window.UIComponents
+    };
+}

@@ -34,6 +34,13 @@
 
   // Backward-compatible aliases
   ['currentLearningWord', 'learningSession', 'sessionStats', 'currentDictionaryData', 'editingWordId'].forEach(defineAlias);
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+// Export for CommonJS
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    get AppState() { return (typeof window !== 'undefined' ? window : globalThis).AppState; }
+  };
+}
 
 

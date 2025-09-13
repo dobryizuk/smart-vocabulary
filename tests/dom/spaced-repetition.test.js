@@ -9,16 +9,8 @@ beforeEach(() => {
   };
 });
 
-// Load spaced repetition code
-const fs = require('fs');
-const path = require('path');
-const spacedRepetitionCode = fs.readFileSync(path.join(__dirname, '../../js/spaced-repetition.js'), 'utf8');
-/* eslint-disable sonarjs/code-eval */
-eval(spacedRepetitionCode);
-/* eslint-enable sonarjs/code-eval */
-
-// Make SpacedRepetition available globally for tests
-const SpacedRepetition = window.SpacedRepetition;
+// Load spaced repetition module via CommonJS export
+const SpacedRepetition = require('../../js/spaced-repetition.js');
 
 describe('Spaced Repetition Algorithm', () => {
   describe('calculateNextReview', () => {

@@ -15,17 +15,9 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="learningContent"></div>';
 });
 
-// Load UI components and learning session code
-const fs = require('fs');
-const path = require('path');
-const uiComponentsCode = fs.readFileSync(path.join(__dirname, '../../js/ui-components.js'), 'utf8');
-/* eslint-disable sonarjs/code-eval */
-eval(uiComponentsCode);
-/* eslint-enable sonarjs/code-eval */
-const learningSessionCode = fs.readFileSync(path.join(__dirname, '../../js/learning-session.js'), 'utf8');
-/* eslint-disable sonarjs/code-eval */
-eval(learningSessionCode);
-/* eslint-enable sonarjs/code-eval */
+// Load UI components and learning session code via CommonJS exports
+require('../../js/ui-components.js');
+const LearningSession = require('../../js/learning-session.js');
 
 describe('Learning Session - Reverse Translation Logic', () => {
   describe('isEligibleForReverseTranslation', () => {

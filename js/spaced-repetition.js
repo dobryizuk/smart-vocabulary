@@ -93,3 +93,8 @@ class SpacedRepetition {
 // Export the class and make individual functions globally available
 window.SpacedRepetition = SpacedRepetition;
 window.calculateLearningProgress = SpacedRepetition.calculateLearningProgress;
+
+// Export for CommonJS (Node/Vitest)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = SpacedRepetition;
+}

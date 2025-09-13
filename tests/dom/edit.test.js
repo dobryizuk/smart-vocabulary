@@ -1,7 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-// Load app-state and app-main code into JSDOM
-const fs = require('fs');
 const path = require('path');
 
 describe('Edit flow (DOM)', () => {
@@ -47,20 +44,14 @@ describe('Edit flow (DOM)', () => {
       saveAllVocabulary: vi.fn(),
     };
 
-    // Load app-state
-    const appStateCode = fs.readFileSync(path.join(__dirname, '../../js/app-state.js'), 'utf8');
-    /* eslint-disable sonarjs/code-eval */
-    eval(appStateCode);
-    /* eslint-enable sonarjs/code-eval */
+    // Load app-state (CommonJS export also sets globals)
+    require(path.join(__dirname, '../../js/app-state.js'));
 
     // Minimal UI helpers
     global.showMessage = vi.fn();
 
     // Load app-main
-    const appMainCode = fs.readFileSync(path.join(__dirname, '../../js/app-main.js'), 'utf8');
-    /* eslint-disable sonarjs/code-eval */
-    eval(appMainCode);
-    /* eslint-enable sonarjs/code-eval */
+    require(path.join(__dirname, '../../js/app-main.js'));
   });
 
   it('prefills form fields when editWord is called', () => {

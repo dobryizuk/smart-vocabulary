@@ -397,3 +397,17 @@ window.toggleAdditionalFields = toggleAdditionalFields;
 window.renderWordList = renderWordList;
 window.showMessage = showMessage;
 window.editWord = editWord;
+
+// Export for CommonJS
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        showTab,
+        lookupInDictionary,
+        addWord,
+        clearForm,
+        toggleAdditionalFields,
+        renderWordList,
+        showMessage,
+        editWord
+    };
+}

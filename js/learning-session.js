@@ -626,3 +626,26 @@ window.determineExerciseType = determineExerciseType;
 window.normalizeText = normalizeText;
 window.calculateTypingAccuracy = calculateTypingAccuracy;
 window.levenshteinDistance = levenshteinDistance;
+
+// Export for CommonJS (Node/Vitest)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        prepareLearningSession,
+        startLearning,
+        forceStartLearning,
+        showLearningCard,
+        showReverseTranslationCard,
+        showTranslation,
+        markDifficulty,
+        endLearningSession,
+        determineExerciseType,
+        handleReverseInputKeyPress,
+        validateReverseInput,
+        checkReverseTranslation,
+        showAnswerForReverse,
+        showDifficultyButtonsForReverse,
+        normalizeText,
+        calculateTypingAccuracy,
+        levenshteinDistance
+    };
+}
