@@ -16,12 +16,59 @@ class DictionaryService {
             }
             
             const data = await response.json();
-            return this.parseApiResponse(data, cleanWord);
+            let result = this.parseApiResponse(data, cleanWord);
+            
+            // Try to enhance missing data with additional sources
+            result = await this.enhanceWithAdditionalSources(result, cleanWord);
+            
+            return result;
             
         } catch (error) {
             console.warn('Dictionary API failed:', error.message);
             return this.getFallbackDefinition(cleanWord);
         }
+    }
+
+    static async enhanceWithAdditionalSources(result, word) {
+        // Only enhance with real data from another API (no fabricated values)
+        // If phonetic is missing, try to get it from Wiktionary
+        if (!result.phonetic) {
+            try {
+                const phonetic = await this.getPhoneticFromPronunciationAPI(word);
+                if (phonetic) {
+                    result.phonetic = phonetic;
+                }
+            } catch (error) {
+                console.warn('Phonetic enhancement failed:', error.message);
+            }
+        }
+
+        return result;
+    }
+
+    static async getPhoneticFromPronunciationAPI(word) {
+        try {
+            // Try Wiktionary API for phonetic (alternative source)
+            const response = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${word}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.english && data.english.length > 0) {
+                    // Look for phonetic in Wiktionary data
+                    const englishEntry = data.english[0];
+                    if (englishEntry.pronunciations && englishEntry.pronunciations.audio) {
+                        // Extract IPA from pronunciation
+                        const ipa = englishEntry.pronunciations.audio.find(p => p.audio && p.audio.includes('IPA'));
+                        if (ipa) {
+                            return ipa.audio.replace('IPA', '').trim();
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Wiktionary API failed:', error.message);
+        }
+
+        return null;
     }
 
     static parseApiResponse(data, word) {

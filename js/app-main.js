@@ -37,7 +37,11 @@ async function lookupInDictionary() {
     }
 
     try {
+        // First, clear all fields to prevent mixing data from different words
+        clearFormFields();
+        
         const data = await window.DictionaryService.lookupWithTranslation(originalWord);
+        
         // Ensure additional fields are visible
         const additionalFields = document.getElementById('additionalFields');
         if (additionalFields && (additionalFields.style.display === 'none' || !additionalFields.style.display)) {
@@ -65,6 +69,15 @@ async function lookupInDictionary() {
         console.error('Dictionary lookup failed:', error);
         showMessage(`Dictionary lookup failed: ${error.message}`, 'error');
     }
+}
+
+// Helper function to clear only form fields (not the original word)
+function clearFormFields() {
+    document.getElementById('translation').value = '';
+    document.getElementById('wordDefinition').value = '';
+    document.getElementById('wordPhonetic').value = '';
+    document.getElementById('wordSynonyms').value = '';
+    document.getElementById('wordExamples').value = '';
 }
 
 async function addWord() {

@@ -344,7 +344,7 @@ function createAnswerLayout({ specificHtml = '', word }) {
 function createPrimaryAnswerBlock(label, value) {
     if (!value) return '';
     return `
-        <div class="detail-block detail-block--translation">
+        <div class="card-translation detail-block detail-block--translation">
             <div class="detail-title">${label}</div>
             <div class="detail-text" style="font-size: 1.3em; font-weight: 700;">${value}</div>
         </div>
