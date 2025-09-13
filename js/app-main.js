@@ -9,14 +9,24 @@
 // ============================================================================
 
 function showTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    
-    document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
-    document.getElementById(`${tabName}-tab`).classList.add('active');
+    // Safely toggle active classes if elements exist
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => content.classList.remove('active'));
 
+    const currentBtn = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+    if (currentBtn) currentBtn.classList.add('active');
+    const currentTab = document.getElementById(`${tabName}-tab`);
+    if (currentTab) currentTab.classList.add('active');
+
+    // Execute tab-specific logic only when required DOM hooks are present
     if (tabName === 'list') {
-        renderWordList();
+        const hasList = document.getElementById('wordList');
+        const hasCount = document.getElementById('wordCount');
+        if (hasList && hasCount && typeof renderWordList === 'function') {
+            renderWordList();
+        }
     } else if (tabName === 'stats') {
         if (typeof updateStats === 'function') {
             updateStats();
@@ -93,8 +103,50 @@ async function addWord() {
         return;
     }
 
-    // Check for duplicates
     const vocabulary = window.DataManager?.vocabulary || [];
+
+    // If we are editing an existing word, update it in place
+    const editingId = window.AppState?.editingWordId || null;
+    if (editingId) {
+        // Prevent changing to a duplicate of another entry
+        const duplicateOther = vocabulary.some(w => w.id !== editingId && w.original.toLowerCase() === original.toLowerCase());
+        if (duplicateOther) {
+            showMessage('Another word with this Original already exists!', 'error');
+            return;
+        }
+
+        const synonyms = synonymsText ? synonymsText.split(',').map(s => s.trim()).filter(s => s) : [];
+        const examples = examplesText ? examplesText.split('\n').map(e => e.trim()).filter(e => e) : [];
+
+        const index = vocabulary.findIndex(w => w.id === editingId);
+        if (index === -1) {
+            showMessage('Error: Word not found for editing!', 'error');
+            return;
+        }
+
+        const existing = vocabulary[index];
+        vocabulary[index] = {
+            ...existing,
+            original,
+            translation,
+            definition,
+            phonetic,
+            examples,
+            synonyms
+        };
+
+        window.DataManager.vocabulary = vocabulary;
+        window.DataManager.saveUserProgress();
+        window.DataManager.saveAllVocabulary();
+
+        window.AppState.editingWordId = null;
+        clearForm();
+        showMessage('Word updated successfully', 'success');
+        showTab('list');
+        return;
+    }
+
+    // Add flow: Check for duplicates
     if (vocabulary.some(word => word.original.toLowerCase() === original.toLowerCase())) {
         showMessage('This word already exists in your vocabulary!', 'error');
         return;
@@ -190,6 +242,12 @@ function renderWordList() {
         // Define actions for this word (delete first, speak second - so speak is always in corner)
         const actions = [
             {
+                type: 'warning',
+                icon: '✏️',
+                onclick: `editWord('${word.id}')`,
+                title: 'Edit word'
+            },
+            {
                 type: 'danger',
                 icon: '🗑️',
                 onclick: `deleteWord('${word.id}')`,
@@ -212,6 +270,36 @@ function renderWordList() {
         return cardHtml;
 
     }).join('');
+}
+
+// Prefill Add form for editing and navigate to Add tab
+function editWord(id) {
+    const vocabulary = window.DataManager?.vocabulary || [];
+    const word = vocabulary.find(w => w.id === id);
+    if (!word) {
+        showMessage('Error: Word not found!', 'error');
+        return;
+    }
+
+    window.AppState.editingWordId = id;
+
+    showTab('add');
+
+    // Ensure additional fields are visible
+    const additionalFields = document.getElementById('additionalFields');
+    if (additionalFields && (additionalFields.style.display === 'none' || !additionalFields.style.display)) {
+        toggleAdditionalFields();
+    }
+
+    // Prefill form fields
+    document.getElementById('originalWord').value = word.original || '';
+    document.getElementById('translation').value = word.translation || '';
+    document.getElementById('wordDefinition').value = word.definition || '';
+    document.getElementById('wordPhonetic').value = word.phonetic || '';
+    document.getElementById('wordSynonyms').value = Array.isArray(word.synonyms) ? word.synonyms.join(', ') : (word.synonyms || '');
+    document.getElementById('wordExamples').value = Array.isArray(word.examples) ? word.examples.join('\n') : (word.examples || '');
+
+    showMessage('Edit mode: update fields and click Save', 'info');
 }
 
 function deleteWord(id) {
@@ -308,3 +396,4 @@ window.clearForm = clearForm;
 window.toggleAdditionalFields = toggleAdditionalFields;
 window.renderWordList = renderWordList;
 window.showMessage = showMessage;
+window.editWord = editWord;

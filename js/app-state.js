@@ -8,6 +8,7 @@
     learningSession: [],
     sessionStats: { correct: 0, total: 0, streak: 0 },
     currentDictionaryData: null,
+    editingWordId: null,
   };
 
   const AppState = global.AppState || { ...initialState };
@@ -32,7 +33,7 @@
   try { globalThis.AppState = AppState; } catch { /* noop */ }
 
   // Backward-compatible aliases
-  ['currentLearningWord', 'learningSession', 'sessionStats', 'currentDictionaryData'].forEach(defineAlias);
+  ['currentLearningWord', 'learningSession', 'sessionStats', 'currentDictionaryData', 'editingWordId'].forEach(defineAlias);
 })(window);
 
 

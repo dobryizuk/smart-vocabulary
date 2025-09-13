@@ -154,6 +154,20 @@
     visibility: visible;
 }
 
+.action-btn--warning {
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-normal);
+    background: var(--color-accent-orange);
+    color: white;
+    border-color: var(--color-accent-orange);
+}
+
+.word-card--expanded .action-btn--warning {
+    opacity: 1;
+    visibility: visible;
+}
+
 /* Detail Blocks */
 .detail-block {
     border-radius: var(--radius-md);
