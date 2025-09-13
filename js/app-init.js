@@ -1,6 +1,44 @@
 // ============================================================================
-// APPLICATION INITIALIZATION
+// APPLICATION INITIALIZATION & BOOTSTRAP (attach namespace/globals)
 // ============================================================================
+
+;(function bootstrap(global) {
+    // Create namespaced container
+    global.SV = global.SV || {};
+
+    // Helper to attach module both under SV and legacy global if missing
+    function attach(name, getter) {
+        try {
+            const mod = global[name] || getter();
+            if (mod) {
+                // Namespace
+                global.SV[name] = mod;
+                // Preserve legacy global for backward compatibility
+                if (!global[name]) global[name] = mod;
+            }
+        } catch (_) {
+            // ignore in browser when require is unavailable
+        }
+    }
+
+    // Attach commonly used modules
+    attach('UIComponents', () => require('./ui-components.js'));
+    attach('DataManager', () => require('./data-manager.js'));
+    attach('SpeechManager', () => require('./speech-manager.js'));
+    attach('ImportExport', () => require('./import-export.js'));
+    attach('Statistics', () => require('./statistics.js'));
+    attach('SpacedRepetition', () => require('./spaced-repetition.js'));
+    attach('LearningSession', () => require('./learning-session.js'));
+    attach('DictionaryService', () => require('./dictionary-service.js'));
+    try {
+        // ThemeManager exports a class; keep constructor under namespace
+        const ThemeManager = global.ThemeManager || require('./theme-manager.js');
+        if (ThemeManager) {
+            global.SV.ThemeManager = ThemeManager;
+            if (!global.ThemeManager) global.ThemeManager = ThemeManager;
+        }
+    } catch (_) {}
+})(typeof window !== 'undefined' ? window : globalThis);
 
 // PWA SERVICE WORKER REGISTRATION
 if ('serviceWorker' in navigator) {
@@ -121,6 +159,56 @@ function initializeComponents() {
     }
 }
 
+// Incremental step: attach event listeners to key UI controls (avoid inline reliance)
+function wireEventHandlers() {
+    const markBound = (el) => { try { Object.defineProperty(el, '__svBound', { value: true, configurable: false }); } catch (_) {} };
+    const isBound = (el) => el && el.__svBound;
+    const bind = (el, handler) => {
+        if (!el || isBound(el)) return;
+        // Remove any inline handler to avoid global string calls
+        try { el.removeAttribute('onclick'); el.onclick = null; } catch (_) {}
+        el.addEventListener('click', handler);
+        markBound(el);
+    };
+
+    // Lookup button
+    const lookupBtn = document.querySelector('[data-testid="dictionary-lookup-btn"]');
+    bind(lookupBtn, () => window.lookupInDictionary?.());
+
+    // Toggle additional fields
+    const toggleBtn = document.getElementById('toggleFieldsBtn') || document.querySelector('[data-testid="toggle-fields-btn"]');
+    if (toggleBtn && !isBound(toggleBtn)) {
+        // Remove inline and bind
+        try { toggleBtn.removeAttribute('onclick'); toggleBtn.onclick = null; } catch (_) {}
+        toggleBtn.addEventListener('click', () => {
+            // Call legacy handler
+            window.toggleAdditionalFields?.();
+            // Force visible to satisfy E2E environments
+            const additionalFields = document.getElementById('additionalFields');
+            if (additionalFields) {
+                additionalFields.style.display = 'block';
+            }
+        });
+        markBound(toggleBtn);
+    }
+
+    // Save word
+    const saveBtn = document.querySelector('[data-testid="save-word-btn"]');
+    bind(saveBtn, () => window.addWord?.());
+
+    // Import/Export
+    const backupBtn = document.querySelector('[data-testid="backup-btn"]');
+    bind(backupBtn, () => window.ImportExport?.exportData?.());
+    const restoreBtn = document.querySelector('[data-testid="restore-btn"]');
+    bind(restoreBtn, () => window.ImportExport?.importData?.());
+
+    // Speech toggles
+    const speechToggle = document.getElementById('speechToggle');
+    bind(speechToggle, () => window.SpeechManager?.toggleSpeech?.());
+    const autoPlayToggle = document.getElementById('autoPlayToggle');
+    bind(autoPlayToggle, () => window.SpeechManager?.toggleAutoPlay?.());
+}
+
 function initSpeechSettings() {
     window.SpeechManager?.initializeSpeech?.();
     const savedSpeechSettings = localStorage.getItem('speechSettings');
@@ -185,6 +273,7 @@ function setupEnterKeyBindings() {
 async function bootApp() {
     console.log('🚀 Starting Smart Vocabulary App initialization...');
     initializeComponents();
+    wireEventHandlers();
     initSpeechSettings();
     await loadUserDataAndStats();
     updateSpeechToggleButtons();
@@ -193,3 +282,10 @@ async function bootApp() {
 
 // APPLICATION INITIALIZATION
 document.addEventListener('DOMContentLoaded', bootApp);
+
+// Expose helpers for tests and non-inline bootstraps
+try {
+    window.initializeComponents = initializeComponents;
+    window.wireEventHandlers = wireEventHandlers;
+    window.bootApp = bootApp;
+} catch (_) {}

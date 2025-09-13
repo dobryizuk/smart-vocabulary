@@ -189,3 +189,8 @@ class DictionaryService {
 
 // Export the service
 window.DictionaryService = DictionaryService;
+
+// CommonJS export
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = DictionaryService;
+}

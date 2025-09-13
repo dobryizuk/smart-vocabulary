@@ -38,3 +38,6 @@ coverage/
 playwright-report
 test-results
 
+# Local refactoring notes (do not commit)
+refactoring-plan.local.md
+

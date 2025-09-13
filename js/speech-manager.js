@@ -164,3 +164,15 @@ window.SpeechManager = {
 
 // Make speakWord globally accessible for compatibility  
 window.speakWord = speakWord;
+
+// CommonJS export
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        initializeSpeech,
+        speakWord,
+        toggleSpeech,
+        toggleAutoPlay,
+        get speechSettings() { return speechSettings; },
+        set speechSettings(value) { speechSettings = value; }
+    };
+}

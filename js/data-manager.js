@@ -195,3 +195,22 @@ window.DataManager = {
     get wordDatabase() { return wordDatabase; },
     set wordDatabase(value) { wordDatabase = value; }
 };
+
+// CommonJS export
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        getTranslationSuggestion,
+        saveUserProgress,
+        saveAllVocabulary,
+        loadUserProgress,
+        resetUserProgress,
+        loadWordDatabase,
+        initializeVocabulary,
+        get vocabulary() { return vocabulary; },
+        set vocabulary(value) { vocabulary = value; },
+        get userProgress() { return userProgress; },
+        set userProgress(value) { userProgress = value; },
+        get wordDatabase() { return wordDatabase; },
+        set wordDatabase(value) { wordDatabase = value; }
+    };
+}

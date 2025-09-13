@@ -76,3 +76,11 @@ window.Statistics = {
 // Make functions globally available for compatibility
 window.updateStats = updateStats;
 window.showDatabaseError = showDatabaseError;
+
+// CommonJS export
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        updateStats,
+        showDatabaseError
+    };
+}

@@ -193,3 +193,13 @@ window.ImportExport = {
     validateAndProcessImportData,
     importData
 };
+
+// CommonJS export
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        createExportData,
+        exportData,
+        validateAndProcessImportData,
+        importData
+    };
+}
