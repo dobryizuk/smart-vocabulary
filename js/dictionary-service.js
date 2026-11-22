@@ -9,71 +9,58 @@ function createDictionaryService(context) {
     const getTranslationSuggestion = ctx.getTranslationSuggestion || (() => null);
     const warn = ctx.warn || ((...args) => console.warn(...args));
 
-    async function lookupWord(word) {
-        const cleanWord = word.toLowerCase().trim();
-        
+    // dictionaryapi.dev: examples, synonyms, IPA; its first sense is often rare or archaic
+    async function fetchDictionaryEntry(word) {
         try {
-            // Try Free Dictionary API first
-            const response = await fetchImpl(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
-            
-            if (!response.ok) {
-                throw new Error(`Dictionary API error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            let result = parseApiResponse(data, cleanWord);
-            
-            // Try to enhance missing data with additional sources
-            result = await enhanceWithAdditionalSources(result, cleanWord);
-            
-            return result;
-            
+            const response = await fetchImpl(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+            if (!response.ok) throw new Error(`status ${response.status}`);
+            return await response.json();
         } catch (error) {
             warn('Dictionary API failed:', error.message);
-            return getFallbackDefinition(cleanWord);
+            return null;
         }
     }
 
-    async function enhanceWithAdditionalSources(result, word) {
-        // Only enhance with real data from another API (no fabricated values)
-        // If phonetic is missing, try to get it from Wiktionary
-        if (!result.phonetic) {
-            try {
-                const phonetic = await getPhoneticFromPronunciationAPI(word);
-                if (phonetic) {
-                    result.phonetic = phonetic;
-                }
-            } catch (error) {
-                warn('Phonetic enhancement failed:', error.message);
-            }
-        }
-
-        return result;
-    }
-
-    async function getPhoneticFromPronunciationAPI(word) {
+    // Datamuse lists the most common sense first, e.g. "adj\tRelating to particular persons"
+    async function fetchCommonDefinition(word) {
         try {
-            // Try Wiktionary API for phonetic (alternative source)
-            const response = await fetchImpl(`https://en.wiktionary.org/api/rest_v1/page/definition/${word}`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.english && data.english.length > 0) {
-                    // Look for phonetic in Wiktionary data
-                    const englishEntry = data.english[0];
-                    if (englishEntry.pronunciations && englishEntry.pronunciations.audio) {
-                        // Extract IPA from pronunciation
-                        const ipa = englishEntry.pronunciations.audio.find(p => p.audio && p.audio.includes('IPA'));
-                        if (ipa) {
-                            return ipa.audio.replace('IPA', '').trim();
-                        }
-                    }
-                }
-            }
+            const response = await fetchImpl(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=1`);
+            if (!response.ok) throw new Error(`status ${response.status}`);
+            const [entry] = await response.json();
+            if (!entry || entry.word?.toLowerCase() !== word || !entry.defs?.length) return null;
+            return entry.defs[0].split('\t').pop().trim() || null;
+        } catch (error) {
+            warn('Datamuse API failed:', error.message);
+            return null;
+        }
+    }
+
+    // Wiktionary wikitext holds IPA as {{IPA|en|/ˌʌndəˈsteɪtmənt/|a=RP}}
+    async function fetchWiktionaryIpa(word) {
+        try {
+            const url = `https://en.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(word)}&prop=wikitext&format=json&formatversion=2&origin=*`;
+            const response = await fetchImpl(url);
+            if (!response.ok) throw new Error(`status ${response.status}`);
+            const data = await response.json();
+            const match = /\{\{IPA\|en\|([^|}]+)/.exec(data?.parse?.wikitext || '');
+            return match ? match[1].trim() : null;
         } catch (error) {
             warn('Wiktionary API failed:', error.message);
+            return null;
         }
+    }
 
-        return null;
+    async function lookupWord(word) {
+        const cleanWord = word.toLowerCase().trim();
+        const [entry, commonDefinition] = await Promise.all([
+            fetchDictionaryEntry(cleanWord),
+            fetchCommonDefinition(cleanWord)
+        ]);
+
+        const result = parseApiResponse(entry, cleanWord);
+        if (commonDefinition) result.definition = commonDefinition;
+        if (!result.phonetic) result.phonetic = (await fetchWiktionaryIpa(cleanWord)) || '';
+        return result;
     }
 
     function parseApiResponse(data, word) {
@@ -90,16 +77,8 @@ function createDictionaryService(context) {
             '';
 
         // Extract definition (first noun, verb, or adjective meaning)
-        let definition = '';
-        let partOfSpeech = '';
-        
-        for (const meaning of meanings) {
-            if (['noun', 'verb', 'adjective', 'adverb'].includes(meaning.partOfSpeech)) {
-                partOfSpeech = meaning.partOfSpeech;
-                definition = meaning.definitions?.[0]?.definition || '';
-                break;
-            }
-        }
+        const mainMeaning = meanings.find(m => ['noun', 'verb', 'adjective', 'adverb'].includes(m.partOfSpeech));
+        const definition = mainMeaning?.definitions?.[0]?.definition || '';
 
         // Extract examples from all meanings
         const examples = [];
@@ -123,7 +102,7 @@ function createDictionaryService(context) {
         return {
             word: entry.word,
             phonetic: phonetic,
-            definition: definition || `A ${partOfSpeech || 'word'} in English.`,
+            definition,
             examples: examples.slice(0, 5),
             synonyms: synonyms.slice(0, 5),
             source: 'dictionary-api',
@@ -135,7 +114,7 @@ function createDictionaryService(context) {
         return {
             word: word,
             phonetic: '',
-            definition: `English word: ${word}`,
+            definition: '',
             examples: [],
             synonyms: [],
             source: 'fallback',
