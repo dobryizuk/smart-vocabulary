@@ -37,51 +37,56 @@ function secureShuffle(inputArray) {
     return array;
 }
 
-function prepareLearningSession() {
-    const SR = window.SV?.SpacedRepetition;
-    const wordsForReview = SR?.getWordsForReview?.() || [];
-    ensureLearningLayout();
+// Due words with the oldest nextReview first, then new words (nextReview null)
+function selectSessionBatch(words, size) {
+    const byPriority = (a, b) => {
+        if (!a.nextReview && !b.nextReview) return 0;
+        if (!a.nextReview) return 1;
+        if (!b.nextReview) return -1;
+        return new Date(a.nextReview) - new Date(b.nextReview);
+    };
+    return secureShuffle([...words].sort(byPriority).slice(0, size));
+}
 
-    if (wordsForReview.length === 0) {
-        // Check if we have any words at all
-        const vocabulary = window.SV?.DataManager?.vocabulary || [];
-        const hasWords = vocabulary.length > 0;
-        renderLearningEmptyState(hasWords);
-        return;
-    }
-
-    window.SV.AppState.learningSession = secureShuffle(wordsForReview);
-    
-    // Initialize session exercise types tracking for all words
-    window.SV.AppState.learningSession.forEach(word => {
+function beginSession(candidates) {
+    const AppState = window.SV.AppState;
+    const size = window.SV?.SessionSettings?.getSessionSize?.() ?? 15;
+    AppState.learningSession = selectSessionBatch(candidates, size);
+    AppState.learningSession.forEach(word => {
         if (!word.sessionExerciseTypes) {
             word.sessionExerciseTypes = [];
         }
     });
-    
-    startLearning();
+    AppState.currentLearningWord = AppState.learningSession[0];
+    showLearningCard();
+}
+
+function prepareLearningSession() {
+    const AppState = window.SV.AppState;
+    ensureLearningLayout();
+
+    if (AppState.currentLearningWord && AppState.learningSession.length > 0) {
+        showLearningCard();
+        return;
+    }
+
+    const wordsForReview = window.SV?.SpacedRepetition?.getWordsForReview?.() || [];
+    if (wordsForReview.length === 0) {
+        const vocabulary = window.SV?.DataManager?.vocabulary || [];
+        renderLearningEmptyState(vocabulary.length > 0);
+        return;
+    }
+
+    beginSession(wordsForReview);
 }
 
 function startLearning() {
-    const SR = window.SV?.SpacedRepetition;
-    const wordsForReview = SR?.getWordsForReview?.() || [];
-    
+    const wordsForReview = window.SV?.SpacedRepetition?.getWordsForReview?.() || [];
     if (wordsForReview.length === 0) {
         prepareLearningSession();
         return;
     }
-
-    window.SV.AppState.learningSession = secureShuffle(wordsForReview);
-    
-    // Initialize session exercise types tracking for all words
-    window.SV.AppState.learningSession.forEach(word => {
-        if (!word.sessionExerciseTypes) {
-            word.sessionExerciseTypes = [];
-        }
-    });
-    
-    window.SV.AppState.currentLearningWord = window.SV.AppState.learningSession[0];
-    showLearningCard();
+    beginSession(wordsForReview);
 }
 
 // Track scheduled timeouts to avoid leaks and stale callbacks across view transitions
@@ -145,17 +150,7 @@ function forceStartLearning() {
     }
 
     window.SV?.debugLog?.('🚀 Force starting learning session with all words');
-    window.SV.AppState.learningSession = secureShuffle(vocabulary);
-    
-    // Initialize session exercise types tracking for all words
-    window.SV.AppState.learningSession.forEach(word => {
-        if (!word.sessionExerciseTypes) {
-            word.sessionExerciseTypes = [];
-        }
-    });
-    
-    window.SV.AppState.currentLearningWord = window.SV.AppState.learningSession[0];
-    showLearningCard();
+    beginSession(vocabulary);
 }
 
 function showLearningCard() {
@@ -297,7 +292,7 @@ function endLearningSession() {
     const learningContent = document.getElementById('learningContent');
     
     const accuracy = window.SV.AppState.sessionStats.total > 0 ? Math.round((window.SV.AppState.sessionStats.correct / window.SV.AppState.sessionStats.total) * 100) : 0;
-    const message = `Great work! You reviewed ${AppState.sessionStats.total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${AppState.sessionStats.streak}`;
+    const message = `Great work! You reviewed ${window.SV.AppState.sessionStats.total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${window.SV.AppState.sessionStats.streak}`;
     
     const UI3 = window.SV?.UIComponents;
     const emptyStateHtml = UI3?.createEmptyState?.(
@@ -311,6 +306,8 @@ function endLearningSession() {
     
     learningContent.innerHTML = emptyStateHtml;
     window.SV.AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
+    window.SV.AppState.learningSession = [];
+    window.SV.AppState.currentLearningWord = null;
 }
 
 // ============================================================================
@@ -673,6 +670,7 @@ const LearningSessionExports = {
     showTranslation,
     markDifficulty,
     endLearningSession,
+    selectSessionBatch,
     isEligibleForReverseTranslation,
     canShowReverseExercise,
     determineExerciseType,

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock DOM environment
 beforeEach(() => {
@@ -320,5 +320,92 @@ describe('Writing exercise hint', () => {
     expect(LS.getMaxHints('a lot')).toBe(3);
     expect(LS.getMaxHints('ox')).toBe(1);
     expect(LS.getMaxHints('')).toBe(0);
+  });
+});
+
+describe('Session batch selection', () => {
+  const word = (original, nextReview) => ({ original, translation: original, nextReview });
+  const names = (words) => words.map(w => w.original).sort();
+
+  it('picks at most N words, oldest nextReview first', () => {
+    const words = [
+      word('c', '2026-01-03T00:00:00Z'),
+      word('a', '2026-01-01T00:00:00Z'),
+      word('d', '2026-01-04T00:00:00Z'),
+      word('b', '2026-01-02T00:00:00Z')
+    ];
+    expect(names(LS.selectSessionBatch(words, 2))).toEqual(['a', 'b']);
+  });
+
+  it('puts new words after due ones', () => {
+    const words = [word('new1', null), word('due1', '2026-01-02T00:00:00Z'), word('new2', null), word('due2', '2026-01-01T00:00:00Z')];
+    const batch = LS.selectSessionBatch(words, 3);
+    expect(batch.filter(w => w.nextReview)).toHaveLength(2);
+    expect(batch.filter(w => !w.nextReview)).toHaveLength(1);
+    expect(names(batch.filter(w => w.nextReview))).toEqual(['due1', 'due2']);
+  });
+
+  it('returns all candidates when there are fewer than N', () => {
+    const words = [word('a', null), word('b', '2026-01-01T00:00:00Z')];
+    expect(names(LS.selectSessionBatch(words, 15))).toEqual(['a', 'b']);
+  });
+
+  it('does not change the input array', () => {
+    const words = [word('b', '2026-01-02T00:00:00Z'), word('a', '2026-01-01T00:00:00Z')];
+    LS.selectSessionBatch(words, 1);
+    expect(words.map(w => w.original)).toEqual(['b', 'a']);
+  });
+});
+
+describe('Session resume and restart', () => {
+  const makeWords = (count) => Array.from({ length: count }, (_, i) => ({
+    original: `w${i}`, translation: `t${i}`, nextReview: null, repetition: 0, easeFactor: 2.5, reviewHistory: []
+  }));
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    const vocabulary = makeWords(20);
+    window.SV.DataManager = { vocabulary, saveUserProgress: vi.fn() };
+    window.SV.SpacedRepetition = require('../../js/spaced-repetition.js');
+    window.SV.SessionSettings = require('../../js/session-settings.js').createSessionSettings({
+      storage: { getItem: () => '10', setItem: vi.fn() }
+    });
+    window.SV.AppState.learningSession = [];
+    window.SV.AppState.currentLearningWord = null;
+  });
+
+  it('limits a new session to the configured size', () => {
+    LS.prepareLearningSession();
+    expect(window.SV.AppState.learningSession).toHaveLength(10);
+  });
+
+  it('keeps the same session and current word when the tab is reopened', () => {
+    LS.prepareLearningSession();
+    const session = window.SV.AppState.learningSession;
+    const current = window.SV.AppState.currentLearningWord;
+
+    LS.prepareLearningSession();
+
+    expect(window.SV.AppState.learningSession).toBe(session);
+    expect(window.SV.AppState.currentLearningWord).toBe(current);
+    expect(document.getElementById('learningContent').textContent).toContain(current.original);
+  });
+
+  it('leaves the session empty after it ends and builds a fresh batch next time', () => {
+    LS.prepareLearningSession();
+    LS.endLearningSession();
+
+    expect(document.getElementById('learningContent').textContent).toContain('Session Complete');
+    expect(window.SV.AppState.learningSession).toEqual([]);
+    expect(window.SV.AppState.currentLearningWord).toBeNull();
+
+    LS.startLearning();
+    expect(window.SV.AppState.learningSession.length).toBeGreaterThan(0);
+    expect(window.SV.AppState.currentLearningWord).toBe(window.SV.AppState.learningSession[0]);
+  });
+
+  it('force start limits the batch for the whole vocabulary', () => {
+    LS.forceStartLearning();
+    expect(window.SV.AppState.learningSession).toHaveLength(10);
   });
 });

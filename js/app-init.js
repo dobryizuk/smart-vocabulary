@@ -32,6 +32,7 @@ const { downloadFile } = require('./file-download.js');
     attach('ImportExport', () => require('./import-export.js'));
     attach('Statistics', () => require('./statistics.js'));
     attach('SpacedRepetition', () => require('./spaced-repetition.js'));
+    attach('SessionSettings', () => require('./session-settings.js'));
     attach('LearningSession', () => require('./learning-session.js'));
     attach('DictionaryService', () => require('./dictionary-service.js'));
     attach('AppMain', () => require('./app-main.js'));
@@ -114,6 +115,21 @@ function initializeComponents() {
         ) || '';
     }
     
+    // Initialize session size setting
+    const sessionSizeControl = document.getElementById('sessionSizeControl');
+    if (sessionSizeControl) {
+        const settings = window.SV?.SessionSettings;
+        const current = settings?.getSessionSize?.();
+        const options = [10, 15, 20].map(n => `<option value="${n}"${n === current ? ' selected' : ''}>${n}</option>`).join('');
+        sessionSizeControl.innerHTML = `
+            <label for="sessionSizeSelect">Words per session</label>
+            <select id="sessionSizeSelect" class="form-control" data-testid="session-size-select" style="width: auto;">${options}</select>
+        `;
+        document.getElementById('sessionSizeSelect').addEventListener('change', (e) => {
+            settings?.setSessionSize?.(e.target.value);
+        });
+    }
+
     // Initialize audio settings text
     const audioSettingsText = document.getElementById('audioSettingsText');
     if (audioSettingsText) {
