@@ -41,8 +41,7 @@ describe('Edit flow (DOM)', () => {
           easeFactor: 1.3,
         }
       ],
-      saveUserProgress: vi.fn(),
-      saveAllVocabulary: vi.fn(),
+      save: vi.fn(),
     };
 
     // Load app-state and ensure SV.AppState
@@ -90,7 +89,7 @@ describe('Edit flow (DOM)', () => {
       expect(updated.translation).toBe('исправлять');
       expect(updated.definition).toBe('to correct');
       expect(window.SV.AppState.editingWordId).toBe(null);
-      expect(window.SV.DataManager.saveAllVocabulary).toHaveBeenCalled();
+      expect(window.SV.DataManager.save).toHaveBeenCalled();
     })();
   });
 });

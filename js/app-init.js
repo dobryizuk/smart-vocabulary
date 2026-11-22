@@ -27,6 +27,7 @@ const { downloadFile } = require('./file-download.js');
 
     // Attach commonly used modules (bundled requires)
     attach('UIComponents', () => require('./ui-components.js'));
+    attach('VocabularyStore', () => require('./vocabulary-store.js'));
     attach('DataManager', () => require('./data-manager.js'));
     attach('SpeechManager', () => require('./speech-manager.js'));
     attach('ImportExport', () => require('./import-export.js'));
@@ -139,7 +140,7 @@ function initializeComponents() {
     // Initialize data management
     const dataManagement = document.getElementById('dataManagement');
     if (dataManagement) {
-        const snapshotDate = window.SV?.ImportExport?.getSnapshotDate?.();
+        const snapshotDate = window.SV?.VocabularyStore?.getSnapshotDate?.();
         const undoButton = snapshotDate
             ? window.SV?.UIComponents?.createButton?.(`Undo last restore (${snapshotDate})`, 'undo-restore', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;', '', 'undo-restore-btn')
             : '';
@@ -399,15 +400,10 @@ function wireEventHandlers() {
     }
 }
 
-async function loadUserDataAndStats() {
+function loadUserDataAndStats() {
     try {
-        window.SV?.debugLog?.('📊 Loading user progress...');
-        if (window.SV?.DataManager) {
-            window.SV.DataManager.userProgress = await window.SV.DataManager.loadUserProgress();
-            window.SV?.debugLog?.('✅ User progress loaded:', Object.keys(window.SV.DataManager.userProgress).length, 'entries');
-        }
         window.SV?.debugLog?.('📚 Loading word database...');
-        await window.SV?.DataManager?.initializeVocabulary?.();
+        window.SV?.DataManager?.initializeVocabulary?.();
         window.SV?.Statistics?.updateStats?.();
         window.SV?.debugLog?.('✅ App initialization complete!');
     } catch (error) {
@@ -460,13 +456,13 @@ function requestPersistentStorage() {
     }
 }
 
-async function bootApp() {
+function bootApp() {
     window.SV?.debugLog?.('🚀 Starting Smart Vocabulary App initialization...');
     requestPersistentStorage();
     initializeComponents();
     wireEventHandlers();
     window.SV?.SpeechManager?.initializeSpeech?.();
-    await loadUserDataAndStats();
+    loadUserDataAndStats();
     updateSpeechToggleButtons();
     updateLogToggleButton();
     setupEnterKeyBindings();

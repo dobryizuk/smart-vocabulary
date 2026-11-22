@@ -3,16 +3,14 @@
 // ============================================================================
 
 const { downloadFile } = require('./file-download.js');
-
-const SNAPSHOT_KEY = 'snapshotBeforeImport';
+const defaultVocabularyStore = require('./vocabulary-store.js');
+const { pickWordFields } = defaultVocabularyStore;
 
 function createImportExport(context) {
     const ctx = context || {};
     const getVocabulary = ctx.getVocabulary || (() => []);
     const setVocabulary = ctx.setVocabulary || (() => undefined);
-    const saveUserProgress = ctx.saveUserProgress || (() => undefined);
-    const saveAllVocabulary = ctx.saveAllVocabulary || (() => undefined);
-    const storage = ctx.storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+    const store = ctx.store || defaultVocabularyStore;
     const doc = ctx.document || (typeof document !== 'undefined' ? document : null);
     const debugLog = ctx.debugLog || (() => undefined);
     const appMain = ctx.appMain || {};
@@ -24,21 +22,7 @@ function createImportExport(context) {
 
     function createExportData(vocabularyData = null) {
         const vocabularyToExport = vocabularyData || getVocabulary();
-        const vocabularyWithProgress = vocabularyToExport.map(word => ({
-            id: word.id,
-            original: word.original,
-            translation: word.translation,
-            definition: word.definition,
-            examples: word.examples,
-            phonetic: word.phonetic,
-            synonyms: word.synonyms,
-            easeFactor: word.easeFactor,
-            repetition: word.repetition,
-            nextReview: word.nextReview,
-            reviewHistory: word.reviewHistory,
-            createdAt: word.createdAt,
-            addedDate: word.addedDate
-        }));
+        const vocabularyWithProgress = vocabularyToExport.map(pickWordFields);
         
         return {
             vocabulary: vocabularyWithProgress,
@@ -107,36 +91,12 @@ function createImportExport(context) {
         };
     }
 
-    function readSnapshot() {
-        try {
-            return JSON.parse(storage?.getItem(SNAPSHOT_KEY) || 'null');
-        } catch {
-            return null;
-        }
-    }
-
-    function getSnapshotDate() {
-        return readSnapshot()?.savedAt?.slice(0, 10) || null;
-    }
-
-    function saveSnapshot() {
-        storage.setItem(SNAPSHOT_KEY, JSON.stringify({
-            savedAt: getNow().toISOString(),
-            allVocabulary: storage.getItem('allVocabulary'),
-            userProgress: storage.getItem('userProgress')
-        }));
-    }
-
     function restoreSnapshot() {
-        const snapshot = readSnapshot();
-        if (!snapshot) return;
-        const question = `Go back to your data from before the restore on ${snapshot.savedAt.slice(0, 10)}? Progress made since then will be lost.`;
+        const snapshotDate = store.getSnapshotDate();
+        if (!snapshotDate) return;
+        const question = `Go back to your data from before the restore on ${snapshotDate}? Progress made since then will be lost.`;
         if (!confirmAction(question)) return;
-        ['allVocabulary', 'userProgress'].forEach(key => {
-            if (snapshot[key] === null) storage.removeItem(key);
-            else storage.setItem(key, snapshot[key]);
-        });
-        storage.removeItem(SNAPSHOT_KEY);
+        store.restoreSnapshot();
         reload();
     }
 
@@ -147,10 +107,9 @@ function createImportExport(context) {
             const question = `Replace your ${getVocabulary().length} words with ${processedData.totalWords} words from the backup of ${backupDate}?`;
             if (!confirmAction(question)) return;
 
-            saveSnapshot();
+            store.saveSnapshot();
+            store.save(processedData.vocabulary);
             setVocabulary(processedData.vocabulary);
-            saveUserProgress();
-            saveAllVocabulary();
 
             appMain.renderWordList?.();
             stats.updateStats?.();
@@ -180,7 +139,7 @@ function createImportExport(context) {
         doc.body.removeChild(input);
     }
 
-    return { createExportData, exportData, validateAndProcessImportData, importFromText, importData, getSnapshotDate, restoreSnapshot };
+    return { createExportData, exportData, validateAndProcessImportData, importFromText, importData, restoreSnapshot };
 }
 
 function createDefaultImportExport() {
@@ -188,9 +147,7 @@ function createDefaultImportExport() {
     return createImportExport({
         getVocabulary: () => g.SV?.DataManager?.vocabulary || [],
         setVocabulary: (v) => { if (g.SV?.DataManager) g.SV.DataManager.vocabulary = v; },
-        saveUserProgress: () => g.SV?.DataManager?.saveUserProgress?.(),
-        saveAllVocabulary: () => g.SV?.DataManager?.saveAllVocabulary?.(),
-        storage: (typeof localStorage !== 'undefined' ? localStorage : null),
+        store: defaultVocabularyStore,
         document: (typeof document !== 'undefined' ? document : null),
         debugLog: (...args) => g.SV?.debugLog?.(...args),
         appMain: {

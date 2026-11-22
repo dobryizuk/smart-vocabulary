@@ -10,7 +10,6 @@ test.describe('Navigation Tests', () => {
       const dm = window.SV?.DataManager;
       if (dm) {
         dm.vocabulary = [];
-        dm.userProgress = {};
       }
     });
   });

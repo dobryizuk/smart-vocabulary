@@ -4,8 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 beforeEach(() => {
   global.window = global;
   global.DataManager = {
-    vocabulary: [],
-    userProgress: {}
+    vocabulary: []
   };
   global.SpacedRepetition = {
     calculateLearningProgress: (easeFactor) => Math.round(((easeFactor - 1.3) / (3.5 - 1.3)) * 100)
@@ -365,7 +364,7 @@ describe('Session resume and restart', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="learningContent"></div>';
     const vocabulary = makeWords(20);
-    window.SV.DataManager = { vocabulary, saveUserProgress: vi.fn() };
+    window.SV.DataManager = { vocabulary, save: vi.fn() };
     window.SV.SpacedRepetition = require('../../js/spaced-repetition.js');
     window.SV.SessionSettings = require('../../js/session-settings.js').createSessionSettings({
       storage: { getItem: () => '10', setItem: vi.fn() }
@@ -407,5 +406,22 @@ describe('Session resume and restart', () => {
   it('force start limits the batch for the whole vocabulary', () => {
     LS.forceStartLearning();
     expect(window.SV.AppState.learningSession).toHaveLength(10);
+  });
+
+  it('offers reverse again in a new session to words that did both exercises in an earlier one', () => {
+    const shownBothBefore = () => ({
+      original: 'w', translation: 't', nextReview: null, repetition: 2, easeFactor: 2.5,
+      reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
+      sessionExerciseTypes: ['regular', 'reverse']
+    });
+    window.SV.DataManager.vocabulary = [shownBothBefore(), shownBothBefore()];
+    expect(LS.determineExerciseType(window.SV.DataManager.vocabulary[1])).toBe('regular');
+
+    LS.forceStartLearning();
+
+    const [current, next] = window.SV.AppState.learningSession;
+    expect(current.currentExerciseType).toBe('reverse');
+    expect(next.sessionExerciseTypes).toEqual([]);
+    expect(LS.determineExerciseType(next)).toBe('reverse');
   });
 });

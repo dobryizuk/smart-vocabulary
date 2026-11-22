@@ -53,9 +53,7 @@ function beginSession(candidates) {
     const size = window.SV?.SessionSettings?.getSessionSize?.() ?? 15;
     AppState.learningSession = selectSessionBatch(candidates, size);
     AppState.learningSession.forEach(word => {
-        if (!word.sessionExerciseTypes) {
-            word.sessionExerciseTypes = [];
-        }
+        word.sessionExerciseTypes = [];
     });
     AppState.currentLearningWord = AppState.learningSession[0];
     showLearningCard();
@@ -282,7 +280,7 @@ function markDifficulty(difficulty) {
     window.SV.AppState.learningSession.shift();
     window.SV.AppState.currentLearningWord = window.SV.AppState.learningSession[0];
 
-    window.SV?.DataManager?.saveUserProgress?.();
+    window.SV?.DataManager?.save?.();
     showLearningCard();
 }
 

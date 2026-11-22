@@ -1,58 +1,69 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createMemoryStorage } from './test-helpers.js';
 
 const { createDataManager } = require('../../js/data-manager.js');
 const { createImportExport } = require('../../js/import-export.js');
+const { createVocabularyStore, WORD_FIELDS } = require('../../js/vocabulary-store.js');
 const fixture = require('../test-vocabulary.json');
 
 const NOW = new Date('2026-11-22T10:00:00.000Z');
 const PROGRESS_FIELDS = ['repetition', 'easeFactor', 'nextReview', 'reviewHistory'];
 
-function createMemoryStorage(initial = {}) {
-    const data = { ...initial };
-    return {
-        data,
-        getItem: (key) => (key in data ? data[key] : null),
-        setItem: (key, value) => { data[key] = String(value); },
-        removeItem: (key) => { delete data[key]; }
-    };
-}
-
+// Builds the app's data modules over one storage; calling it again on the same storage simulates a reload
 function createApp({ storage = createMemoryStorage(), confirmResult = true } = {}) {
     const appMain = { showMessage: vi.fn(), renderWordList: vi.fn() };
-    const dm = createDataManager({ storage, appMain, now: () => NOW });
+    const store = createVocabularyStore({ storage, now: () => NOW });
+    const dm = createDataManager({ store, appMain });
+    dm.initializeVocabulary();
     const reload = vi.fn();
     const confirm = vi.fn(() => confirmResult);
     const ie = createImportExport({
         getVocabulary: () => dm.vocabulary,
         setVocabulary: (v) => { dm.vocabulary = v; },
-        saveUserProgress: () => dm.saveUserProgress(),
-        saveAllVocabulary: () => dm.saveAllVocabulary(),
-        storage,
+        store,
         appMain,
         confirm,
         reload,
         getNow: () => NOW
     });
-    return { storage, appMain, dm, ie, reload, confirm };
+    return { storage, store, appMain, dm, ie, reload, confirm };
 }
 
 const fixtureText = () => JSON.stringify(fixture);
+const rawVocabulary = (words) => JSON.stringify({ schemaVersion: 1, words });
 
 describe('Data protection: export', () => {
-    it('exports the current progress, not the stale copy in allVocabulary', async () => {
+    it('exports the current in-memory progress', () => {
         const { dm, ie } = createApp();
         dm.vocabulary = [{ id: 'w1', original: 'a', translation: 'б', repetition: 0, easeFactor: 1.3, nextReview: null, reviewHistory: [] }];
-        dm.saveAllVocabulary();
+        dm.save();
 
         const history = [{ date: '2026-11-20', difficulty: 'easy' }, { date: '2026-11-21', difficulty: 'perfect' }];
         Object.assign(dm.vocabulary[0], { repetition: 3, easeFactor: 2.0, nextReview: '2026-12-01T00:00:00.000Z', reviewHistory: history });
-        await dm.saveUserProgress();
 
         const [word] = ie.createExportData().vocabulary;
         expect(word.repetition).toBe(3);
         expect(word.easeFactor).toBe(2.0);
         expect(word.nextReview).toBe('2026-12-01T00:00:00.000Z');
         expect(word.reviewHistory).toEqual(history);
+    });
+
+    it('exports only the word fields of the backup file, without session fields', () => {
+        const { dm, ie } = createApp();
+        const word = { ...fixture.vocabulary[0], createdAt: '2025-07-24T10:00:00.000Z' };
+        dm.vocabulary = [{
+            ...word,
+            sessionExerciseTypes: ['reverse'],
+            currentExerciseType: 'reverse',
+            lastExerciseType: 'reverse',
+            lastExerciseDate: '2026-11-22T09:00:00.000Z',
+            interval: 6
+        }];
+
+        const [exported] = ie.createExportData().vocabulary;
+
+        expect(exported).toEqual(word);
+        expect(Object.keys(exported)).toEqual(WORD_FIELDS);
     });
 
     it('writes schemaVersion 1 into the export', () => {
@@ -102,9 +113,8 @@ describe('Data protection: import', () => {
     });
 
     it('changes nothing when the confirmation is cancelled', async () => {
-        const cancelled = createApp({ confirmResult: false });
-        cancelled.storage.setItem('allVocabulary', '[{"id":"keep"}]');
-        cancelled.storage.setItem('userProgress', '{"keep":{}}');
+        const storage = createMemoryStorage({ vocabulary: rawVocabulary([{ id: 'keep' }]) });
+        const cancelled = createApp({ storage, confirmResult: false });
         const before = { ...cancelled.storage.data };
 
         await cancelled.ie.importFromText(fixtureText());
@@ -113,60 +123,106 @@ describe('Data protection: import', () => {
         expect(cancelled.reload).not.toHaveBeenCalled();
     });
 
-    it('snapshots the previous raw values and restore puts them back exactly', async () => {
-        const rawVocabulary = '[{"id":"old","original":"old","translation":"старый"}]';
-        const rawProgress = '{"old":{"repetition":4,"easeFactor":2.1,"nextReview":null,"reviewHistory":[]}}';
-        app.storage.setItem('allVocabulary', rawVocabulary);
-        app.storage.setItem('userProgress', rawProgress);
-        expect(app.ie.getSnapshotDate()).toBeNull();
+    it('snapshots the previous raw `vocabulary` and restore puts it back exactly', async () => {
+        const raw = rawVocabulary([{ id: 'old', original: 'old', translation: 'старый', repetition: 4, easeFactor: 2.1, nextReview: null, reviewHistory: [] }]);
+        const restoring = createApp({ storage: createMemoryStorage({ vocabulary: raw }) });
+        expect(restoring.store.getSnapshotDate()).toBeNull();
 
-        await app.ie.importFromText(fixtureText());
+        await restoring.ie.importFromText(fixtureText());
 
-        expect(app.storage.getItem('allVocabulary')).not.toBe(rawVocabulary);
-        const snapshot = JSON.parse(app.storage.getItem('snapshotBeforeImport'));
-        expect(snapshot).toEqual({ savedAt: NOW.toISOString(), allVocabulary: rawVocabulary, userProgress: rawProgress });
-        expect(app.ie.getSnapshotDate()).toBe('2026-11-22');
+        expect(restoring.storage.data.vocabulary).not.toBe(raw);
+        const snapshot = JSON.parse(restoring.storage.data.snapshotBeforeImport);
+        expect(snapshot).toEqual({ savedAt: NOW.toISOString(), vocabulary: raw });
+        expect(restoring.store.getSnapshotDate()).toBe('2026-11-22');
 
-        const afterImport = { ...app.storage.data };
+        const afterImport = { ...restoring.storage.data };
 
-        app.confirm.mockReturnValueOnce(false);
-        app.reload.mockClear();
-        app.ie.restoreSnapshot();
-        expect(app.storage.data).toEqual(afterImport);
-        expect(app.reload).not.toHaveBeenCalled();
+        restoring.confirm.mockReturnValueOnce(false);
+        restoring.reload.mockClear();
+        restoring.ie.restoreSnapshot();
+        expect(restoring.storage.data).toEqual(afterImport);
+        expect(restoring.reload).not.toHaveBeenCalled();
 
-        app.ie.restoreSnapshot();
+        restoring.ie.restoreSnapshot();
 
-        expect(app.confirm).toHaveBeenLastCalledWith(expect.stringContaining('from before the restore on 2026-11-22'));
-        expect(app.storage.getItem('allVocabulary')).toBe(rawVocabulary);
-        expect(app.storage.getItem('userProgress')).toBe(rawProgress);
-        expect(app.storage.getItem('snapshotBeforeImport')).toBeNull();
-        expect(app.ie.getSnapshotDate()).toBeNull();
-        expect(app.reload).toHaveBeenCalledTimes(1);
+        expect(restoring.confirm).toHaveBeenLastCalledWith(
+            'Go back to your data from before the restore on 2026-11-22? Progress made since then will be lost.'
+        );
+        expect(restoring.storage.data).toEqual({ vocabulary: raw });
+        expect(restoring.reload).toHaveBeenCalledTimes(1);
     });
 
-    it('restore removes keys that did not exist before the import', async () => {
+    it('restores an old-shape snapshot from the previous version and migrates it on the next load', () => {
+        const oldWords = [{ id: 'old', original: 'old', translation: 'старый', createdAt: '2026-01-01T00:00:00.000Z', addedDate: '2026-01-01T00:00:00.000Z' }];
+        const oldProgress = { old: { repetition: 4, easeFactor: 2.1, nextReview: '2026-12-01T00:00:00.000Z', reviewHistory: [] } };
+        // State left by the previous version after an import: imported words in the old keys plus an old-shape snapshot
+        const storage = createMemoryStorage({
+            allVocabulary: JSON.stringify(fixture.vocabulary),
+            userProgress: '{}',
+            snapshotBeforeImport: JSON.stringify({
+                savedAt: '2026-11-20T10:00:00.000Z',
+                allVocabulary: JSON.stringify(oldWords),
+                userProgress: JSON.stringify(oldProgress)
+            })
+        });
+        const imported = createApp({ storage });
+        expect(imported.dm.vocabulary).toHaveLength(fixture.vocabulary.length);
+        expect(storage.data.vocabulary).toBeDefined();
+
+        imported.ie.restoreSnapshot();
+
+        expect(imported.confirm).toHaveBeenLastCalledWith(expect.stringContaining('from before the restore on 2026-11-20'));
+        expect(storage.data.vocabulary).toBeUndefined();
+        expect(storage.data.allVocabulary).toBe(JSON.stringify(oldWords));
+        expect(storage.data.userProgress).toBe(JSON.stringify(oldProgress));
+
+        const reloaded = createApp({ storage });
+        expect(reloaded.dm.vocabulary).toEqual([{ ...oldWords[0], ...oldProgress.old }]);
+        expect(JSON.parse(storage.data.vocabulary).words).toEqual(reloaded.dm.vocabulary);
+    });
+
+    it('restore removes `vocabulary` when it did not exist before the import', async () => {
         await app.ie.importFromText(fixtureText());
         app.ie.restoreSnapshot();
-        expect(app.storage.getItem('allVocabulary')).toBeNull();
-        expect(app.storage.getItem('userProgress')).toBeNull();
+        expect(app.storage.data).toEqual({});
     });
 
     it('restore does nothing without a snapshot', () => {
         app.ie.restoreSnapshot();
+        expect(app.confirm).not.toHaveBeenCalled();
         expect(app.reload).not.toHaveBeenCalled();
     });
 
     it('keeps the old data when the snapshot cannot be written', async () => {
-        app.storage.setItem('allVocabulary', '[{"id":"keep"}]');
-        const setItem = app.storage.setItem;
-        app.storage.setItem = (key, value) => {
-            if (key === 'snapshotBeforeImport') throw new Error('quota');
+        const raw = rawVocabulary([{ id: 'keep' }]);
+        const storage = createMemoryStorage({ vocabulary: raw });
+        storage.setItem.mockImplementation((key) => { throw new Error(`quota ${key}`); });
+        const blocked = createApp({ storage });
+
+        await blocked.ie.importFromText(fixtureText());
+
+        expect(storage.data).toEqual({ vocabulary: raw });
+        expect(blocked.reload).not.toHaveBeenCalled();
+        expect(blocked.appMain.showMessage).toHaveBeenLastCalledWith('Import failed. quota snapshotBeforeImport', 'error');
+    });
+
+    it('does not reload and keeps the snapshot when writing the imported words fails', async () => {
+        const raw = rawVocabulary([{ id: 'keep' }]);
+        const storage = createMemoryStorage({ vocabulary: raw });
+        const failing = createApp({ storage });
+        const setItem = storage.setItem.getMockImplementation();
+        storage.setItem.mockImplementation((key, value) => {
+            if (key === 'vocabulary') throw new Error('QuotaExceededError');
             setItem(key, value);
-        };
-        await app.ie.importFromText(fixtureText());
-        expect(app.storage.getItem('allVocabulary')).toBe('[{"id":"keep"}]');
-        expect(app.appMain.showMessage).toHaveBeenLastCalledWith(expect.stringContaining('quota'), 'error');
+        });
+
+        await failing.ie.importFromText(fixtureText());
+
+        expect(failing.reload).not.toHaveBeenCalled();
+        expect(failing.appMain.showMessage).toHaveBeenLastCalledWith('Import failed. QuotaExceededError', 'error');
+        expect(failing.dm.vocabulary.map(w => w.id)).toEqual(['keep']);
+        expect(storage.data.vocabulary).toBe(raw);
+        expect(failing.store.getSnapshotDate()).toBe('2026-11-22');
     });
 
     it('round trip: fixture -> import -> export keeps words and progress', async () => {
@@ -181,19 +237,16 @@ describe('Data protection: import', () => {
             PROGRESS_FIELDS.forEach(field => expect(roundTripped[field]).toEqual(original[field]));
         });
     });
-});
 
-describe('Data protection: write failures', () => {
-    it('shows an error when saving progress or words fails', async () => {
-        const storage = createMemoryStorage();
-        storage.setItem = () => { throw new Error('QuotaExceededError'); };
-        const { dm, appMain } = createApp({ storage });
-        dm.vocabulary = [{ id: 'w1', original: 'a', translation: 'б', repetition: 0, easeFactor: 1.3, reviewHistory: [] }];
+    it('round trip across reloads: export -> import -> export is identical', async () => {
+        await app.ie.importFromText(fixtureText());
+        const firstExport = createApp({ storage: app.storage }).ie.createExportData();
 
-        await dm.saveUserProgress();
-        expect(appMain.showMessage).toHaveBeenLastCalledWith(expect.stringContaining('save your progress'), 'error');
+        const second = createApp({ storage: app.storage });
+        await second.ie.importFromText(JSON.stringify(firstExport));
+        const secondExport = createApp({ storage: app.storage }).ie.createExportData();
 
-        dm.saveAllVocabulary();
-        expect(appMain.showMessage).toHaveBeenLastCalledWith(expect.stringContaining('save your words'), 'error');
+        expect(secondExport).toEqual(firstExport);
+        expect(firstExport.totalWords).toBe(fixture.vocabulary.length);
     });
 });

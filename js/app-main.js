@@ -135,8 +135,7 @@ async function addWord() {
 
         const DM = window.SV?.DataManager;
         DM.vocabulary = vocabulary;
-        DM.saveUserProgress();
-        DM.saveAllVocabulary();
+        DM.save();
 
         window.SV.AppState.editingWordId = null;
         clearForm();
@@ -176,8 +175,7 @@ async function addWord() {
     if (window.SV?.DataManager) {
         window.SV.DataManager.vocabulary.push(newWord);
         window.SV?.debugLog?.('✅ Word added successfully! Total words:', window.SV.DataManager.vocabulary.length);
-        window.SV.DataManager.saveUserProgress();
-        window.SV.DataManager.saveAllVocabulary();
+        window.SV.DataManager.save();
     }
     
     clearForm();
@@ -326,26 +324,15 @@ function deleteWord(id) {
             // User confirmed deletion
             window.SV?.debugLog?.('🗑️ User confirmed deletion');
             
-            // Remove from DataManager vocabulary if present
-            if (dm && Array.isArray(dm.vocabulary)) {
-                dm.vocabulary = dm.vocabulary.filter(word => word.id !== id);
-            }
+            dm.vocabulary = dm.vocabulary.filter(word => word.id !== id);
+            dm.save();
 
-            if (dm) {
-                // Remove from user progress
-                delete dm.userProgress[id];
-                // Persist
-                dm.saveUserProgress();
-                dm.saveAllVocabulary();
-            }
-            
             // Update UI
             window.SV?.AppMain?.renderWordList?.();
             window.SV?.Statistics?.updateStats?.();
-            
-            const newLength = dm?.vocabulary?.length ?? 0;
+
             window.SV?.debugLog?.('🗑️ Word deleted successfully:', wordToDelete.original);
-            window.SV?.debugLog?.('🗑️ New vocabulary length:', newLength);
+            window.SV?.debugLog?.('🗑️ New vocabulary length:', dm.vocabulary.length);
         });
     }
 }

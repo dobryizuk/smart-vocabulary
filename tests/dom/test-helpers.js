@@ -9,8 +9,7 @@ export function setupDOM() {
   global.window = global;
   global.SV = global.SV || {};
   global.SV.DataManager = {
-    vocabulary: [],
-    userProgress: {}
+    vocabulary: []
   };
 
   // Minimal SpacedRepetition progress helper used by some tests
@@ -56,9 +55,6 @@ export function createTestProgress(overrides = {}) {
     reviewStatus: 'Ready for review',
     isReady: true,
     addedDate: new Date('2024-01-01'),
-    correctCount: 5,
-    totalAttempts: 7,
-    lastSeen: Date.now() - (1000 * 60 * 60 * 24),
     ...overrides
   };
 }
@@ -78,6 +74,17 @@ export function hasClass(element, className) {
 export function getTextContent(element) {
   if (!element) return '';
   return element.textContent.trim();
+}
+
+// In-memory Storage for injecting into modules; `data` exposes the raw stored strings
+export function createMemoryStorage(initial = {}) {
+  const data = { ...initial };
+  return {
+    data,
+    getItem: vi.fn((key) => (key in data ? data[key] : null)),
+    setItem: vi.fn((key, value) => { data[key] = String(value); }),
+    removeItem: vi.fn((key) => { delete data[key]; })
+  };
 }
 
 export function mockLocalStorage() {

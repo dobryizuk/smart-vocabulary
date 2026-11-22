@@ -98,11 +98,7 @@ describe('Translation Components', () => {
         examples: ['A comprehensive study', 'Comprehensive coverage']
       });
       
-      const progress = createTestProgress({
-        repetitions: 3,
-        correctCount: 5,
-        totalAttempts: 7
-      });
+      const progress = createTestProgress({ repetitions: 3 });
       
       const answerHtml = UIComponents.createLearningAnswerContent(word, progress, 'learning');
       const container = renderToDOM(answerHtml);

@@ -44,8 +44,7 @@ describe('Add word flow - success toast', () => {
     window.SV = window.SV || {};
     window.SV.DataManager = {
       vocabulary: [],
-      saveUserProgress: vi.fn(),
-      saveAllVocabulary: vi.fn()
+      save: vi.fn()
     };
     require('../../js/app-state.js');
     require('../../js/ui-components.js');

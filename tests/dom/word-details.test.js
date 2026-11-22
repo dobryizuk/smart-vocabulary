@@ -222,10 +222,7 @@ describe('Word Metadata Component', () => {
         repetitions: 3,
         reviewStatus: 'Ready for review',
         isReady: true,
-        addedDate: new Date('2024-01-01'),
-        correctCount: 5,
-        totalAttempts: 7,
-        lastSeen: Date.now() - (1000 * 60 * 60 * 24) // 1 day ago
+        addedDate: new Date('2024-01-01')
       };
       
       const metadataHtml = createWordMetadata(word, progress);
@@ -237,8 +234,7 @@ describe('Word Metadata Component', () => {
       const metadataText = getTextContent(metadata);
       expect(metadataText).toContain('3 repetitions');
       expect(metadataText).toContain('Ready for review');
-      expect(metadataText).toContain('5/7 correct');
-      expect(metadataText).toContain('1 days ago');
+      expect(metadataText).toContain('Added 01/01/2024');
     });
 
     it('should handle minimal metadata gracefully', () => {
@@ -253,8 +249,7 @@ describe('Word Metadata Component', () => {
       
       const metadataText = getTextContent(metadata);
       expect(metadataText).toContain('0 repetitions');
-      expect(metadataText).not.toContain('correct');
-      expect(metadataText).not.toContain('days ago');
+      expect(metadataText).not.toContain('Added');
     });
 
     it('should return empty string when no metadata provided', () => {
@@ -272,8 +267,7 @@ describe('Word Metadata Component', () => {
       const word = createTestWord({ id: 'date_test' });
       const progress = {
         repetitions: 1,
-        addedDate: new Date('2024-06-15'),
-        lastSeen: new Date('2024-06-20').getTime()
+        addedDate: new Date('2024-06-15')
       };
       
       const metadataHtml = createWordMetadata(word, progress);
@@ -281,24 +275,6 @@ describe('Word Metadata Component', () => {
       
       const metadataText = getTextContent(container);
       expect(metadataText).toContain('Added 15/06/2024'); // European format
-    });
-
-    it('should handle different time intervals for lastSeen', () => {
-      const word = createTestWord({ id: 'time_test' });
-      
-      // Test recent time (same day)
-      const recentProgress = {
-        repetitions: 1,
-        totalAttempts: 1,
-        lastSeen: Date.now() - (1000 * 60 * 60 * 2) // 2 hours ago
-      };
-      
-      const recentHtml = createWordMetadata(word, recentProgress);
-      const recentContainer = renderToDOM(recentHtml);
-      const recentText = getTextContent(recentContainer);
-      
-      // Real implementation shows "Today" for same-day activity
-      expect(recentText).toContain('Today');
     });
   });
 });

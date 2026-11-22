@@ -1,68 +1,81 @@
-import { describe, it, expect, vi } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createMemoryStorage } from './test-helpers.js';
 
 const { createDataManager } = require('../../js/data-manager.js');
+const { createVocabularyStore } = require('../../js/vocabulary-store.js');
+const fixture = require('../test-vocabulary.json');
 
-const words = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '..', 'test-vocabulary.json'), 'utf8')
-).vocabulary.slice(0, 3);
+const NOW = new Date('2030-01-02T03:04:05.000Z');
+const words = fixture.vocabulary.map(word => ({ ...word, createdAt: word.addedDate }));
 
-function createMemoryStorage(initial) {
-  const data = { ...initial };
-  return {
-    getItem: vi.fn((key) => (key in data ? data[key] : null)),
-    setItem: vi.fn((key, value) => { data[key] = value; }),
-    removeItem: vi.fn((key) => { delete data[key]; })
-  };
+function createManager(storage) {
+    const appMain = { showMessage: vi.fn() };
+    const store = createVocabularyStore({ storage, now: () => NOW });
+    return { appMain, store, dm: createDataManager({ store, appMain }) };
 }
 
-describe('DataManager.initializeVocabulary', () => {
-  const fixedNow = new Date('2030-01-02T03:04:05.000Z');
+describe('DataManager', () => {
+    it('loads the words from the store and saves changes back', () => {
+        const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words }) });
+        const { dm, store } = createManager(storage);
 
-  it('merges userProgress over stored words, defaults for the rest, and writes nothing', async () => {
-    const progress = {
-      repetition: 4,
-      easeFactor: 2.1,
-      nextReview: '2031-01-01T00:00:00.000Z',
-      reviewHistory: [{ success: true }]
-    };
-    const storage = createMemoryStorage({
-      allVocabulary: JSON.stringify(words),
-      userProgress: JSON.stringify({ [words[0].id]: progress })
+        dm.initializeVocabulary();
+        expect(dm.vocabulary).toEqual(words);
+
+        dm.vocabulary[0].repetition = 9;
+        dm.save();
+        expect(store.load()[0].repetition).toBe(9);
     });
-    const manager = createDataManager({ storage, now: () => fixedNow });
 
-    await manager.initializeVocabulary();
+    it('shows an error for an unreadable `vocabulary` and never overwrites it', () => {
+        const storage = createMemoryStorage({ vocabulary: '{broken' });
+        const { dm, appMain } = createManager(storage);
 
-    expect(manager.vocabulary).toHaveLength(words.length);
-    expect(manager.vocabulary[0]).toMatchObject({ id: words[0].id, original: words[0].original, ...progress });
-    for (const word of manager.vocabulary.slice(1)) {
-      expect(word).toMatchObject({ repetition: 0, easeFactor: 1.3, nextReview: null, reviewHistory: [] });
-    }
-    expect(manager.vocabulary[1].createdAt).toBeTruthy();
-    expect(storage.setItem).not.toHaveBeenCalled();
-    expect(storage.removeItem).not.toHaveBeenCalled();
-  });
+        dm.initializeVocabulary();
 
-  it('fills missing createdAt and addedDate from the current time', async () => {
-    const { id, original, translation } = words[0];
-    const storage = createMemoryStorage({ allVocabulary: JSON.stringify([{ id, original, translation }]) });
-    const manager = createDataManager({ storage, now: () => fixedNow });
+        expect(dm.vocabulary).toEqual([]);
+        expect(appMain.showMessage).toHaveBeenCalledWith(expect.stringContaining('Could not load your saved words'), 'error');
 
-    await manager.initializeVocabulary();
+        dm.vocabulary.push(words[0]);
+        dm.save();
 
-    expect(manager.vocabulary[0].createdAt).toBe(fixedNow.toISOString());
-    expect(manager.vocabulary[0].addedDate).toBe(fixedNow.toISOString());
-  });
+        expect(storage.data.vocabulary).toBe('{broken');
+        expect(storage.setItem).not.toHaveBeenCalled();
+    });
 
-  it('results in an empty vocabulary when storage is empty or corrupt', async () => {
-    const empty = createDataManager({ storage: createMemoryStorage({}) });
-    await empty.initializeVocabulary();
-    expect(empty.vocabulary).toEqual([]);
+    it('shows the storage-full toast when the write fails', () => {
+        const storage = createMemoryStorage();
+        storage.setItem.mockImplementation(() => { throw new Error('QuotaExceededError'); });
+        const { dm, appMain } = createManager(storage);
+        dm.initializeVocabulary();
+        dm.vocabulary = words;
 
-    const corrupt = createDataManager({ storage: createMemoryStorage({ allVocabulary: '{broken' }) });
-    await corrupt.initializeVocabulary();
-    expect(corrupt.vocabulary).toEqual([]);
-  });
+        dm.save();
+
+        expect(appMain.showMessage).toHaveBeenLastCalledWith(
+            'Could not save your words: device storage may be full. Make a backup now.', 'error'
+        );
+    });
+});
+
+describe('AppMain.deleteWord', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<div class="container"></div>';
+    });
+
+    it('removes the word and persists the rest', () => {
+        const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words }) });
+        const { dm, store } = createManager(storage);
+        dm.initializeVocabulary();
+        window.SV = {
+            DataManager: dm,
+            UIComponents: { showDeleteConfirmation: (word, onConfirm) => onConfirm() }
+        };
+
+        require('../../js/app-main.js').deleteWord(words[1].id);
+
+        const remainingIds = [words[0].id, words[2].id];
+        expect(dm.vocabulary.map(w => w.id)).toEqual(remainingIds);
+        expect(store.load().map(w => w.id)).toEqual(remainingIds);
+    });
 });

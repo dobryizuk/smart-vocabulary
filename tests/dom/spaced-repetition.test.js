@@ -4,8 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 beforeEach(() => {
   global.window = global;
   global.DataManager = {
-    vocabulary: [],
-    userProgress: {}
+    vocabulary: []
   };
 });
 

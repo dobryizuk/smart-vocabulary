@@ -18,7 +18,6 @@ test.describe('Learning session size and completion', () => {
       const dm = window.SV?.DataManager;
       if (dm) {
         dm.vocabulary = [];
-        dm.userProgress = {};
       }
     });
   });

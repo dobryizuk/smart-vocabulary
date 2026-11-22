@@ -105,15 +105,12 @@ function buildHeaderSection(word, variant, originalClasses, translationClasses, 
 }
 
 function createWordCard(word, variant = 'default', actions = [], showProgress = false, expandable = false) {
-    const userProgress = window.SV?.DataManager?.userProgress || {};
-    const baseProgress = userProgress[word.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
     const uniqueId = `word-card-${word.id}`;
     
     // Create extended progress with all metadata fields
     const { isReady, reviewText } = computeReview(word.nextReview);
         
     const progress = {
-        ...baseProgress,
         repetitions: word.repetition || 0,
         reviewStatus: reviewText,
         isReady: isReady,
@@ -450,22 +447,9 @@ function createWordMetadata(word, progress) {
         }
     };
 
-    const addAccuracyItem = () => {
-        if (!shouldAddItem(progress.totalAttempts > 0)) return;
-        pushItem(`${progress.correctCount}/${progress.totalAttempts} correct`);
-    };
-
-    const addLastSeenItem = () => {
-        if (!shouldAddItem(progress.lastSeen && progress.totalAttempts > 0)) return;
-        const daysAgo = Math.floor((Date.now() - new Date(progress.lastSeen)) / (1000 * 60 * 60 * 24));
-        pushItem(daysAgo === 0 ? 'Today' : `${daysAgo} days ago`);
-    };
-
     addAddedDateItem();
     addRepetitionsItem();
     addReviewItem();
-    addAccuracyItem();
-    addLastSeenItem();
 
     if (items.length === 0) return '';
 
