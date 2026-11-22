@@ -5,7 +5,7 @@
 function createSpacedRepetition(context) {
     const ctx = context || {};
     const getVocabulary = ctx.getVocabulary || (() => []);
-    const debugLog = ctx.debugLog || ((..._args) => undefined);
+    const debugLog = ctx.debugLog || (() => undefined);
 
     function calculateNextReview(difficulty, repetition = 0, easeFactor = 1.3) {
         let interval;
@@ -109,9 +109,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Provide factory for browser attach in app-init
-try {
-    if (typeof window !== 'undefined') {
-        // eslint-disable-next-line no-restricted-syntax
-        window.createDefaultSpacedRepetition = createDefaultSpacedRepetition;
-    }
-} catch (_err) {}
+if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-restricted-syntax
+    window.createDefaultSpacedRepetition = createDefaultSpacedRepetition;
+}

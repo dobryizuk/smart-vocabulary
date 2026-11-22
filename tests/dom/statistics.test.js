@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('Statistics module', () => {
   let createStatistics;
-  let container;
 
   function setupStatsDOM() {
     document.body.innerHTML = `
@@ -15,7 +14,6 @@ describe('Statistics module', () => {
         <span id="streakCount"></span>
       </div>
     `;
-    container = document.getElementById('statsGrid');
   }
 
   beforeEach(() => {
@@ -66,7 +64,7 @@ describe('Statistics module', () => {
       calculateLearningProgress: calcProgress,
       getWordsForReview,
       document,
-      debugLog: () => {}
+      debugLog: () => undefined
     });
 
     stats.updateStats();
@@ -98,7 +96,7 @@ describe('Statistics module', () => {
       calculateLearningProgress: () => 0,
       getWordsForReview: () => [],
       document,
-      debugLog: () => {}
+      debugLog: () => undefined
     });
 
     stats.updateStats();

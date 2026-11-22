@@ -16,7 +16,7 @@ describe('Settings page diagnostics controls', () => {
     window.wireEventHandlers();
     URL.createObjectURL = vi.fn(() => 'blob:logs');
     URL.revokeObjectURL = vi.fn();
-    anchorClick = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    anchorClick = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

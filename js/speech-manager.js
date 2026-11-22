@@ -8,15 +8,19 @@ function createSpeechManager(context) {
 
     // Unified dependencies (respect explicit nulls in DI)
     const hasOwn = Object.prototype.hasOwnProperty;
-    const storage = hasOwn.call(ctx, 'storage') ? ctx.storage : (typeof localStorage !== 'undefined' ? localStorage : null);
-    const doc = hasOwn.call(ctx, 'document') ? ctx.document : (typeof document !== 'undefined' ? document : null);
-    const speech = hasOwn.call(ctx, 'speech') ? ctx.speech : (typeof g.speechSynthesis !== 'undefined' ? g.speechSynthesis : null);
+    const pick = (key, fallback) => (hasOwn.call(ctx, key) ? ctx[key] : fallback);
+    const defaultStorage = typeof localStorage !== 'undefined' ? localStorage : null;
+    const defaultDoc = typeof document !== 'undefined' ? document : null;
+    const defaultSpeech = typeof g.speechSynthesis !== 'undefined' ? g.speechSynthesis : null;
+    const storage = pick('storage', defaultStorage);
+    const doc = pick('document', defaultDoc);
+    const speech = pick('speech', defaultSpeech);
     const createUtterance = (text) => {
         if (typeof ctx.createUtterance === 'function') return ctx.createUtterance(text);
         if (typeof g.SpeechSynthesisUtterance !== 'undefined') return new g.SpeechSynthesisUtterance(text);
         return null;
     };
-    const audioSession = hasOwn.call(ctx, 'audioSession') ? ctx.audioSession : (g.navigator?.audioSession ?? null);
+    const audioSession = pick('audioSession', g.navigator?.audioSession ?? null);
     const log = ctx.log || ((...args) => g.SV?.debugLog?.(...args));
     const setTimer = ctx.setTimeout || ((fn, ms) => setTimeout(fn, ms));
 

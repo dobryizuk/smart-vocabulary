@@ -1,6 +1,7 @@
 # Development files
 CLAUDE.md
 release.sh
+developer/
 
 # Keep tests private in production, but allow local testing
 # tests/

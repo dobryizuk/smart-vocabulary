@@ -8,8 +8,28 @@ function createStatistics(context) {
     const calcProgress = ctx.calculateLearningProgress ?? (() => 0);
     const getWordsForReview = ctx.getWordsForReview ?? (() => []);
     const doc = ctx.document ?? (typeof document !== 'undefined' ? document : null);
-    const debugLog = ctx.debugLog ?? ((..._args) => undefined);
+    const debugLog = ctx.debugLog ?? (() => undefined);
     const appMain = ctx.appMain ?? {};
+
+    function countTrailingSuccess(history) {
+        if (!Array.isArray(history) || history.length === 0) return 0;
+        let count = 0;
+        for (let i = history.length - 1; i >= 0; i--) {
+            const diff = history[i] && history[i].difficulty;
+            if (diff === 'easy' || diff === 'perfect') count++;
+            else break;
+        }
+        return count;
+    }
+
+    function longestTrailingSuccess(vocabulary) {
+        let streak = 0;
+        for (let i = 0; i < vocabulary.length; i++) {
+            const s = countTrailingSuccess(vocabulary[i]?.reviewHistory);
+            if (s > streak) streak = s;
+        }
+        return streak;
+    }
 
     function updateStats() {
         const vocabularyRaw = getVocabulary();
@@ -37,22 +57,7 @@ function createStatistics(context) {
         const reviewList = getWordsForReview();
         const reviewWords = Array.isArray(reviewList) ? reviewList.length : 0;
 
-        const countTrailingSuccess = (history) => {
-            if (!Array.isArray(history) || history.length === 0) return 0;
-            let count = 0;
-            for (let i = history.length - 1; i >= 0; i--) {
-                const diff = history[i] && history[i].difficulty;
-                if (diff === 'easy' || diff === 'perfect') count++;
-                else break;
-            }
-            return count;
-        };
-
-        let streak = 0;
-        for (let i = 0; i < vocabulary.length; i++) {
-            const s = countTrailingSuccess(vocabulary[i]?.reviewHistory);
-            if (s > streak) streak = s;
-        }
+        const streak = longestTrailingSuccess(vocabulary);
 
         const updateElement = (id, value) => {
             if (!doc) return;
@@ -75,12 +80,16 @@ function createStatistics(context) {
         debugLog(`Words ready for review: ${reviewWords}`);
         
         if (reviewWords === 0 && totalWords > 0) {
-            debugLog('🔍 Debug: No words for review. Checking word details:');
-            vocabulary.slice(0, 5).forEach(word => {
-                const nextReview = word.nextReview ? new Date(word.nextReview) : null;
-                debugLog(`${word.original}: next review ${nextReview ? nextReview.toLocaleString() : 'never'} (repetition: ${word.repetition})`);
-            });
+            logReviewDebug(vocabulary);
         }
+    }
+
+    function logReviewDebug(vocabulary) {
+        debugLog('🔍 Debug: No words for review. Checking word details:');
+        vocabulary.slice(0, 5).forEach(word => {
+            const nextReview = word.nextReview ? new Date(word.nextReview) : null;
+            debugLog(`${word.original}: next review ${nextReview ? nextReview.toLocaleString() : 'never'} (repetition: ${word.repetition})`);
+        });
     }
 
     function showDatabaseError() {

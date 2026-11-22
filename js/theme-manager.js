@@ -10,7 +10,7 @@ class ThemeManager {
         this.storage = ctx.storage ?? (typeof localStorage !== 'undefined' ? localStorage : null);
         this.matchMedia = ctx.matchMedia ?? (this.win && this.win.matchMedia ? this.win.matchMedia.bind(this.win) : null);
         this.navigator = ctx.navigator ?? (typeof navigator !== 'undefined' ? navigator : null);
-        this.debugLog = ctx.debugLog ?? ((..._args) => undefined);
+        this.debugLog = ctx.debugLog ?? (() => undefined);
         this.currentTheme = 'system';
         this.systemTheme = 'dark'; // Default fallback
         this.init();

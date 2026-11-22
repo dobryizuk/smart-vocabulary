@@ -698,9 +698,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Provide factory for browser attach in app-init
-try {
-    if (typeof window !== 'undefined') {
-        // eslint-disable-next-line no-restricted-syntax
-        window.createDefaultLearningSession = createDefaultLearningSession;
-    }
-} catch (_err) {}
+if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-restricted-syntax
+    window.createDefaultLearningSession = createDefaultLearningSession;
+}

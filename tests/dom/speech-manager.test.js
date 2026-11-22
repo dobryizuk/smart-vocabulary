@@ -150,7 +150,7 @@ describe('SpeechManager speakWord and settings (iOS compatibility)', () => {
 
   it('does not throw when speak fails', () => {
     speechMock.speak.mockImplementation(() => { throw new Error('boom'); });
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const mgr = makeManager();
 
     expect(() => mgr.speakWord('word')).not.toThrow();

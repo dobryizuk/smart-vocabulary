@@ -7,12 +7,12 @@ const { downloadFile } = require('./file-download.js');
 function createImportExport(context) {
     const ctx = context || {};
     const getVocabulary = ctx.getVocabulary || (() => []);
-    const setVocabulary = ctx.setVocabulary || ((..._args) => undefined);
-    const saveUserProgress = ctx.saveUserProgress || ((..._args) => undefined);
-    const saveAllVocabulary = ctx.saveAllVocabulary || ((..._args) => undefined);
+    const setVocabulary = ctx.setVocabulary || (() => undefined);
+    const saveUserProgress = ctx.saveUserProgress || (() => undefined);
+    const saveAllVocabulary = ctx.saveAllVocabulary || (() => undefined);
     const storage = ctx.storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     const doc = ctx.document || (typeof document !== 'undefined' ? document : null);
-    const debugLog = ctx.debugLog || ((..._args) => undefined);
+    const debugLog = ctx.debugLog || (() => undefined);
     const appMain = ctx.appMain || {};
     const stats = ctx.stats || {};
     const getNow = ctx.getNow || (() => new Date());

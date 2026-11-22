@@ -5,7 +5,7 @@
 function createDataManager(context) {
     const ctx = context || {};
     const storage = ctx.storage || (typeof localStorage !== 'undefined' ? localStorage : null);
-    const debugLog = ctx.debugLog || ((..._args) => undefined);
+    const debugLog = ctx.debugLog || (() => undefined);
     const appMain = ctx.appMain || {};
     const stats = ctx.stats || {};
     const now = ctx.now || (() => new Date());
@@ -175,9 +175,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Provide factory for browser attach in app-init
-try {
-    if (typeof window !== 'undefined') {
-        // eslint-disable-next-line no-restricted-syntax
-        window.createDefaultDataManager = createDefaultDataManager;
-    }
-} catch (_err) {}
+if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-restricted-syntax
+    window.createDefaultDataManager = createDefaultDataManager;
+}
