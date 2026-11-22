@@ -16,6 +16,7 @@ function createSpeechManager(context) {
         if (typeof g.SpeechSynthesisUtterance !== 'undefined') return new g.SpeechSynthesisUtterance(text);
         return null;
     };
+    const audioSession = hasOwn.call(ctx, 'audioSession') ? ctx.audioSession : (g.navigator?.audioSession ?? null);
     const log = ctx.log || ((...args) => g.SV?.debugLog?.(...args));
     const setTimer = ctx.setTimeout || ((fn, ms) => setTimeout(fn, ms));
 
@@ -51,8 +52,24 @@ function createSpeechManager(context) {
             speechSettings.enabled = false;
             return false;
         }
+        usePlaybackAudioSession();
         log('🔊 Speech initialized, settings:', speechSettings);
         return true;
+    }
+
+    // "playback" makes iOS treat the page's sound as media, so Silent mode does not mute it
+    // (Safari 16.4+ Audio Session API)
+    function usePlaybackAudioSession() {
+        if (!audioSession) {
+            log('🔈 Audio Session API unavailable, Silent mode may mute speech');
+            return;
+        }
+        try {
+            audioSession.type = 'playback';
+            log('🔈 Audio session type:', audioSession.type);
+        } catch (error) {
+            if (typeof console !== 'undefined') console.warn('⚠️ Failed to set audio session type:', error);
+        }
     }
 
     function engineState() {

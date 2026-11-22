@@ -227,3 +227,47 @@ describe('SpeechManager diagnostics logging', () => {
     expect(messages()).not.toContain('⚠️ Speech did not start within');
   });
 });
+
+describe('SpeechManager audio session (iOS Silent mode)', () => {
+  let createSpeechManager;
+  const speech = { speak: vi.fn(), cancel: vi.fn() };
+
+  beforeEach(() => {
+    createSpeechManager = require('../../js/speech-manager.js').createSpeechManager;
+  });
+
+  it('switches the audio session to playback so Silent mode does not mute speech', () => {
+    const audioSession = { type: 'auto' };
+    const log = vi.fn();
+    createSpeechManager({ storage: null, speech, audioSession, log }).initializeSpeech();
+
+    expect(audioSession.type).toBe('playback');
+    expect(log).toHaveBeenCalledWith('🔈 Audio session type:', 'playback');
+  });
+
+  it('logs and keeps speech enabled when the Audio Session API is missing', () => {
+    const log = vi.fn();
+    const mgr = createSpeechManager({ storage: null, speech, audioSession: null, log });
+
+    expect(mgr.initializeSpeech()).toBe(true);
+    expect(mgr.speechSettings.enabled).toBe(true);
+    expect(log).toHaveBeenCalledWith('🔈 Audio Session API unavailable, Silent mode may mute speech');
+  });
+
+  it('does not break initialization when setting the session type throws', () => {
+    const audioSession = { set type(_value) { throw new Error('NotAllowedError'); } };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const mgr = createSpeechManager({ storage: null, speech, audioSession, log: vi.fn() });
+
+    expect(mgr.initializeSpeech()).toBe(true);
+    expect(warn).toHaveBeenCalledWith('⚠️ Failed to set audio session type:', expect.any(Error));
+    warn.mockRestore();
+  });
+
+  it('does not touch the audio session when speech is unsupported', () => {
+    const audioSession = { type: 'auto' };
+    createSpeechManager({ storage: null, speech: null, audioSession }).initializeSpeech();
+
+    expect(audioSession.type).toBe('auto');
+  });
+});

@@ -251,6 +251,7 @@ function collectEnvironment() {
         speechSynthesis: typeof window.speechSynthesis !== 'undefined',
         speechUtterance: typeof window.SpeechSynthesisUtterance !== 'undefined',
         speechSettings: window.SV?.SpeechManager?.speechSettings,
+        audioSession: nav.audioSession?.type ?? 'unsupported',
         serviceWorkerControlled: Boolean(nav.serviceWorker?.controller),
         loggingEnabled: window.SV?.LogRecorder?.enabled
     };
