@@ -2,14 +2,18 @@
 // APPLICATION INITIALIZATION & BOOTSTRAP (attach namespace/globals)
 // ============================================================================
 
+const { downloadFile } = require('./file-download.js');
+
 ;(function bootstrap(global) {
     // Create namespaced container
     global.SV = global.SV || {};
     // Debug configuration and helper
     global.SV.config = global.SV.config || { debug: false };
+    global.SV.LogRecorder = require('./log-recorder.js');
+    global.SV.LogRecorder.install(global);
     global.SV.debugLog = function debugLog(...args) {
-        if (!(global.SV && global.SV.config && global.SV.config.debug && typeof console !== 'undefined')) return;
-        console.log(...args);
+        global.SV.LogRecorder.record('debug', args);
+        if (global.SV.config.debug && typeof console !== 'undefined') console.log(...args);
     };
 
     // Helper to attach module under SV namespace (bundled environment)
@@ -181,6 +185,7 @@ function initializeComponents() {
                 ${buttonsContainer}
                 ${infoText}
             </div>
+            ${createDiagnosticsHtml()}
         `;
     }
     
@@ -188,6 +193,77 @@ function initializeComponents() {
     if (window.SV?.themeManager) {
         window.SV.themeManager.createThemeSwitcher();
     }
+}
+
+function createDiagnosticsHtml() {
+    const UI = window.SV?.UIComponents;
+    const buttonStyle = 'flex: 1; padding: 8px 12px; font-size: 0.85em;';
+    const buttons = UI?.createFlexContainer?.(
+        UI.createButton('📝 Logging Off', 'toggle-logging', 'secondary', false, 'logToggle', buttonStyle, '', 'log-toggle-btn') +
+        UI.createButton('💾 Save Logs', 'save-logs', 'primary', false, '', buttonStyle, '', 'save-logs-btn'),
+        'row',
+        'space-between',
+        'center',
+        '6px',
+        'margin-bottom: 8px;'
+    ) || '';
+    const infoText = UI?.createSmallText?.(
+        'Turn logging on, reproduce the problem, then save logs to a file.',
+        '#666',
+        '0.75em',
+        'margin: 0;'
+    ) || '';
+    return `
+        <div style="
+            background: var(--color-surface);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 16px;
+            border: 1px solid var(--color-border);
+        ">
+            <h4 style="margin-bottom: 8px; font-size: 1.1em;">Diagnostics</h4>
+            ${buttons}
+            ${infoText}
+        </div>
+    `;
+}
+
+function updateLogToggleButton() {
+    const btn = document.getElementById('logToggle');
+    if (!btn) return;
+    const enabled = window.SV?.LogRecorder?.enabled;
+    btn.textContent = enabled ? '📝 Logging On' : '📝 Logging Off';
+    btn.className = enabled ? 'btn btn-success' : 'btn btn-secondary';
+}
+
+function toggleLogging() {
+    window.SV?.LogRecorder?.toggle();
+    updateLogToggleButton();
+}
+
+function collectEnvironment() {
+    const nav = window.navigator || {};
+    return {
+        savedAt: new Date().toISOString(),
+        userAgent: nav.userAgent,
+        standalone: Boolean(nav.standalone) || Boolean(window.matchMedia?.('(display-mode: standalone)').matches),
+        speechSynthesis: typeof window.speechSynthesis !== 'undefined',
+        speechUtterance: typeof window.SpeechSynthesisUtterance !== 'undefined',
+        speechSettings: window.SV?.SpeechManager?.speechSettings,
+        serviceWorkerControlled: Boolean(nav.serviceWorker?.controller),
+        loggingEnabled: window.SV?.LogRecorder?.enabled
+    };
+}
+
+function saveLogs() {
+    const recorder = window.SV?.LogRecorder;
+    if (!recorder || recorder.entries.length === 0) {
+        window.SV?.AppMain?.showMessage?.('No logs yet. Turn logging on and reproduce the problem first.', 'info');
+        return;
+    }
+    const fileName = `vocabulary-logs-${new Date().toISOString().slice(0, 16).replace(/:/g, '-')}.txt`;
+    downloadFile(document, URL, fileName, recorder.toText(collectEnvironment()), 'text/plain');
 }
 
 // Incremental step: attach event listeners to key UI controls (avoid inline reliance)
@@ -229,6 +305,12 @@ function wireEventHandlers() {
                     break;
                 case 'speak-word':
                     window.SV?.SpeechManager?.speakWord?.(arg);
+                    break;
+                case 'toggle-logging':
+                    toggleLogging();
+                    break;
+                case 'save-logs':
+                    saveLogs();
                     break;
                 case 'toggle-card': {
                     const id = el.getAttribute('data-target-id');
@@ -377,6 +459,7 @@ async function bootApp() {
     window.SV?.SpeechManager?.initializeSpeech?.();
     await loadUserDataAndStats();
     updateSpeechToggleButtons();
+    updateLogToggleButton();
     setupEnterKeyBindings();
 }
 

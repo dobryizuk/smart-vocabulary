@@ -16,8 +16,12 @@ function createSpeechManager(context) {
         if (typeof g.SpeechSynthesisUtterance !== 'undefined') return new g.SpeechSynthesisUtterance(text);
         return null;
     };
+    const log = ctx.log || ((...args) => g.SV?.debugLog?.(...args));
+    const setTimer = ctx.setTimeout || ((fn, ms) => setTimeout(fn, ms));
 
     const SPEECH_LANG = 'en-US';
+    const START_TIMEOUT_MS = 2000;
+    let voicesLogged = false;
     const PERSISTED_KEYS = ['enabled', 'autoPlay', 'rate', 'pitch', 'volume'];
 
     let speechSettings = {
@@ -47,21 +51,55 @@ function createSpeechManager(context) {
             speechSettings.enabled = false;
             return false;
         }
+        log('🔊 Speech initialized, settings:', speechSettings);
         return true;
+    }
+
+    function engineState() {
+        return { speaking: speech.speaking, pending: speech.pending, paused: speech.paused };
+    }
+
+    function logVoicesOnce() {
+        if (voicesLogged || typeof speech.getVoices !== 'function') return;
+        voicesLogged = true;
+        const voices = speech.getVoices() || [];
+        const english = voices
+            .filter(v => typeof v.lang === 'string' && v.lang.startsWith('en'))
+            .map(v => `${v.name} (${v.lang}${v.localService ? ', local' : ''}${v.default ? ', default' : ''})`);
+        log('🔊 Voices available:', voices.length, 'english:', english);
+    }
+
+    function watchStart(utterance, text) {
+        let started = false;
+        utterance.onstart = () => {
+            started = true;
+            log('🔊 Speech started:', text);
+        };
+        utterance.onend = () => log('🔊 Speech ended:', text);
+        setTimer(() => {
+            if (!started) log('⚠️ Speech did not start within', START_TIMEOUT_MS, 'ms:', text, engineState());
+        }, START_TIMEOUT_MS);
     }
 
     // Speaks synchronously so iOS Safari sees the call inside the user gesture.
     // No explicit voice: iOS lists voices that are not installed and stays silent with them,
     // so the language is set and the system picks its installed default voice.
     function speakWord(text, options = {}) {
-        if (!speechSettings.enabled || !text) return;
+        if (!text) return;
+        if (!speechSettings.enabled) {
+            log('🔇 Speak skipped, sound is off:', text);
+            return;
+        }
         if (!speech) {
             if (typeof console !== 'undefined') console.warn('⚠️ Speech synthesis not available');
             return;
         }
 
         const utterance = createUtterance(text);
-        if (!utterance) return;
+        if (!utterance) {
+            log('⚠️ Speak skipped, SpeechSynthesisUtterance is unavailable');
+            return;
+        }
         utterance.lang = SPEECH_LANG;
         utterance.rate = options.rate || speechSettings.rate;
         utterance.pitch = options.pitch || speechSettings.pitch;
@@ -70,9 +108,14 @@ function createSpeechManager(context) {
             if (typeof console !== 'undefined') console.error('❌ Speech error:', event.error, 'for text:', text);
         };
 
+        logVoicesOnce();
+        log('🔊 Speak requested:', text, { lang: utterance.lang, rate: utterance.rate, volume: utterance.volume }, engineState());
+        watchStart(utterance, text);
+
         try {
             if (speech.speaking || speech.pending) speech.cancel();
             speech.speak(utterance);
+            log('🔊 speak() called, engine state:', engineState());
         } catch (error) {
             if (typeof console !== 'undefined') console.error('❌ Failed to speak:', error);
         }

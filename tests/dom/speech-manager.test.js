@@ -158,3 +158,72 @@ describe('SpeechManager speakWord and settings (iOS compatibility)', () => {
     errorSpy.mockRestore();
   });
 });
+
+describe('SpeechManager diagnostics logging', () => {
+  let createSpeechManager;
+  let speechMock;
+  let log;
+  let timers;
+
+  beforeEach(() => {
+    speechMock = {
+      speaking: false, pending: false, paused: false,
+      cancel: vi.fn(), speak: vi.fn(),
+      getVoices: vi.fn(() => [
+        { name: 'Samantha', lang: 'en-US', localService: true, default: true },
+        { name: 'Milena', lang: 'ru-RU', localService: true, default: false }
+      ])
+    };
+    log = vi.fn();
+    timers = [];
+    createSpeechManager = require('../../js/speech-manager.js').createSpeechManager;
+  });
+
+  const makeManager = () => createSpeechManager({
+    storage: null,
+    speech: speechMock,
+    createUtterance: (text) => ({ text }),
+    log,
+    setTimeout: (fn) => timers.push(fn)
+  });
+  const messages = () => log.mock.calls.map(c => c[0]);
+
+  it('logs why speech was skipped when sound is off', () => {
+    const mgr = makeManager();
+    mgr.speechSettings.enabled = false;
+    mgr.speakWord('devolve');
+
+    expect(messages()).toContain('🔇 Speak skipped, sound is off:');
+    expect(speechMock.speak).not.toHaveBeenCalled();
+  });
+
+  it('logs english voices once and the engine state for each speak', () => {
+    const mgr = makeManager();
+    mgr.speakWord('one');
+    mgr.speakWord('two');
+
+    const voiceLogs = log.mock.calls.filter(c => c[0] === '🔊 Voices available:');
+    expect(voiceLogs).toEqual([['🔊 Voices available:', 2, 'english:', ['Samantha (en-US, local, default)']]]);
+    expect(messages().filter(m => m === '🔊 Speak requested:')).toHaveLength(2);
+  });
+
+  it('warns when the engine never starts speaking', () => {
+    const mgr = makeManager();
+    mgr.speakWord('silent');
+    timers.forEach(fn => fn());
+
+    expect(log).toHaveBeenCalledWith('⚠️ Speech did not start within', 2000, 'ms:', 'silent', { speaking: false, pending: false, paused: false });
+  });
+
+  it('logs start and end events and no warning when speech plays', () => {
+    const mgr = makeManager();
+    mgr.speakWord('audible');
+    const utterance = speechMock.speak.mock.calls[0][0];
+    utterance.onstart();
+    utterance.onend();
+    timers.forEach(fn => fn());
+
+    expect(messages()).toEqual(expect.arrayContaining(['🔊 Speech started:', '🔊 Speech ended:']));
+    expect(messages()).not.toContain('⚠️ Speech did not start within');
+  });
+});

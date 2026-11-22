@@ -123,7 +123,6 @@
     margin: 2px;
 }
 
-.action-btn:hover,
 .action-btn:active {
     background: var(--color-surface-elevated);
     color: var(--color-text-secondary);
@@ -135,9 +134,17 @@
     border-color: var(--color-accent-blue);
 }
 
-.action-btn--primary:hover {
-    background: var(--color-accent-blue);
-    opacity: 0.9;
+/* Touch screens keep :hover after a tap, so hover styles apply only to real pointers */
+@media (hover: hover) {
+    .action-btn:hover {
+        background: var(--color-surface-elevated);
+        color: var(--color-text-secondary);
+    }
+
+    .action-btn--primary:hover {
+        background: var(--color-accent-blue);
+        opacity: 0.9;
+    }
 }
 
 .action-btn--danger {

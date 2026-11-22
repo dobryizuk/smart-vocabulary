@@ -2,6 +2,8 @@
 // DATA EXPORT/IMPORT FUNCTIONS with DI
 // ============================================================================
 
+const { downloadFile } = require('./file-download.js');
+
 function createImportExport(context) {
     const ctx = context || {};
     const getVocabulary = ctx.getVocabulary || (() => []);
@@ -62,17 +64,7 @@ function createImportExport(context) {
             const jsonString = JSON.stringify(exportDataObj, null, 2);
             const fileName = `vocabulary-backup-${getNow().toISOString().slice(0,16).replace(/:/g, '-')}.json`;
             
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const URLImpl = getURL();
-            const url = URLImpl.createObjectURL(blob);
-            const a = doc.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            a.style.display = 'none';
-            doc.body.appendChild(a);
-            a.click();
-            doc.body.removeChild(a);
-            URLImpl.revokeObjectURL(url);
+            downloadFile(doc, getURL(), fileName, jsonString, 'application/json');
             
             debugLog('📤 Data exported via web download');
             
