@@ -421,18 +421,18 @@ function createWordMetadata(word, progress) {
         return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
-    const pushItem = (icon, text, type) => items.push({ icon, text, type });
+    const pushItem = (text) => items.push(text);
 
     const addAddedDateItem = () => {
         if (!shouldAddItem(progress.addedDate)) return;
         const addedDate = progress.addedDate instanceof Date ? progress.addedDate : new Date(progress.addedDate);
         if (isNaN(addedDate.getTime())) return;
-        pushItem('📅', `Added ${formatEuropeanDate(addedDate)}`, 'added');
+        pushItem(`Added ${formatEuropeanDate(addedDate)}`);
     };
 
     const addRepetitionsItem = () => {
         if (!shouldAddItem(progress.repetitions !== undefined)) return;
-        pushItem('🔄', `${progress.repetitions} repetitions`, 'repetitions');
+        pushItem(`${progress.repetitions} repetitions`);
     };
 
     const addReviewItem = () => {
@@ -442,24 +442,23 @@ function createWordMetadata(word, progress) {
             const isReady = nextReviewDate <= new Date();
             const reviewDate = formatEuropeanDate(nextReviewDate);
             const text = isReady ? `Ready for review (${reviewDate})` : `Next review: ${reviewDate}`;
-            pushItem(isReady ? '✅' : '📅', text, 'review');
+            pushItem(text);
             return;
         }
         if (shouldAddItem(progress.reviewStatus)) {
-            const isReady = progress.isReady;
-            pushItem(isReady ? '✅' : '📅', progress.reviewStatus, 'review');
+            pushItem(progress.reviewStatus);
         }
     };
 
     const addAccuracyItem = () => {
         if (!shouldAddItem(progress.totalAttempts > 0)) return;
-        pushItem('📊', `${progress.correctCount}/${progress.totalAttempts} correct`, 'accuracy');
+        pushItem(`${progress.correctCount}/${progress.totalAttempts} correct`);
     };
 
     const addLastSeenItem = () => {
         if (!shouldAddItem(progress.lastSeen && progress.totalAttempts > 0)) return;
         const daysAgo = Math.floor((Date.now() - new Date(progress.lastSeen)) / (1000 * 60 * 60 * 24));
-        pushItem('⏰', daysAgo === 0 ? 'Today' : `${daysAgo} days ago`, 'lastSeen');
+        pushItem(daysAgo === 0 ? 'Today' : `${daysAgo} days ago`);
     };
 
     addAddedDateItem();
@@ -470,18 +469,7 @@ function createWordMetadata(word, progress) {
 
     if (items.length === 0) return '';
 
-    const getChipClass = (type) => {
-        switch (type) {
-            case 'added': return 'metadata-chip metadata-chip--added';
-            case 'review':
-            case 'lastSeen': return 'metadata-chip metadata-chip--review';
-            case 'repetitions': return 'metadata-chip metadata-chip--repetitions';
-            case 'accuracy': return 'metadata-chip metadata-chip--accuracy';
-            default: return 'metadata-chip';
-        }
-    };
-
-    const chipsHtml = items.map((item) => `<span class="${getChipClass(item.type)}">${item.icon} ${item.text}</span>`).join('');
+    const chipsHtml = items.map((text) => `<span class="metadata-chip">${text}</span>`).join('');
     return `<div class="word-metadata">${chipsHtml}</div>`;
 }
 

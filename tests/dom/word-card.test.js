@@ -155,6 +155,15 @@ describe('Word Card Component', () => {
       expect(metadataText).toContain('Next review: 31/12/2099');
     });
 
+    it('renders metadata as plain gray chips without emoji', () => {
+      const word = createTestWord({ repetition: 7, nextReview: '2025-10-31T00:00:00.000Z', createdAt: '2025-09-11T00:00:00.000Z' });
+      const container = renderToDOM(createWordCard(word, 'compact', [], true, true));
+      const chips = Array.from(container.querySelectorAll('.word-metadata span'));
+
+      expect(chips.map(c => c.textContent)).toEqual(['Added 11/09/2025', '7 repetitions', 'Ready for review (31/10/2025)']);
+      expect(chips.every(c => c.className === 'metadata-chip')).toBe(true);
+    });
+
     it('should have toggle button for expandable cards', () => {
       const word = createTestWord({
         definition: 'Test definition',

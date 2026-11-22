@@ -308,44 +308,13 @@
 .metadata-chip {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
     background: var(--color-surface);
-    color: var(--color-text);
+    color: var(--color-text-secondary);
     border: 1px solid var(--color-border);
     padding: 4px 8px;
     border-radius: 12px;
     font-size: 0.7em;
-    font-weight: 600;
-    transition: var(--transition-fast);
-}
-
-.metadata-chip--repetitions {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-blue);
-}
-
-.metadata-chip--review {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-orange);
-}
-
-.metadata-chip--added {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-green);
-}
-
-.metadata-chip--accuracy {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    border-left: 3px solid var(--color-accent-purple);
-}
-
-.metadata-chip:hover,
-.metadata-chip:active {
-    transform: none;
+    font-weight: 500;
 }
 
 /* Message System */

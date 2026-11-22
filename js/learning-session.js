@@ -317,22 +317,19 @@ function endLearningSession() {
 // REVERSE TRANSLATION SYSTEM
 // ============================================================================
 
+// Ratings of the "OK" and "Easy" buttons
+const RECOGNITION_PASSED = ['easy', 'perfect'];
+
+// Writing unlocks once the latest recognition rating is OK or Easy.
+// A Hard rating in any exercise locks it until recognition is rated OK again.
 function isEligibleForReverseTranslation(word) {
-    // Word is eligible for reverse translation from first repetition onward
-    // But not for new words (repetition = 0)
-    if (word.repetition === 0) {
-        return false;
+    const history = word.reviewHistory || [];
+    for (let i = history.length - 1; i >= 0; i--) {
+        const { difficulty, exerciseType = 'regular' } = history[i];
+        if (difficulty === 'hard') return false;
+        if (exerciseType === 'regular') return RECOGNITION_PASSED.includes(difficulty);
     }
-    
-    // Check if user last answered 'hard' - don't show reverse exercise for hard words
-    if (word.reviewHistory && word.reviewHistory.length > 0) {
-        const lastReview = word.reviewHistory[word.reviewHistory.length - 1];
-        if (lastReview.difficulty === 'hard') {
-            return false;
-        }
-    }
-    
-    return word.repetition > 0 || (word.reviewHistory && word.reviewHistory.length > 0);
+    return false;
 }
 
 function canShowReverseExercise(word) {

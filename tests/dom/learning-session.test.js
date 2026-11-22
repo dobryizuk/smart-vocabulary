@@ -28,36 +28,46 @@ const LS = require('../../js/learning-session.js');
 
 describe('Learning Session - Reverse Translation Logic', () => {
   describe('isEligibleForReverseTranslation', () => {
-    it('should not allow reverse translation for new words', () => {
-      const newWord = { repetition: 0 };
-      expect(LS.isEligibleForReverseTranslation(newWord)).toBe(false);
+    const eligible = (...reviews) => LS.isEligibleForReverseTranslation({
+      repetition: 3,
+      reviewHistory: reviews.map(([exerciseType, difficulty]) => ({ exerciseType, difficulty, date: '2026-11-01' }))
     });
 
-    it('should not allow reverse translation for words with last answer "hard"', () => {
-      const hardWord = {
-        repetition: 2,
-        reviewHistory: [
-          { difficulty: 'medium', date: '2025-08-01' },
-          { difficulty: 'hard', date: '2025-08-02' }
-        ]
-      };
-      expect(LS.isEligibleForReverseTranslation(hardWord)).toBe(false);
+    it('blocks writing for a word that was never rated', () => {
+      expect(LS.isEligibleForReverseTranslation({ repetition: 0 })).toBe(false);
+      expect(LS.isEligibleForReverseTranslation({ repetition: 2, reviewHistory: [] })).toBe(false);
     });
 
-    it('should allow reverse translation for words with repetition > 0 and no hard answer', () => {
-      const eligibleWord = {
-        repetition: 2,
-        reviewHistory: [
-          { difficulty: 'medium', date: '2025-08-01' },
-          { difficulty: 'easy', date: '2025-08-02' }
-        ]
-      };
-      expect(LS.isEligibleForReverseTranslation(eligibleWord)).toBe(true);
+    it('unlocks writing after recognition is rated OK or Easy', () => {
+      expect(eligible(['regular', 'easy'])).toBe(true);
+      expect(eligible(['regular', 'perfect'])).toBe(true);
     });
 
-    it('should allow reverse translation for words with repetition > 0 and no review history', () => {
-      const eligibleWord = { repetition: 1 };
-      expect(LS.isEligibleForReverseTranslation(eligibleWord)).toBe(true);
+    it('keeps writing locked after recognition is rated Medium or Hard', () => {
+      expect(eligible(['regular', 'medium'])).toBe(false);
+      expect(eligible(['regular', 'hard'])).toBe(false);
+      expect(eligible(['regular', 'easy'], ['regular', 'medium'])).toBe(false);
+    });
+
+    it('locks writing after Hard until recognition is rated OK again', () => {
+      expect(eligible(['regular', 'easy'], ['regular', 'hard'])).toBe(false);
+      expect(eligible(['regular', 'easy'], ['regular', 'hard'], ['regular', 'medium'])).toBe(false);
+      expect(eligible(['regular', 'easy'], ['regular', 'hard'], ['regular', 'easy'])).toBe(true);
+    });
+
+    it('locks writing when Hard is chosen in the writing exercise itself', () => {
+      expect(eligible(['regular', 'easy'], ['reverse', 'hard'])).toBe(false);
+      expect(eligible(['regular', 'easy'], ['reverse', 'hard'], ['regular', 'easy'])).toBe(true);
+    });
+
+    it('stays unlocked after a non-Hard writing rating', () => {
+      expect(eligible(['regular', 'easy'], ['reverse', 'medium'])).toBe(true);
+      expect(eligible(['regular', 'perfect'], ['reverse', 'easy'])).toBe(true);
+    });
+
+    it('treats legacy reviews without exerciseType as recognition', () => {
+      expect(LS.isEligibleForReverseTranslation({ repetition: 2, reviewHistory: [{ difficulty: 'easy' }] })).toBe(true);
+      expect(LS.isEligibleForReverseTranslation({ repetition: 2, reviewHistory: [{ difficulty: 'medium' }] })).toBe(false);
     });
   });
 
@@ -83,6 +93,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
     it('should return reverse for eligible words that have not shown reverse yet', () => {
       const eligibleWord = {
         repetition: 2,
+        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
         sessionExerciseTypes: ['regular']
       };
       expect(LS.determineExerciseType(eligibleWord)).toBe('reverse');
@@ -91,6 +102,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
     it('should return regular for eligible words that have not shown regular yet', () => {
       const eligibleWord = {
         repetition: 2,
+        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
         sessionExerciseTypes: ['reverse']
       };
       expect(LS.determineExerciseType(eligibleWord)).toBe('regular');
@@ -99,6 +111,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
     it('should return regular for eligible words that have shown both types', () => {
       const eligibleWord = {
         repetition: 2,
+        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
         sessionExerciseTypes: ['regular', 'reverse']
       };
       expect(LS.determineExerciseType(eligibleWord)).toBe('regular');
@@ -107,6 +120,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
     it('should alternate for single word in session', () => {
       const word = {
         repetition: 2,
+        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
         lastExerciseType: 'reverse',
         lastExerciseDate: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutes ago
       };
