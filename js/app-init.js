@@ -5,23 +5,27 @@
 ;(function bootstrap(global) {
     // Create namespaced container
     global.SV = global.SV || {};
+    // Debug configuration and helper
+    global.SV.config = global.SV.config || { debug: false };
+    global.SV.debugLog = function debugLog(...args) {
+        if (!(global.SV && global.SV.config && global.SV.config.debug && typeof console !== 'undefined')) return;
+        console.log(...args);
+    };
 
-    // Helper to attach module both under SV and legacy global if missing
+    // Helper to attach module under SV namespace (bundled environment)
     function attach(name, getter) {
         try {
-            const mod = global[name] || getter();
-            if (mod) {
-                // Namespace
-                global.SV[name] = mod;
-                // Preserve legacy global for backward compatibility
-                if (!global[name]) global[name] = mod;
-            }
-        } catch (_) {
-            // ignore in browser when require is unavailable
+            // 1) Prefer existing SV binding
+            let mod = (global.SV && global.SV[name]) || null;
+            // 2) Bundled require (esbuild provides module resolution)
+            if (!mod && typeof getter === 'function') mod = getter();
+            if (mod) global.SV[name] = mod;
+        } catch (err) {
+            global.SV?.debugLog?.('attach failed for', name, err);
         }
     }
 
-    // Attach commonly used modules
+    // Attach commonly used modules (bundled requires)
     attach('UIComponents', () => require('./ui-components.js'));
     attach('DataManager', () => require('./data-manager.js'));
     attach('SpeechManager', () => require('./speech-manager.js'));
@@ -30,27 +34,54 @@
     attach('SpacedRepetition', () => require('./spaced-repetition.js'));
     attach('LearningSession', () => require('./learning-session.js'));
     attach('DictionaryService', () => require('./dictionary-service.js'));
-    try {
-        // ThemeManager exports a class; keep constructor under namespace
-        const ThemeManager = global.ThemeManager || require('./theme-manager.js');
-        if (ThemeManager) {
-            global.SV.ThemeManager = ThemeManager;
-            if (!global.ThemeManager) global.ThemeManager = ThemeManager;
+    attach('AppMain', () => require('./app-main.js'));
+    // Ensure AppState is initialized and available on SV
+    attach('AppState', () => {
+        require('./app-state.js');
+        return (global.SV && global.SV.AppState) ? global.SV.AppState : null;
+    });
+    // ThemeManager (class); attach via centralized helper
+    attach('ThemeManager', () => require('./theme-manager.js'));
+    // In bundled environment, all modules are available immediately - no need for ensureCriticalModules
+    function ensureCriticalModules() {
+        // All modules already attached at bootstrap
+    }
+
+    // Create single ThemeManager instance and on-demand theme switcher
+    document.addEventListener('DOMContentLoaded', () => {
+        ensureCriticalModules();
+        try {
+            if (!global.SV.themeManager && global.SV.ThemeManager) {
+                global.SV.themeManager = new global.SV.ThemeManager();
+            }
+            // Create theme switcher when stats tab is shown
+            const originalShowTab = global.SV?.AppMain?.showTab;
+            const patchedShowTab = function(tabName) {
+                if (originalShowTab) originalShowTab(tabName);
+                if (tabName === 'stats' && global.SV?.themeManager) {
+                    global.SV.themeManager.createThemeSwitcher();
+                }
+            };
+            if (global.SV && global.SV.AppMain) {
+                global.SV.AppMain.showTab = patchedShowTab;
+            }
+        } catch (err) {
+            global.SV?.debugLog?.('theme switcher init failed:', err);
         }
-    } catch (_) {}
+    });
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // PWA SERVICE WORKER REGISTRATION
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
-            console.log('🔍 Registering service worker from:', window.location.href);
+            window.SV?.debugLog?.('🔍 Registering service worker from:', window.location.href);
             const registration = await navigator.serviceWorker.register('./sw.js');
-            console.log('✅ Service Worker registered:', registration.scope);
-            console.log('📍 Current location:', window.location.href);
-            console.log('📂 Base URL:', new URL('./', window.location.href).href);
+            window.SV?.debugLog?.('✅ Service Worker registered:', registration.scope);
+            window.SV?.debugLog?.('📍 Current location:', window.location.href);
+            window.SV?.debugLog?.('📂 Base URL:', new URL('./', window.location.href).href);
         } catch (error) {
-            console.log('❌ Service Worker registration failed:', error);
+            console.error('❌ Service Worker registration failed:', error);
         }
     });
 }
@@ -62,9 +93,9 @@ function initializeComponents() {
     // Initialize form buttons
     const formButtons = document.getElementById('formButtons');
     if (formButtons) {
-        formButtons.innerHTML = window.UIComponents?.createFlexContainer?.(
-            window.UIComponents?.createButton?.('📚 Lookup', 'lookupInDictionary()', 'primary', false, '', '', '', 'dictionary-lookup-btn') +
-            window.UIComponents?.createButton?.('➕ More Fields', 'toggleAdditionalFields()', 'secondary', false, 'toggleFieldsBtn', '', '', 'toggle-fields-btn'),
+        formButtons.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
+            window.SV?.UIComponents?.createButton?.('📚 Lookup', 'lookup-in-dictionary', 'primary', false, '', '', '', 'dictionary-lookup-btn') +
+            window.SV?.UIComponents?.createButton?.('➕ More Fields', 'toggle-additional-fields', 'secondary', false, 'toggleFieldsBtn', '', '', 'toggle-fields-btn'),
             'row',
             'flex-start',
             'center',
@@ -76,9 +107,9 @@ function initializeComponents() {
     // Initialize save buttons
     const saveButtons = document.getElementById('saveButtons');
     if (saveButtons) {
-        saveButtons.innerHTML = window.UIComponents?.createFlexContainer?.(
-            window.UIComponents?.createButton?.('💾 Save Word', 'addWord()', 'primary', false, '', '', '', 'save-word-btn') +
-            window.UIComponents?.createButton?.('🗑️ Clear', 'clearForm()', 'secondary'),
+        saveButtons.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
+            window.SV?.UIComponents?.createButton?.('💾 Save Word', 'add-word', 'primary', false, '', '', '', 'save-word-btn') +
+            window.SV?.UIComponents?.createButton?.('🗑️ Clear', 'clear-form', 'secondary'),
             'row',
             'flex-start',
             'center',
@@ -89,9 +120,9 @@ function initializeComponents() {
     // Initialize audio controls
     const audioControls = document.getElementById('audioControls');
     if (audioControls) {
-        audioControls.innerHTML = window.UIComponents?.createFlexContainer?.(
-            window.UIComponents?.createButton?.('🔊 Sound On', 'window.SpeechManager?.toggleSpeech?.()', 'success', false, 'speechToggle', 'padding: 8px 12px; font-size: 0.85em;') +
-            window.UIComponents?.createButton?.('🎵 Auto Play On', 'window.SpeechManager?.toggleAutoPlay?.()', 'success', false, 'autoPlayToggle', 'padding: 8px 12px; font-size: 0.85em;'),
+        audioControls.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
+            window.SV?.UIComponents?.createButton?.('🔊 Sound On', 'toggle-speech', 'success', false, 'speechToggle', 'padding: 8px 12px; font-size: 0.85em;') +
+            window.SV?.UIComponents?.createButton?.('🎵 Auto Play On', 'toggle-autoplay', 'success', false, 'autoPlayToggle', 'padding: 8px 12px; font-size: 0.85em;'),
             'row',
             'center',
             'center',
@@ -103,17 +134,17 @@ function initializeComponents() {
     // Initialize audio settings text
     const audioSettingsText = document.getElementById('audioSettingsText');
     if (audioSettingsText) {
-        audioSettingsText.innerHTML = window.UIComponents?.createSmallText?.('Audio pronunciation settings') || '';
+        audioSettingsText.innerHTML = window.SV?.UIComponents?.createSmallText?.('Audio pronunciation settings') || '';
     }
     
     // Initialize data management
     const dataManagement = document.getElementById('dataManagement');
     if (dataManagement) {
-        const resetButton = window.UIComponents?.createButton?.('🗑️ Reset Progress', 'window.DataManager?.resetUserProgress?.()', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;');
-        const exportButton = window.UIComponents?.createButton?.('Backup', 'window.ImportExport?.exportData?.()', 'success', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em;', '', 'backup-btn');
-        const importButton = window.UIComponents?.createButton?.('Restore', 'window.ImportExport?.importData?.()', 'primary', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em; background: #17a2b8;', '', 'restore-btn');
+        const resetButton = window.SV?.UIComponents?.createButton?.('🗑️ Reset Progress', 'reset-progress', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;');
+        const exportButton = window.SV?.UIComponents?.createButton?.('Backup', 'backup', 'success', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em;', '', 'backup-btn');
+        const importButton = window.SV?.UIComponents?.createButton?.('Restore', 'restore', 'primary', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em; background: #17a2b8;', '', 'restore-btn');
         
-        const importExportButtons = window.UIComponents?.createFlexContainer?.(
+        const importExportButtons = window.SV?.UIComponents?.createFlexContainer?.(
             exportButton + importButton,
             'row',
             'space-between',
@@ -121,7 +152,7 @@ function initializeComponents() {
             '6px'
         ) || '';
         
-        const buttonsContainer = window.UIComponents?.createFlexContainer?.(
+        const buttonsContainer = window.SV?.UIComponents?.createFlexContainer?.(
             resetButton + importExportButtons,
             'column',
             'flex-start',
@@ -130,7 +161,7 @@ function initializeComponents() {
             'margin-bottom: 8px;'
         ) || '';
         
-        const infoText = window.UIComponents?.createSmallText?.(
+        const infoText = window.SV?.UIComponents?.createSmallText?.(
             'Words are stored locally on device. Progress can be reset if needed.',
             '#666',
             '0.75em',
@@ -154,36 +185,88 @@ function initializeComponents() {
     }
     
     // Initialize theme switcher after data management is created
-    if (window.themeManager) {
-        window.themeManager.createThemeSwitcher();
+    if (window.SV?.themeManager) {
+        window.SV.themeManager.createThemeSwitcher();
     }
 }
 
 // Incremental step: attach event listeners to key UI controls (avoid inline reliance)
 function wireEventHandlers() {
-    const markBound = (el) => { try { Object.defineProperty(el, '__svBound', { value: true, configurable: false }); } catch (_) {} };
+    const markBound = (el) => {
+        try {
+            Object.defineProperty(el, '__svBound', { value: true, configurable: false });
+        } catch (err) {
+            window.SV?.debugLog?.('markBound failed:', err);
+        }
+    };
     const isBound = (el) => el && el.__svBound;
     const bind = (el, handler) => {
         if (!el || isBound(el)) return;
         // Remove any inline handler to avoid global string calls
-        try { el.removeAttribute('onclick'); el.onclick = null; } catch (_) {}
+        try { el.removeAttribute('onclick'); el.onclick = null; } catch (err) { window.SV?.debugLog?.('cleanup inline handler failed:', err); }
         el.addEventListener('click', handler);
         markBound(el);
     };
 
+    // Delegated data-action handler (generic)
+    const container = document.body;
+    if (container && !isBound(container)) {
+        container.addEventListener('click', (e) => {
+            const el = e.target.closest('[data-action]');
+            if (!el) return;
+            const action = el.getAttribute('data-action');
+            const arg = el.getAttribute('data-arg');
+            // optional stop for word card actions
+            if (el.hasAttribute('data-stop-prop')) {
+                e.stopPropagation();
+            }
+            switch (action) {
+                case 'edit-word':
+                    window.SV?.AppMain?.editWord?.(arg);
+                    break;
+                case 'delete-word':
+                    window.SV?.AppMain?.deleteWord?.(arg);
+                    break;
+                case 'speak-word':
+                    window.SV?.SpeechManager?.speakWord?.(arg);
+                    break;
+                case 'toggle-card': {
+                    const id = el.getAttribute('data-target-id');
+                    window.SV?.UIComponents?.toggleWordCard?.(id);
+                    break;
+                }
+                case 'force-start-learning':
+                    window.SV?.LearningSession?.forceStartLearning?.();
+                    break;
+                case 'start-learning':
+                    window.SV?.LearningSession?.startLearning?.();
+                    break;
+                case 'show-translation':
+                    window.SV?.LearningSession?.showTranslation?.();
+                    break;
+                case 'show-answer-reverse':
+                    window.SV?.LearningSession?.showAnswerForReverse?.();
+                    break;
+                case 'show-tab':
+                    if (arg) window.SV?.AppMain?.showTab?.(arg);
+                    break;
+                default:
+                    break;
+            }
+        });
+        markBound(container);
+    }
+
     // Lookup button
     const lookupBtn = document.querySelector('[data-testid="dictionary-lookup-btn"]');
-    bind(lookupBtn, () => window.lookupInDictionary?.());
+    bind(lookupBtn, () => window.SV?.AppMain?.lookupInDictionary?.());
 
     // Toggle additional fields
     const toggleBtn = document.getElementById('toggleFieldsBtn') || document.querySelector('[data-testid="toggle-fields-btn"]');
     if (toggleBtn && !isBound(toggleBtn)) {
-        // Remove inline and bind
-        try { toggleBtn.removeAttribute('onclick'); toggleBtn.onclick = null; } catch (_) {}
+        try { toggleBtn.removeAttribute('onclick'); toggleBtn.onclick = null; } catch (err) { window.SV?.debugLog?.('cleanup inline handler failed:', err); }
         toggleBtn.addEventListener('click', () => {
-            // Call legacy handler
-            window.toggleAdditionalFields?.();
-            // Force visible to satisfy E2E environments
+            window.SV?.AppMain?.toggleAdditionalFields?.();
             const additionalFields = document.getElementById('additionalFields');
             if (additionalFields) {
                 additionalFields.style.display = 'block';
@@ -194,49 +277,66 @@ function wireEventHandlers() {
 
     // Save word
     const saveBtn = document.querySelector('[data-testid="save-word-btn"]');
-    bind(saveBtn, () => window.addWord?.());
+    bind(saveBtn, () => window.SV?.AppMain?.addWord?.());
 
-    // Import/Export
+    // Import/Export (kept as direct binds for safety if data-action missing)
     const backupBtn = document.querySelector('[data-testid="backup-btn"]');
-    bind(backupBtn, () => window.ImportExport?.exportData?.());
+    bind(backupBtn, () => window.SV?.ImportExport?.exportData?.());
     const restoreBtn = document.querySelector('[data-testid="restore-btn"]');
-    bind(restoreBtn, () => window.ImportExport?.importData?.());
+    bind(restoreBtn, () => window.SV?.ImportExport?.importData?.());
 
-    // Speech toggles
+    // Speech toggles (redundant bindings kept for compatibility)
     const speechToggle = document.getElementById('speechToggle');
-    bind(speechToggle, () => window.SpeechManager?.toggleSpeech?.());
+    bind(speechToggle, () => window.SV?.SpeechManager?.toggleSpeech?.());
     const autoPlayToggle = document.getElementById('autoPlayToggle');
-    bind(autoPlayToggle, () => window.SpeechManager?.toggleAutoPlay?.());
-}
+    bind(autoPlayToggle, () => window.SV?.SpeechManager?.toggleAutoPlay?.());
 
-function initSpeechSettings() {
-    window.SpeechManager?.initializeSpeech?.();
-    const savedSpeechSettings = localStorage.getItem('speechSettings');
-    if (savedSpeechSettings && window.SpeechManager) {
-        Object.assign(window.SpeechManager.speechSettings, JSON.parse(savedSpeechSettings));
+    // Tabs
+    const addTabBtn = document.querySelector('[data-testid="add-tab-btn"]');
+    bind(addTabBtn, () => window.SV?.AppMain?.showTab?.('add'));
+    const listTabBtn = document.querySelector('[data-testid="list-tab-btn"]');
+    bind(listTabBtn, async () => await window.SV?.AppMain?.showTab?.('list'));
+    const learnTabBtn = document.querySelector('[data-testid="learn-tab-btn"]');
+    bind(learnTabBtn, async () => await window.SV?.AppMain?.showTab?.('learn'));
+    const statsTabBtn = document.querySelector('[data-testid="stats-tab-btn"]');
+    bind(statsTabBtn, async () => await window.SV?.AppMain?.showTab?.('stats'));
+
+    // Difficulty buttons delegation
+    const learningContent = document.getElementById('learningContent');
+    if (learningContent && !isBound(learningContent)) {
+        learningContent.addEventListener('click', (e) => {
+            const btn = e.target.closest && e.target.closest('.difficulty-btn');
+            if (!btn) return;
+            const difficulty = btn.getAttribute('data-difficulty');
+            if (difficulty) {
+                e.preventDefault();
+                window.SV?.LearningSession?.markDifficulty?.(difficulty);
+            }
+        });
+        markBound(learningContent);
     }
 }
 
 async function loadUserDataAndStats() {
     try {
-        console.log('📊 Loading user progress...');
-        if (window.DataManager) {
-            window.DataManager.userProgress = await window.DataManager.loadUserProgress();
-            console.log('✅ User progress loaded:', Object.keys(window.DataManager.userProgress).length, 'entries');
+        window.SV?.debugLog?.('📊 Loading user progress...');
+        if (window.SV?.DataManager) {
+            window.SV.DataManager.userProgress = await window.SV.DataManager.loadUserProgress();
+            window.SV?.debugLog?.('✅ User progress loaded:', Object.keys(window.SV.DataManager.userProgress).length, 'entries');
         }
-        console.log('📚 Loading word database...');
-        await window.DataManager?.loadWordDatabase?.();
-        window.Statistics?.updateStats?.();
-        console.log('✅ App initialization complete!');
+        window.SV?.debugLog?.('📚 Loading word database...');
+        await window.SV?.DataManager?.loadWordDatabase?.();
+        window.SV?.Statistics?.updateStats?.();
+        window.SV?.debugLog?.('✅ App initialization complete!');
     } catch (error) {
         console.error('❌ App initialization failed:', error);
         // Show a global toast only; no inline fallback blocks
-        window.showMessage?.(`Initialization failed: ${error.message}`, 'error');
+        window.SV?.AppMain?.showMessage?.(`Initialization failed: ${error.message}`, 'error');
     }
 }
 
 function updateSpeechToggleButtons() {
-    const speechSettings = window.SpeechManager?.speechSettings;
+    const speechSettings = window.SV?.SpeechManager?.speechSettings;
     if (!speechSettings) return;
     const speechBtn = document.getElementById('speechToggle');
     if (speechBtn) {
@@ -256,25 +356,25 @@ function setupEnterKeyBindings() {
     if (originalWordInput) {
         originalWordInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                const translationInput = document.getElementById('translation');
-                if (translationInput) translationInput.focus();
+                const translationInputEl = document.getElementById('translation');
+                if (translationInputEl) translationInputEl.focus();
             }
         });
     }
     if (translationInput) {
         translationInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                window.addWord?.();
+                window.SV?.AppMain?.addWord?.();
             }
         });
     }
 }
 
 async function bootApp() {
-    console.log('🚀 Starting Smart Vocabulary App initialization...');
+    window.SV?.debugLog?.('🚀 Starting Smart Vocabulary App initialization...');
     initializeComponents();
     wireEventHandlers();
-    initSpeechSettings();
+    window.SV?.SpeechManager?.initializeSpeech?.();
     await loadUserDataAndStats();
     updateSpeechToggleButtons();
     setupEnterKeyBindings();
@@ -288,4 +388,6 @@ try {
     window.initializeComponents = initializeComponents;
     window.wireEventHandlers = wireEventHandlers;
     window.bootApp = bootApp;
-} catch (_) {}
+} catch (err) {
+    window.SV?.debugLog?.('Expose helpers failed:', err);
+}

@@ -15,7 +15,8 @@ function showTab(tabName) {
     const tabContents = document.querySelectorAll('.tab-content');
     tabContents.forEach(content => content.classList.remove('active'));
 
-    const currentBtn = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+    // After removing inline onclick, select tab button by data-testid
+    const currentBtn = document.querySelector(`[data-testid="${tabName}-tab-btn"]`);
     if (currentBtn) currentBtn.classList.add('active');
     const currentTab = document.getElementById(`${tabName}-tab`);
     if (currentTab) currentTab.classList.add('active');
@@ -50,7 +51,7 @@ async function lookupInDictionary() {
         // First, clear all fields to prevent mixing data from different words
         clearFormFields();
         
-        const data = await window.DictionaryService.lookupWithTranslation(originalWord);
+        const data = await window.SV?.DictionaryService?.lookupWithTranslation(originalWord);
         
         // Ensure additional fields are visible
         const additionalFields = document.getElementById('additionalFields');
@@ -103,10 +104,10 @@ async function addWord() {
         return;
     }
 
-    const vocabulary = window.DataManager?.vocabulary || [];
+    const vocabulary = window.SV?.DataManager?.vocabulary || [];
 
     // If we are editing an existing word, update it in place
-    const editingId = window.AppState?.editingWordId || null;
+    const editingId = window.SV?.AppState?.editingWordId || null;
     if (editingId) {
         // Prevent changing to a duplicate of another entry
         const duplicateOther = vocabulary.some(w => w.id !== editingId && w.original.toLowerCase() === original.toLowerCase());
@@ -135,11 +136,12 @@ async function addWord() {
             synonyms
         };
 
-        window.DataManager.vocabulary = vocabulary;
-        window.DataManager.saveUserProgress();
-        window.DataManager.saveAllVocabulary();
+        const DM = window.SV?.DataManager;
+        DM.vocabulary = vocabulary;
+        DM.saveUserProgress();
+        DM.saveAllVocabulary();
 
-        window.AppState.editingWordId = null;
+        window.SV.AppState.editingWordId = null;
         clearForm();
         showMessage('Word updated successfully', 'success');
         showTab('list');
@@ -174,14 +176,11 @@ async function addWord() {
     };
 
     // Add to vocabulary array
-    if (window.DataManager) {
-        window.DataManager.vocabulary.push(newWord);
-        
-        console.log('✅ Word added successfully! Total words:', window.DataManager.vocabulary.length);
-        
-        // Save all data
-        window.DataManager.saveUserProgress();
-        window.DataManager.saveAllVocabulary();
+    if (window.SV?.DataManager) {
+        window.SV.DataManager.vocabulary.push(newWord);
+        window.SV?.debugLog?.('✅ Word added successfully! Total words:', window.SV.DataManager.vocabulary.length);
+        window.SV.DataManager.saveUserProgress();
+        window.SV.DataManager.saveAllVocabulary();
     }
     
     clearForm();
@@ -220,11 +219,12 @@ function renderWordList() {
     const wordList = document.getElementById('wordList');
     const wordCount = document.getElementById('wordCount');
     
-    const vocabulary = window.DataManager?.vocabulary || [];
+    const vocabulary = window.SV?.DataManager?.vocabulary || [];
     wordCount.textContent = vocabulary.length;
 
     if (vocabulary.length === 0) {
-        const emptyStateHtml = window.UIComponents?.createEmptyState?.(
+        const UI = window.SV?.UIComponents;
+        const emptyStateHtml = UI?.createEmptyState?.(
             'No words yet!',
             'Add your first word in the "Add Words" tab'
         ) || '';
@@ -244,19 +244,22 @@ function renderWordList() {
             {
                 type: 'warning',
                 icon: '✏️',
-                onclick: `editWord('${word.id}')`,
+                action: 'edit-word',
+                arg: word.id,
                 title: 'Edit word'
             },
             {
                 type: 'danger',
                 icon: '🗑️',
-                onclick: `deleteWord('${word.id}')`,
+                action: 'delete-word',
+                arg: word.id,
                 title: 'Delete word'
             },
             {
                 type: 'primary',
                 icon: '🔊',
-                onclick: `speakWord('${word.original}')`,
+                action: 'speak-word',
+                arg: word.original,
                 title: 'Pronounce word'
             }
         ];
@@ -264,7 +267,8 @@ function renderWordList() {
         // Metadata is computed within UI components if needed
 
         // Use unified word card component with expandable functionality
-        const cardHtml = window.UIComponents?.createWordCard?.(word, 'compact', actions, true, true) || '';
+        const UI2 = window.SV?.UIComponents;
+        const cardHtml = UI2?.createWordCard?.(word, 'compact', actions, true, true) || '';
         
         // All metadata and sections are now included in the expandable card
         return cardHtml;
@@ -274,14 +278,14 @@ function renderWordList() {
 
 // Prefill Add form for editing and navigate to Add tab
 function editWord(id) {
-    const vocabulary = window.DataManager?.vocabulary || [];
+    const vocabulary = window.SV?.DataManager?.vocabulary || [];
     const word = vocabulary.find(w => w.id === id);
     if (!word) {
         showMessage('Error: Word not found!', 'error');
         return;
     }
 
-    window.AppState.editingWordId = id;
+    window.SV.AppState.editingWordId = id;
 
     showTab('add');
 
@@ -303,16 +307,13 @@ function editWord(id) {
 }
 
 function deleteWord(id) {
-    console.log('🗑️ deleteWord called with ID:', id);
+    window.SV?.debugLog?.('🗑️ deleteWord called with ID:', id);
     
-    // Resolve sources: DataManager store and global fallback store
-    const dm = window.DataManager;
+    const dm = window.SV?.DataManager;
     const dmVocabulary = dm?.vocabulary || [];
-    const globalVocabulary = Array.isArray(window.vocabulary) ? window.vocabulary : [];
-    const combined = dmVocabulary.length ? dmVocabulary : globalVocabulary;
-    console.log('🗑️ Current vocabulary length:', combined.length);
+    window.SV?.debugLog?.('🗑️ Current vocabulary length:', dmVocabulary.length);
     
-    const wordToDelete = combined.find(word => word.id === id);
+    const wordToDelete = dmVocabulary.find(word => word.id === id);
     
     if (!wordToDelete) {
         console.error('❌ Word not found with ID:', id);
@@ -322,20 +323,15 @@ function deleteWord(id) {
     
     // Show custom confirmation dialog
     // Prefer test override if provided, else use UIComponents dialog
-    const showConfirm = window.showDeleteConfirmation || window.UIComponents?.showDeleteConfirmation;
+    const showConfirm = window.SV?.UIComponents?.showDeleteConfirmation;
     if (showConfirm) {
         showConfirm(wordToDelete, () => {
             // User confirmed deletion
-            console.log('🗑️ User confirmed deletion');
+            window.SV?.debugLog?.('🗑️ User confirmed deletion');
             
             // Remove from DataManager vocabulary if present
             if (dm && Array.isArray(dm.vocabulary)) {
                 dm.vocabulary = dm.vocabulary.filter(word => word.id !== id);
-            }
-
-            // Also remove from global vocabulary array if present (browser tests/backwards-compat)
-            if (Array.isArray(window.vocabulary)) {
-                window.vocabulary = window.vocabulary.filter(word => word.id !== id);
             }
 
             if (dm) {
@@ -347,18 +343,15 @@ function deleteWord(id) {
             }
             
             // Update UI
-            if (window.renderWordList) window.renderWordList();
-            if (window.updateStats) window.updateStats();
+            window.SV?.AppMain?.renderWordList?.();
+            window.SV?.Statistics?.updateStats?.();
             
-            const newLength = (dm?.vocabulary?.length ?? 0) || (Array.isArray(window.vocabulary) ? window.vocabulary.length : 0);
-            console.log('🗑️ Word deleted successfully:', wordToDelete.original);
-            console.log('🗑️ New vocabulary length:', newLength);
+            const newLength = dm?.vocabulary?.length ?? 0;
+            window.SV?.debugLog?.('🗑️ Word deleted successfully:', wordToDelete.original);
+            window.SV?.debugLog?.('🗑️ New vocabulary length:', newLength);
         });
     }
 }
-
-// Make sure deleteWord is globally accessible
-window.deleteWord = deleteWord;
 
 // ============================================================================
 // MESSAGE SYSTEM
@@ -374,6 +367,8 @@ function showMessage(text, type = 'info') {
     // Create message element
     const messageDiv = document.createElement('div');
     messageDiv.className = `app-message app-message--${type}`;
+    messageDiv.setAttribute('role', 'alert');
+    messageDiv.setAttribute('aria-live', 'polite');
     messageDiv.textContent = text;
     
     // Insert at the top of the page
@@ -388,26 +383,33 @@ function showMessage(text, type = 'info') {
     }, 4000);
 }
 
-// Export key functions for global access
-window.showTab = showTab;
-window.lookupInDictionary = lookupInDictionary;
-window.addWord = addWord;
-window.clearForm = clearForm;
-window.toggleAdditionalFields = toggleAdditionalFields;
-window.renderWordList = renderWordList;
-window.showMessage = showMessage;
-window.editWord = editWord;
+// Export for both CommonJS and browser
+const AppMainExports = {
+    showTab,
+    lookupInDictionary,
+    addWord,
+    clearForm,
+    toggleAdditionalFields,
+    renderWordList,
+    showMessage,
+    editWord,
+    deleteWord
+};
 
-// Export for CommonJS
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        showTab,
-        lookupInDictionary,
-        addWord,
-        clearForm,
-        toggleAdditionalFields,
-        renderWordList,
-        showMessage,
-        editWord
-    };
+function createDefaultAppMain() {
+    return AppMainExports;
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = AppMainExports;
+}
+
+// Provide factory for browser attach in app-init
+try {
+    if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-restricted-syntax
+        window.createDefaultAppMain = createDefaultAppMain;
+    }
+} catch (_err) {}
+
+// Export only via CommonJS; app-init attaches to SV for browser

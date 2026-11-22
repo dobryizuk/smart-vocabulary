@@ -101,7 +101,7 @@
                         <div class="empty-state">
                             <h3>Ready to learn?</h3>
                             <p>Add some words first, then come back to start learning!</p>
-                            <button class="btn btn-primary" onclick="startLearning()">🚀 Start New Session</button>
+                            <button class="btn btn-primary" data-action="start-learning">🚀 Start New Session</button>
                         </div>
                     </div>
                 </div>
@@ -155,36 +155,25 @@
 
     <!-- iOS-style Bottom Tab Bar -->
     <div class="tab-nav" data-testid="tab-nav">
-        <button class="tab-btn active" onclick="showTab('add')" data-testid="add-tab-btn">
+        <button class="tab-btn active" data-testid="add-tab-btn">
             <div class="tab-icon">➕</div>
             <div>Add</div>
         </button>
-        <button class="tab-btn" onclick="showTab('list')" data-testid="list-tab-btn">
+        <button class="tab-btn" data-testid="list-tab-btn">
             <div class="tab-icon">📋</div>
             <div>My Words</div>
         </button>
-        <button class="tab-btn" onclick="showTab('learn')" data-testid="learn-tab-btn">
+        <button class="tab-btn" data-testid="learn-tab-btn">
             <div class="tab-icon">🎓</div>
             <div>Learn</div>
         </button>
-        <button class="tab-btn" onclick="showTab('stats')" data-testid="stats-tab-btn">
+        <button class="tab-btn" data-testid="stats-tab-btn">
             <div class="tab-icon">📊</div>
             <div>Stats</div>
         </button>
     </div>
 
-    <!-- Modular JavaScript -->
-    <script src="js/app-state.js"></script>
-    <script src="js/theme-manager.js"></script>
-    <script src="js/data-manager.js"></script>
-    <script src="js/ui-components.js"></script>
-    <script src="js/dictionary-service.js"></script>
-    <script src="js/spaced-repetition.js"></script>
-    <script src="js/speech-manager.js"></script>
-    <script src="js/import-export.js"></script>
-    <script src="js/learning-session.js"></script>
-    <script src="js/statistics.js"></script>
-    <script src="js/app-main.js"></script>
-    <script src="js/app-init.js"></script>
+    <!-- Bundled JavaScript -->
+    <script src="dist/app.bundle.js"></script>
 </body>
 </html>

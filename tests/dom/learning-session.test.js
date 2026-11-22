@@ -15,15 +15,22 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="learningContent"></div>';
 });
 
-// Load UI components and learning session code via CommonJS exports
-require('../../js/ui-components.js');
-const LearningSession = require('../../js/learning-session.js');
+// Load AppState first to ensure SV.AppState is defined
+require('../../js/app-state.js');
+window.SV = window.SV || {};
+window.SV.AppState = window.SV.AppState || (globalThis.SV && globalThis.SV.AppState) || {};
+// Load UI components as module and attach to SV for tests
+const UI = require('../../js/ui-components.js');
+window.SV = window.SV || {};
+window.SV.UIComponents = UI.UIComponents || UI;
+// Load learning session code via CommonJS exports
+const LS = require('../../js/learning-session.js');
 
 describe('Learning Session - Reverse Translation Logic', () => {
   describe('isEligibleForReverseTranslation', () => {
     it('should not allow reverse translation for new words', () => {
       const newWord = { repetition: 0 };
-      expect(window.isEligibleForReverseTranslation(newWord)).toBe(false);
+      expect(LS.isEligibleForReverseTranslation(newWord)).toBe(false);
     });
 
     it('should not allow reverse translation for words with last answer "hard"', () => {
@@ -34,7 +41,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
           { difficulty: 'hard', date: '2025-08-02' }
         ]
       };
-      expect(window.isEligibleForReverseTranslation(hardWord)).toBe(false);
+      expect(LS.isEligibleForReverseTranslation(hardWord)).toBe(false);
     });
 
     it('should allow reverse translation for words with repetition > 0 and no hard answer', () => {
@@ -45,12 +52,12 @@ describe('Learning Session - Reverse Translation Logic', () => {
           { difficulty: 'easy', date: '2025-08-02' }
         ]
       };
-      expect(window.isEligibleForReverseTranslation(eligibleWord)).toBe(true);
+      expect(LS.isEligibleForReverseTranslation(eligibleWord)).toBe(true);
     });
 
     it('should allow reverse translation for words with repetition > 0 and no review history', () => {
       const eligibleWord = { repetition: 1 };
-      expect(window.isEligibleForReverseTranslation(eligibleWord)).toBe(true);
+      expect(LS.isEligibleForReverseTranslation(eligibleWord)).toBe(true);
     });
   });
 
@@ -62,7 +69,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
 
     it('should return regular for new words', () => {
       const newWord = { repetition: 0 };
-      expect(window.determineExerciseType(newWord)).toBe('regular');
+      expect(LS.determineExerciseType(newWord)).toBe('regular');
     });
 
     it('should return regular for words not eligible for reverse translation', () => {
@@ -70,7 +77,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         repetition: 2,
         reviewHistory: [{ difficulty: 'hard' }]
       };
-      expect(window.determineExerciseType(hardWord)).toBe('regular');
+      expect(LS.determineExerciseType(hardWord)).toBe('regular');
     });
 
     it('should return reverse for eligible words that have not shown reverse yet', () => {
@@ -78,7 +85,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         repetition: 2,
         sessionExerciseTypes: ['regular']
       };
-      expect(window.determineExerciseType(eligibleWord)).toBe('reverse');
+      expect(LS.determineExerciseType(eligibleWord)).toBe('reverse');
     });
 
     it('should return regular for eligible words that have not shown regular yet', () => {
@@ -86,7 +93,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         repetition: 2,
         sessionExerciseTypes: ['reverse']
       };
-      expect(window.determineExerciseType(eligibleWord)).toBe('regular');
+      expect(LS.determineExerciseType(eligibleWord)).toBe('regular');
     });
 
     it('should return regular for eligible words that have shown both types', () => {
@@ -94,7 +101,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         repetition: 2,
         sessionExerciseTypes: ['regular', 'reverse']
       };
-      expect(window.determineExerciseType(eligibleWord)).toBe('regular');
+      expect(LS.determineExerciseType(eligibleWord)).toBe('regular');
     });
 
     it('should alternate for single word in session', () => {
@@ -104,23 +111,24 @@ describe('Learning Session - Reverse Translation Logic', () => {
         lastExerciseDate: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutes ago
       };
       
-  // Set AppState and legacy globals
-  window.AppState = window.AppState || { currentLearningWord: null, learningSession: [], sessionStats: { correct: 0, total: 0, streak: 0 } };
-  window.AppState.learningSession = [word];
+  // Set AppState under SV
+  window.SV = window.SV || {};
+  window.SV.AppState = window.SV.AppState || { currentLearningWord: null, learningSession: [], sessionStats: { correct: 0, total: 0, streak: 0 } };
+  window.SV.AppState.learningSession = [word];
   global.learningSession = [word];
   window.learningSession = [word];
       
   // Ensure the global variable used inside the module is available
   global.learningSession = [word];
       
-      expect(window.determineExerciseType(word)).toBe('regular');
+      expect(LS.determineExerciseType(word)).toBe('regular');
     });
   });
 
   describe('canShowReverseExercise', () => {
     it('should allow reverse exercise if no last exercise date', () => {
       const word = {};
-      expect(window.canShowReverseExercise(word)).toBe(true);
+      expect(LS.canShowReverseExercise(word)).toBe(true);
     });
 
     it('should allow reverse exercise if different exercise type', () => {
@@ -128,7 +136,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         lastExerciseDate: new Date().toISOString(),
         lastExerciseType: 'regular'
       };
-      expect(window.canShowReverseExercise(word)).toBe(true);
+      expect(LS.canShowReverseExercise(word)).toBe(true);
     });
 
     it('should allow reverse exercise if enough time has passed', () => {
@@ -136,7 +144,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         lastExerciseDate: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
         lastExerciseType: 'reverse'
       };
-      expect(window.canShowReverseExercise(word)).toBe(true);
+      expect(LS.canShowReverseExercise(word)).toBe(true);
     });
 
     it('should not allow reverse exercise if same type and not enough time passed', () => {
@@ -144,7 +152,7 @@ describe('Learning Session - Reverse Translation Logic', () => {
         lastExerciseDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 minutes ago
         lastExerciseType: 'reverse'
       };
-      expect(window.canShowReverseExercise(word)).toBe(false);
+      expect(LS.canShowReverseExercise(word)).toBe(false);
     });
   });
 });
@@ -175,12 +183,12 @@ describe('Learning Answer Screen Layout', () => {
     const word = setupWord();
     // Force direct translation path (not eligible for reverse)
     word.repetition = 0;
-    window.AppState.currentLearningWord = word;
-    window.AppState.learningSession = [word];
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
 
     // Render learning card then show answer
-    window.showLearningCard();
-    window.showTranslation();
+    LS.showLearningCard();
+    LS.showTranslation();
 
     const root = document.getElementById('cardTranslation');
     const order = indexesInParent(root, [
@@ -195,19 +203,19 @@ describe('Learning Answer Screen Layout', () => {
 
     // Progress should exist and container should be last in learningContent
     const progressContainer = document.getElementById('sessionProgressContainer');
-    expect(progressContainer.querySelector('.session-progress')).toBeTruthy();
+    expect(progressContainer.querySelector('[data-testid="session-progress"]')).toBeTruthy();
     const learningContent = document.getElementById('learningContent');
     expect(learningContent.lastElementChild.id).toBe('sessionProgressContainer');
   });
 
   it('renders correct order for reverse translation after Show Answer', () => {
     const word = setupWord();
-    window.AppState.currentLearningWord = word;
-    window.AppState.learningSession = [word];
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
 
     // Render reverse exercise and then show answer
-    window.showReverseTranslationCard();
-    window.showAnswerForReverse();
+    LS.showReverseTranslationCard();
+    LS.showAnswerForReverse();
 
     const mainEl = document.getElementById('learningMain') || document.getElementById('learningContent');
     const firstSpecific = mainEl.querySelector('.card-translation');
@@ -223,7 +231,7 @@ describe('Learning Answer Screen Layout', () => {
     expect(indices).toEqual([...indices].sort((a, b) => a - b));
 
     const progressContainer = document.getElementById('sessionProgressContainer');
-    expect(progressContainer.querySelector('.session-progress')).toBeTruthy();
+    expect(progressContainer.querySelector('[data-testid="session-progress"]')).toBeTruthy();
     const learningContent = document.getElementById('learningContent');
     expect(learningContent.lastElementChild.id).toBe('sessionProgressContainer');
   });

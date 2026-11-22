@@ -1,28 +1,19 @@
 // Smart Vocabulary - Service Worker
-const CACHE_NAME = 'smart-vocabulary-v2'; // Updated cache version
+const CACHE_NAME = 'smart-vocabulary-v3';
 const BASE_PATH = location.pathname.replace(/\/[^\/]*$/, '/'); // Dynamic base path
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + 'index.html',
-  // JavaScript modules
-  BASE_PATH + 'js/data-manager.js',
-  BASE_PATH + 'js/ui-components.js',
-  BASE_PATH + 'js/dictionary-service.js',
-  BASE_PATH + 'js/spaced-repetition.js',
-  BASE_PATH + 'js/speech-manager.js',
-  BASE_PATH + 'js/import-export.js',
-  BASE_PATH + 'js/learning-session.js',
-  BASE_PATH + 'js/statistics.js',
-  BASE_PATH + 'js/app-main.js',
-  BASE_PATH + 'js/app-init.js',
-  // CSS modules
+  BASE_PATH + 'dist/app.bundle.js',
+  BASE_PATH + 'css/themes.css',
   BASE_PATH + 'css/base.css',
   BASE_PATH + 'css/navigation.css',
   BASE_PATH + 'css/components.css',
   BASE_PATH + 'css/forms.css',
   BASE_PATH + 'css/learning.css',
-  // Other assets
-  BASE_PATH + 'manifest.json'
+  BASE_PATH + 'manifest.json',
+  BASE_PATH + 'icon-192.png',
+  BASE_PATH + 'icon-512.png'
 ];
 
 // Install event - cache resources
@@ -58,21 +49,25 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - network first so deploys reach users; cache is the offline fallback
 self.addEventListener('fetch', event => {
-  console.log('Service Worker: Fetching', event.request.url);
+  const request = event.request;
+  if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
+
   event.respondWith(
-    caches.match(event.request)
+    fetch(request)
       .then(response => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-      .catch(() => {
-        // If both cache and network fail, show offline page
-        if (event.request.destination === 'document') {
-          return caches.match(BASE_PATH + 'index.html');
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
+        return response;
       })
+      .catch(() => caches.match(request).then(cached => {
+        if (cached) return cached;
+        if (request.mode === 'navigate') return caches.match(BASE_PATH + 'index.html');
+        return Response.error();
+      }))
   );
 });
 

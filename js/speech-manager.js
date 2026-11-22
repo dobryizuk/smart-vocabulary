@@ -1,173 +1,105 @@
 // ============================================================================
-// SPEECH SYNTHESIS MANAGEMENT
+// SPEECH SYNTHESIS MANAGEMENT with DI
 // ============================================================================
 
-// Speech synthesis configuration
-let speechSettings = {
-    enabled: true,
-    rate: 0.8,
-    pitch: 1.0,
-    volume: 0.9,
-    voice: null,
-    autoPlay: true
-};
+function createSpeechManager(context) {
+    const ctx = context ?? {};
+    const g = (typeof window !== 'undefined') ? window : globalThis;
 
-function initializeSpeech() {
-    if ('speechSynthesis' in window) {
-        // Wait for voices to load with timeout
-        const waitForVoices = (timeout = 2000) => {
-            return new Promise((resolve) => {
-                const voices = window.speechSynthesis.getVoices();
-                if (voices.length > 0) {
-                    resolve(voices);
-                    return;
-                }
-                
-                const timer = setTimeout(() => {
-                    window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
-                    resolve(window.speechSynthesis.getVoices());
-                }, timeout);
-                
-                const onVoicesChanged = () => {
-                    clearTimeout(timer);
-                    window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
-                    resolve(window.speechSynthesis.getVoices());
-                };
-                
-                window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+    // Unified dependencies (respect explicit nulls in DI)
+    const hasOwn = Object.prototype.hasOwnProperty;
+    const storage = hasOwn.call(ctx, 'storage') ? ctx.storage : (typeof localStorage !== 'undefined' ? localStorage : null);
+    const doc = hasOwn.call(ctx, 'document') ? ctx.document : (typeof document !== 'undefined' ? document : null);
+    const speech = hasOwn.call(ctx, 'speech') ? ctx.speech : (typeof g.speechSynthesis !== 'undefined' ? g.speechSynthesis : null);
+    const createUtterance = (text) => {
+        if (typeof ctx.createUtterance === 'function') return ctx.createUtterance(text);
+        if (typeof g.SpeechSynthesisUtterance !== 'undefined') return new g.SpeechSynthesisUtterance(text);
+        return null;
+    };
+
+    const SPEECH_LANG = 'en-US';
+    const PERSISTED_KEYS = ['enabled', 'autoPlay', 'rate', 'pitch', 'volume'];
+
+    let speechSettings = {
+        enabled: true,
+        rate: 0.8,
+        pitch: 1.0,
+        volume: 0.9,
+        autoPlay: true
+    };
+
+    function loadSavedSettings() {
+        if (!storage) return;
+        try {
+            const saved = JSON.parse(storage.getItem('speechSettings') || '{}');
+            PERSISTED_KEYS.forEach(key => {
+                if (hasOwn.call(saved, key)) speechSettings[key] = saved[key];
             });
-        };
+        } catch {
+            // Corrupted settings: keep defaults
+        }
+    }
 
-        // Load available voices
-        const loadVoices = async () => {
-            const voices = await waitForVoices();
-            
-            // Prefer English voices, especially macOS/iOS native ones
-            const preferredVoices = [
-                'Alex', 'Samantha', 'Victoria', // macOS voices
-                'Karen', 'Daniel (Enhanced)', 'Moira', // macOS enhanced
-                'Google US English', 'Microsoft English', // Cross-platform
-            ];
-            
-            // Find best available English voice
-            let bestVoice = voices.find(voice => 
-                voice.lang.startsWith('en') && 
-                preferredVoices.some(pv => voice.name.includes(pv))
-            );
-            
-            // Fallback to any English voice
-            if (!bestVoice) {
-                bestVoice = voices.find(voice => voice.lang.startsWith('en'));
-            }
-            
-            speechSettings.voice = bestVoice;
-            
-            // Update UI if voice is unavailable
-            if (!bestVoice && voices.length === 0) {
-                console.warn('⚠️ No speech voices available');
-                speechSettings.enabled = false;
-            }
-        };
-
-        // Load voices
-        loadVoices();
-        
+    function initializeSpeech() {
+        loadSavedSettings();
+        if (!speech || typeof speech.speak !== 'function') {
+            if (typeof console !== 'undefined') console.warn('⚠️ Speech synthesis not supported');
+            speechSettings.enabled = false;
+            return false;
+        }
         return true;
-    } else {
-        console.warn('⚠️ Speech synthesis not supported');
-        speechSettings.enabled = false;
-        return false;
-    }
-}
-
-function speakWord(text, options = {}) {
-    if (!speechSettings.enabled || !text) return;
-    
-    // Check if speechSynthesis is available
-    if (!window.speechSynthesis) {
-        console.warn('⚠️ Speech synthesis not available');
-        return;
     }
 
-    // Stop any ongoing speech
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-        window.speechSynthesis.cancel();
-    }
+    // Speaks synchronously so iOS Safari sees the call inside the user gesture.
+    // No explicit voice: iOS lists voices that are not installed and stays silent with them,
+    // so the language is set and the system picks its installed default voice.
+    function speakWord(text, options = {}) {
+        if (!speechSettings.enabled || !text) return;
+        if (!speech) {
+            if (typeof console !== 'undefined') console.warn('⚠️ Speech synthesis not available');
+            return;
+        }
 
-    // Add slight delay for Chrome compatibility
-    setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Apply settings
+        const utterance = createUtterance(text);
+        if (!utterance) return;
+        utterance.lang = SPEECH_LANG;
         utterance.rate = options.rate || speechSettings.rate;
         utterance.pitch = options.pitch || speechSettings.pitch;
         utterance.volume = options.volume || speechSettings.volume;
-        
-        if (speechSettings.voice) {
-            utterance.voice = speechSettings.voice;
-        }
-
         utterance.onerror = (event) => {
-            console.error('❌ Speech error:', event.error, 'for text:', text);
-            
-            // Try to recover from common errors
-            if (event.error === 'network') {
-                setTimeout(() => speakWord(text, options), 1000);
-            }
+            if (typeof console !== 'undefined') console.error('❌ Speech error:', event.error, 'for text:', text);
         };
 
         try {
-            window.speechSynthesis.speak(utterance);
+            if (speech.speaking || speech.pending) speech.cancel();
+            speech.speak(utterance);
         } catch (error) {
-            console.error('❌ Failed to speak:', error);
+            if (typeof console !== 'undefined') console.error('❌ Failed to speak:', error);
         }
-    }, 100);
-}
-
-function toggleSpeech() {
-    speechSettings.enabled = !speechSettings.enabled;
-    const speechBtn = document.getElementById('speechToggle');
-    if (speechBtn) {
-        speechBtn.textContent = speechSettings.enabled ? '🔊 Sound On' : '🔇 Sound Off';
-        speechBtn.className = speechSettings.enabled ? 'btn btn-success' : 'btn btn-secondary';
     }
-    
-    // Save preference
-    localStorage.setItem('speechSettings', JSON.stringify(speechSettings));
-    
-    return speechSettings.enabled;
-}
 
-function toggleAutoPlay() {
-    speechSettings.autoPlay = !speechSettings.autoPlay;
-    const autoPlayBtn = document.getElementById('autoPlayToggle');
-    if (autoPlayBtn) {
-        autoPlayBtn.textContent = speechSettings.autoPlay ? '🎵 Auto Play On' : '🔇 Auto Play Off';
-        autoPlayBtn.className = speechSettings.autoPlay ? 'btn btn-success' : 'btn btn-secondary';
+    function persistAndUpdate(btnId, isOn, onText, offText) {
+        const el = doc ? doc.getElementById(btnId) : null;
+        if (el) {
+            el.textContent = isOn ? onText : offText;
+            el.className = isOn ? 'btn btn-success' : 'btn btn-secondary';
+        }
+        if (storage) storage.setItem('speechSettings', JSON.stringify(speechSettings));
     }
-    
-    // Save preference
-    localStorage.setItem('speechSettings', JSON.stringify(speechSettings));
-    
-    return speechSettings.autoPlay;
-}
 
-// Export functions and make globally available
-window.SpeechManager = {
-    initializeSpeech,
-    speakWord,
-    toggleSpeech,
-    toggleAutoPlay,
-    get speechSettings() { return speechSettings; },
-    set speechSettings(value) { speechSettings = value; }
-};
+    function toggleSpeech() {
+        speechSettings.enabled = !speechSettings.enabled;
+        persistAndUpdate('speechToggle', speechSettings.enabled, '🔊 Sound On', '🔇 Sound Off');
+        return speechSettings.enabled;
+    }
 
-// Make speakWord globally accessible for compatibility  
-window.speakWord = speakWord;
+    function toggleAutoPlay() {
+        speechSettings.autoPlay = !speechSettings.autoPlay;
+        persistAndUpdate('autoPlayToggle', speechSettings.autoPlay, '🎵 Auto Play On', '🔇 Auto Play Off');
+        return speechSettings.autoPlay;
+    }
 
-// CommonJS export
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
+    return {
         initializeSpeech,
         speakWord,
         toggleSpeech,
@@ -175,4 +107,15 @@ if (typeof module !== 'undefined' && module.exports) {
         get speechSettings() { return speechSettings; },
         set speechSettings(value) { speechSettings = value; }
     };
+}
+
+function createDefaultSpeechManager() {
+    return createSpeechManager({});
+}
+
+const defaultSpeechManager = createDefaultSpeechManager();
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = defaultSpeechManager;
+    module.exports.createSpeechManager = createSpeechManager;
 }

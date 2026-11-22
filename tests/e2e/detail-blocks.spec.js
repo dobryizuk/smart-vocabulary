@@ -2,9 +2,22 @@ const { test, expect } = require('@playwright/test');
 
 test('detail blocks should have visible backgrounds and borders', async ({ page }) => {
   await page.goto('/');
+  
+  // Check if app is initialized
+  const svInitialized = await page.evaluate(() => {
+    return {
+      hasSV: typeof window.SV !== 'undefined',
+      hasDataManager: typeof window.SV?.DataManager !== 'undefined',
+      hasUIComponents: typeof window.SV?.UIComponents !== 'undefined',
+      hasAppMain: typeof window.SV?.AppMain !== 'undefined'
+    };
+  });
+  console.log('App initialization status:', svInitialized);
 
   // Add a word with definition, synonyms and examples
   await page.getByTestId('original-word-input').fill('flair');
+  // Ensure form buttons are initialized
+  await page.waitForSelector('[data-testid="toggle-fields-btn"]', { timeout: 5000 });
   await page.getByTestId('toggle-fields-btn').click();
   await page.getByRole('textbox', { name: /translation/i }).fill('талант');
   await page.getByRole('textbox', { name: /definition/i }).fill('A natural or innate talent or aptitude.');

@@ -6,10 +6,10 @@ describe('Edit flow (DOM)', () => {
     // Basic form DOM structure similar to index.html
     document.body.innerHTML = `
       <div class="tab-nav" data-testid="tab-nav">
-        <button class="tab-btn active" onclick="showTab('add')" data-testid="add-tab-btn"></button>
-        <button class="tab-btn" onclick="showTab('list')" data-testid="list-tab-btn"></button>
-        <button class="tab-btn" onclick="showTab('learn')" data-testid="learn-tab-btn"></button>
-        <button class="tab-btn" onclick="showTab('stats')" data-testid="stats-tab-btn"></button>
+        <button class="tab-btn active" data-action="show-tab" data-arg="add" data-testid="add-tab-btn"></button>
+        <button class="tab-btn" data-action="show-tab" data-arg="list" data-testid="list-tab-btn"></button>
+        <button class="tab-btn" data-action="show-tab" data-arg="learn" data-testid="learn-tab-btn"></button>
+        <button class="tab-btn" data-action="show-tab" data-arg="stats" data-testid="stats-tab-btn"></button>
       </div>
       <div id="add-tab" class="tab-content active"></div>
       <div id="list-tab" class="tab-content"></div>
@@ -25,7 +25,8 @@ describe('Edit flow (DOM)', () => {
     `;
 
     global.window = global;
-    global.DataManager = {
+    global.SV = global.SV || {};
+    global.SV.DataManager = {
       vocabulary: [
         {
           id: 'custom_1',
@@ -44,14 +45,17 @@ describe('Edit flow (DOM)', () => {
       saveAllVocabulary: vi.fn(),
     };
 
-    // Load app-state (CommonJS export also sets globals)
+    // Load app-state and ensure SV.AppState
     require(path.join(__dirname, '../../js/app-state.js'));
+    global.SV = global.SV || {};
+    global.SV.AppState = global.SV.AppState || {};
 
     // Minimal UI helpers
     global.showMessage = vi.fn();
 
     // Load app-main
-    require(path.join(__dirname, '../../js/app-main.js'));
+    global.AppMain = require(path.join(__dirname, '../../js/app-main.js'));
+    // AppMain already on global
   });
 
   it('prefills form fields when editWord is called', () => {
@@ -60,9 +64,9 @@ describe('Edit flow (DOM)', () => {
     document.getElementById('translation').value = '';
 
     // Call editWord
-    window.editWord('custom_1');
+    global.AppMain.editWord('custom_1');
 
-    expect(window.AppState.editingWordId).toBe('custom_1');
+    expect(window.SV.AppState.editingWordId).toBe('custom_1');
     expect(document.getElementById('originalWord').value).toBe('editme');
     expect(document.getElementById('translation').value).toBe('редактируй');
     expect(document.getElementById('wordDefinition').value).toBe('to modify');
@@ -73,7 +77,7 @@ describe('Edit flow (DOM)', () => {
 
   it('updates existing word on addWord when in edit mode', () => {
     // Enter edit mode
-    window.editWord('custom_1');
+    global.AppMain.editWord('custom_1');
 
     // Change values
     document.getElementById('translation').value = 'исправлять';
@@ -81,12 +85,12 @@ describe('Edit flow (DOM)', () => {
 
     // Save
     return (async () => {
-      await window.addWord();
-      const updated = window.DataManager.vocabulary.find(w => w.id === 'custom_1');
+      await global.AppMain.addWord();
+      const updated = window.SV.DataManager.vocabulary.find(w => w.id === 'custom_1');
       expect(updated.translation).toBe('исправлять');
       expect(updated.definition).toBe('to correct');
-      expect(window.AppState.editingWordId).toBe(null);
-      expect(window.DataManager.saveAllVocabulary).toHaveBeenCalled();
+      expect(window.SV.AppState.editingWordId).toBe(null);
+      expect(window.SV.DataManager.saveAllVocabulary).toHaveBeenCalled();
     })();
   });
 });

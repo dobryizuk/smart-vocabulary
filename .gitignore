@@ -41,3 +41,6 @@ test-results
 # Local refactoring notes (do not commit)
 refactoring-plan.local.md
 
+
+# Deploy staging
+_site/

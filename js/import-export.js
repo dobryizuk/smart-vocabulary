@@ -1,205 +1,205 @@
 // ============================================================================
-// DATA EXPORT/IMPORT FUNCTIONS
+// DATA EXPORT/IMPORT FUNCTIONS with DI
 // ============================================================================
 
-// Testable export data creation function
-function createExportData(vocabularyData = null) {
-    // Get vocabulary data from parameter, localStorage, or global vocabulary
-    let vocabularyToExport;
-    if (vocabularyData) {
-        vocabularyToExport = vocabularyData;
-    } else {
-        const allVocabulary = JSON.parse(localStorage.getItem('allVocabulary') || '[]');
-        const vocabulary = window.DataManager?.vocabulary || [];
-        vocabularyToExport = allVocabulary.length > 0 ? allVocabulary : vocabulary;
-    }
-    
-    // Ensure all words have complete progress data
-    const vocabularyWithProgress = vocabularyToExport.map(word => ({
-        id: word.id,
-        original: word.original,
-        translation: word.translation,
-        definition: word.definition,
-        examples: word.examples,
-        phonetic: word.phonetic,
-        synonyms: word.synonyms,
-        // Learning progress data
-        easeFactor: word.easeFactor,
-        repetition: word.repetition,
-        nextReview: word.nextReview,
-        reviewHistory: word.reviewHistory,
-        createdAt: word.createdAt,
-        addedDate: word.addedDate
-    }));
-    
-    return {
-        vocabulary: vocabularyWithProgress,  // Single source of truth - words with current progress
-        exportDate: new Date().toISOString(),
-        appVersion: "1.0",
-        totalWords: vocabularyWithProgress.length
-    };
-}
+function createImportExport(context) {
+    const ctx = context || {};
+    const getVocabulary = ctx.getVocabulary || (() => []);
+    const setVocabulary = ctx.setVocabulary || ((..._args) => undefined);
+    const saveUserProgress = ctx.saveUserProgress || ((..._args) => undefined);
+    const saveAllVocabulary = ctx.saveAllVocabulary || ((..._args) => undefined);
+    const storage = ctx.storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+    const doc = ctx.document || (typeof document !== 'undefined' ? document : null);
+    const debugLog = ctx.debugLog || ((..._args) => undefined);
+    const appMain = ctx.appMain || {};
+    const stats = ctx.stats || {};
+    const getNow = ctx.getNow || (() => new Date());
+    const getURL = ctx.getURL || (() => (typeof URL !== 'undefined' ? URL : null));
 
-async function exportData() {
-    try {
-        // Get vocabulary data directly from localStorage for most accurate export
-        const allVocabulary = JSON.parse(localStorage.getItem('allVocabulary') || '[]');
+    function createExportData(vocabularyData = null) {
+        let vocabularyToExport;
+        if (vocabularyData) {
+            vocabularyToExport = vocabularyData;
+        } else {
+            const allVocabulary = storage ? JSON.parse(storage.getItem('allVocabulary') || '[]') : [];
+            const current = getVocabulary();
+            vocabularyToExport = allVocabulary.length > 0 ? allVocabulary : current;
+        }
         
-        console.log('📦 Exporting data...');
-        console.log(`📚 Vocabulary from localStorage: ${allVocabulary.length} words`);
+        const vocabularyWithProgress = vocabularyToExport.map(word => ({
+            id: word.id,
+            original: word.original,
+            translation: word.translation,
+            definition: word.definition,
+            examples: word.examples,
+            phonetic: word.phonetic,
+            synonyms: word.synonyms,
+            easeFactor: word.easeFactor,
+            repetition: word.repetition,
+            nextReview: word.nextReview,
+            reviewHistory: word.reviewHistory,
+            createdAt: word.createdAt,
+            addedDate: word.addedDate
+        }));
         
-        // Create export data using testable function
-        const exportDataObj = createExportData();
-        
-        // Web export
-        const jsonString = JSON.stringify(exportDataObj, null, 2);
-        const fileName = `vocabulary-backup-${new Date().toISOString().slice(0,16).replace(/:/g, '-')}.json`;
-        
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        console.log('📤 Data exported via web download');
-        
-    } catch (error) {
-        console.error('❌ Export failed:', error);
-        window.showMessage?.('Export failed. Please try again.', 'error');
+        return {
+            vocabulary: vocabularyWithProgress,
+            exportDate: getNow().toISOString(),
+            appVersion: "1.0",
+            totalWords: vocabularyWithProgress.length
+        };
     }
-}
 
-// Testable import validation and processing function
-function validateAndProcessImportData(dataToImport) {
-    // Validate import data structure
-    if (!dataToImport.vocabulary || !Array.isArray(dataToImport.vocabulary)) {
-        throw new Error('Invalid backup file format. Missing vocabulary data.');
-    }
-    
-    const totalWords = dataToImport.totalWords || 0;
-    const importedVocabulary = dataToImport.vocabulary;
-    
-    // Validate each word structure
-    importedVocabulary.forEach((word, index) => {
-        if (!word.id || typeof word.id !== 'string') {
-            throw new Error(`Word ${index + 1}: Missing or invalid id`);
-        }
-        if (!word.original || typeof word.original !== 'string') {
-            throw new Error(`Word ${index + 1}: Missing or invalid original field`);
-        }
-        if (!word.translation || typeof word.translation !== 'string') {
-            throw new Error(`Word ${index + 1}: Missing or invalid translation field`);
-        }
-        if (typeof word.easeFactor !== 'number') {
-            throw new Error(`Word ${index + 1}: Missing or invalid easeFactor`);
-        }
-        if (typeof word.repetition !== 'number') {
-            throw new Error(`Word ${index + 1}: Missing or invalid repetition`);
-        }
-        if (!Array.isArray(word.reviewHistory)) {
-            throw new Error(`Word ${index + 1}: Missing or invalid reviewHistory`);
-        }
-    });
-    
-    return {
-        vocabulary: importedVocabulary,
-        totalWords: totalWords,
-        exportDate: dataToImport.exportDate,
-        appVersion: dataToImport.appVersion,
-        valid: true
-    };
-}
-
-function importData() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.style.display = 'none';
-    
-    input.onchange = async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        
+    async function exportData() {
         try {
-            const text = await file.text();
-            const importDataObj = JSON.parse(text);
+            const allVocabulary = storage ? JSON.parse(storage.getItem('allVocabulary') || '[]') : [];
             
-            // Validate and process import data using testable function
-            const processedData = validateAndProcessImportData(importDataObj);
+            debugLog('📦 Exporting data...');
+            debugLog(`📚 Vocabulary from localStorage: ${allVocabulary.length} words`);
             
-            console.log(`📥 Importing ${processedData.totalWords} words from ${processedData.exportDate || 'unknown date'}`);
+            const exportDataObj = createExportData();
             
-            // Clear existing data first to ensure clean import
-            console.log('🗑️ Clearing existing data...');
-            if (window.DataManager) {
-                window.DataManager.vocabulary = [];
-                window.DataManager.userProgress = {};
-            }
-            localStorage.removeItem('allVocabulary');
-            localStorage.removeItem('userProgress');
+            const jsonString = JSON.stringify(exportDataObj, null, 2);
+            const fileName = `vocabulary-backup-${getNow().toISOString().slice(0,16).replace(/:/g, '-')}.json`;
             
-            // Import complete vocabulary
-            if (processedData.vocabulary && processedData.vocabulary.length > 0) {
-                if (window.DataManager) {
-                    window.DataManager.vocabulary = processedData.vocabulary;
-                }
-                console.log(`✅ Vocabulary imported: ${processedData.vocabulary.length} words`);
-            }
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const URLImpl = getURL();
+            const url = URLImpl.createObjectURL(blob);
+            const a = doc.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.style.display = 'none';
+            doc.body.appendChild(a);
+            a.click();
+            doc.body.removeChild(a);
+            URLImpl.revokeObjectURL(url);
             
-            // Note: userProgress is no longer exported separately - all data is in vocabulary
-            
-            // Save the updated vocabulary state
-            if (window.DataManager) {
-                window.DataManager.saveUserProgress();
-                window.DataManager.saveAllVocabulary();
-            }
-            
-            // Verify data integrity after import
-            console.log('🔍 Verifying data integrity...');
-            const savedVocab = JSON.parse(localStorage.getItem('allVocabulary') || '[]');
-            const savedProgress = JSON.parse(localStorage.getItem('userProgress') || '{}');
-            console.log(`✅ Verification: ${savedVocab.length} words, ${Object.keys(savedProgress).length} progress entries`);
-            
-            // Update UI to reflect imported data
-            if (window.renderWordList) window.renderWordList();
-            if (window.updateStats) window.updateStats();
-            
-            console.log('📥 Data imported successfully');
-            window.showMessage?.(`Data imported successfully! ${processedData.totalWords} words loaded. Reloading...`, 'success');
-            
-            // Reload app to reflect changes
-            location.reload();
+            debugLog('📤 Data exported via web download');
             
         } catch (error) {
-            console.error('❌ Import failed:', error);
-            window.showMessage?.('Import failed. Please check the file format.', 'error');
+            console.error('❌ Export failed:', error);
+            appMain.showMessage?.('Export failed. Please try again.', 'error');
         }
-    };
-    
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
+    }
+
+    function validateAndProcessImportData(dataToImport) {
+        if (!dataToImport.vocabulary || !Array.isArray(dataToImport.vocabulary)) {
+            throw new Error('Invalid backup file format. Missing vocabulary data.');
+        }
+        
+        const totalWords = dataToImport.totalWords || 0;
+        const importedVocabulary = dataToImport.vocabulary;
+        
+        importedVocabulary.forEach((word, index) => {
+            if (!word.id || typeof word.id !== 'string') {
+                throw new Error(`Word ${index + 1}: Missing or invalid id`);
+            }
+            if (!word.original || typeof word.original !== 'string') {
+                throw new Error(`Word ${index + 1}: Missing or invalid original field`);
+            }
+            if (!word.translation || typeof word.translation !== 'string') {
+                throw new Error(`Word ${index + 1}: Missing or invalid translation field`);
+            }
+            if (typeof word.easeFactor !== 'number') {
+                throw new Error(`Word ${index + 1}: Missing or invalid easeFactor`);
+            }
+            if (typeof word.repetition !== 'number') {
+                throw new Error(`Word ${index + 1}: Missing or invalid repetition`);
+            }
+            if (!Array.isArray(word.reviewHistory)) {
+                throw new Error(`Word ${index + 1}: Missing or invalid reviewHistory`);
+            }
+        });
+        
+        return {
+            vocabulary: importedVocabulary,
+            totalWords: totalWords,
+            exportDate: dataToImport.exportDate,
+            appVersion: dataToImport.appVersion,
+            valid: true
+        };
+    }
+
+    function importData() {
+        const input = doc.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.style.display = 'none';
+        
+        input.onchange = async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const importDataObj = JSON.parse(text);
+                
+                const processedData = validateAndProcessImportData(importDataObj);
+                
+                debugLog(`📥 Importing ${processedData.totalWords} words from ${processedData.exportDate || 'unknown date'}`);
+                
+                debugLog('🗑️ Clearing existing data...');
+                setVocabulary([]);
+                if (storage) {
+                    storage.removeItem('allVocabulary');
+                    storage.removeItem('userProgress');
+                }
+                
+                if (processedData.vocabulary && processedData.vocabulary.length > 0) {
+                    setVocabulary(processedData.vocabulary);
+                    debugLog(`✅ Vocabulary imported: ${processedData.vocabulary.length} words`);
+                }
+                
+                saveUserProgress();
+                saveAllVocabulary();
+                
+                debugLog('🔍 Verifying data integrity...');
+                const savedVocab = storage ? JSON.parse(storage.getItem('allVocabulary') || '[]') : [];
+                const savedProgress = storage ? JSON.parse(storage.getItem('userProgress') || '{}') : {};
+                debugLog(`✅ Verification: ${savedVocab.length} words, ${Object.keys(savedProgress).length} progress entries`);
+                
+                appMain.renderWordList?.();
+                stats.updateStats?.();
+                
+                debugLog('📥 Data imported successfully');
+                appMain.showMessage?.(`Data imported successfully! ${processedData.totalWords} words loaded. Reloading...`, 'success');
+                
+                location.reload();
+                
+            } catch (error) {
+                console.error('❌ Import failed:', error);
+                appMain.showMessage?.('Import failed. Please check the file format.', 'error');
+            }
+        };
+        
+        doc.body.appendChild(input);
+        input.click();
+        doc.body.removeChild(input);
+    }
+
+    return { createExportData, exportData, validateAndProcessImportData, importData };
 }
 
-// Export functions
-window.ImportExport = {
-    createExportData,
-    exportData,
-    validateAndProcessImportData,
-    importData
-};
+function createDefaultImportExport() {
+    const g = (typeof window !== 'undefined') ? window : globalThis;
+    return createImportExport({
+        getVocabulary: () => g.SV?.DataManager?.vocabulary || [],
+        setVocabulary: (v) => { if (g.SV?.DataManager) g.SV.DataManager.vocabulary = v; },
+        saveUserProgress: () => g.SV?.DataManager?.saveUserProgress?.(),
+        saveAllVocabulary: () => g.SV?.DataManager?.saveAllVocabulary?.(),
+        storage: (typeof localStorage !== 'undefined' ? localStorage : null),
+        document: (typeof document !== 'undefined' ? document : null),
+        debugLog: (...args) => g.SV?.debugLog?.(...args),
+        appMain: g.SV?.AppMain || {},
+        stats: g.SV?.Statistics || {},
+        getNow: () => new Date(),
+        getURL: () => (typeof URL !== 'undefined' ? URL : null)
+    });
+}
 
-// CommonJS export
+const defaultImportExport = createDefaultImportExport();
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        createExportData,
-        exportData,
-        validateAndProcessImportData,
-        importData
-    };
+    module.exports = defaultImportExport;
+    module.exports.createImportExport = createImportExport;
 }

@@ -41,7 +41,8 @@ describe('Add word flow - success toast', () => {
     mountAddTab();
     global.window = global;
     // DataManager minimal impl to avoid storage errors
-    window.DataManager = {
+    window.SV = window.SV || {};
+    window.SV.DataManager = {
       vocabulary: [],
       saveUserProgress: vi.fn(),
       saveAllVocabulary: vi.fn()

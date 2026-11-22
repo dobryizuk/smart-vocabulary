@@ -2,13 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setupDOM, renderToDOM, hasClass, getTextContent } from './test-helpers.js';
 
 describe('Progress Component', () => {
-  let createProgressComponent, createStatusBadge;
+  let createProgressComponent;
 
   beforeEach(() => {
     setupDOM();
     const UI = require('../../js/ui-components.js');
     createProgressComponent = UI.createProgressComponent;
-    createStatusBadge = UI.createStatusBadge;
   });
 
   describe('Progress Bar Creation', () => {

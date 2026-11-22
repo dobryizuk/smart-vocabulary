@@ -1,8 +1,10 @@
 // ============================================================================
-// APP STATE - Centralized global state container
+// APP STATE - Centralized global state container (SV namespace)
 // ============================================================================
 
 (function initAppState(global) {
+  global.SV = global.SV || {};
+
   const initialState = {
     currentLearningWord: null,
     learningSession: [],
@@ -11,36 +13,20 @@
     editingWordId: null,
   };
 
-  const AppState = global.AppState || { ...initialState };
+  const AppState = global.SV.AppState || { ...initialState };
 
-  function defineAlias(propName) {
-    if (Object.prototype.hasOwnProperty.call(global, propName)) return;
-    Object.defineProperty(global, propName, {
-      configurable: true,
-      enumerable: true,
-      get() {
-        return AppState[propName];
-      },
-      set(value) {
-        AppState[propName] = value;
-      },
-    });
-  }
-
-  // Expose AppState
-  global.AppState = AppState;
-  // Mirror on globalThis for test environments
-  try { globalThis.AppState = AppState; } catch { /* noop */ }
-
-  // Backward-compatible aliases
-  ['currentLearningWord', 'learningSession', 'sessionStats', 'currentDictionaryData', 'editingWordId'].forEach(defineAlias);
+  // Expose only under SV namespace
+  global.SV.AppState = AppState;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Export for CommonJS
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    get AppState() { return (typeof window !== 'undefined' ? window : globalThis).AppState; }
+    get AppState() {
+      const g = (typeof window !== 'undefined' ? window : globalThis);
+      g.SV = g.SV || {};
+      return g.SV.AppState;
+    }
   };
 }
-
 

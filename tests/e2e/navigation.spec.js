@@ -7,9 +7,10 @@ test.describe('Navigation Tests', () => {
     // Clear any existing data
     await page.evaluate(() => {
       localStorage.clear();
-      if (window.DataManager) {
-        window.DataManager.vocabulary = [];
-        window.DataManager.userProgress = {};
+      const dm = window.SV?.DataManager;
+      if (dm) {
+        dm.vocabulary = [];
+        dm.userProgress = {};
       }
     });
   });

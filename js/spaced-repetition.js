@@ -1,9 +1,13 @@
 // ============================================================================
-// SPACED REPETITION ALGORITHM
+// SPACED REPETITION ALGORITHM with DI
 // ============================================================================
 
-class SpacedRepetition {
-    static calculateNextReview(difficulty, repetition = 0, easeFactor = 1.3) {
+function createSpacedRepetition(context) {
+    const ctx = context || {};
+    const getVocabulary = ctx.getVocabulary || (() => []);
+    const debugLog = ctx.debugLog || ((..._args) => undefined);
+
+    function calculateNextReview(difficulty, repetition = 0, easeFactor = 1.3) {
         let interval;
         
         if (repetition === 0) {
@@ -14,28 +18,26 @@ class SpacedRepetition {
             interval = Math.round(repetition * easeFactor);
         }
 
-        console.log(`📊 Spaced Repetition Debug:`);
-        console.log(`   Word repetition: ${repetition}`);
-        console.log(`   Initial easeFactor: ${easeFactor}`);
-        console.log(`   Base interval: ${interval} days`);
-        console.log(`   User difficulty: ${difficulty}`);
+        debugLog(`📊 Spaced Repetition Debug:`);
+        debugLog(`   Word repetition: ${repetition}`);
+        debugLog(`   Initial easeFactor: ${easeFactor}`);
+        debugLog(`   Base interval: ${interval} days`);
+        debugLog(`   User difficulty: ${difficulty}`);
 
-        // Adjust based on difficulty - more sensitive to user performance
         switch(difficulty) {
             case 'hard':
-                // If user finds it hard, reset interval to 1 day and decrease ease factor
-                easeFactor = Math.max(1.3, easeFactor - 0.15); // Decrease ease factor
-                interval = 1; // Reset to 1 day - user will see this word tomorrow
+                easeFactor = Math.max(1.3, easeFactor - 0.15);
+                interval = 1;
                 break;
             case 'medium':
-                easeFactor = Math.min(3.5, easeFactor + 0.05); // Small progress increase
-                interval = Math.round(interval * 0.9); // Slight reduction
+                easeFactor = Math.min(3.5, easeFactor + 0.05);
+                interval = Math.round(interval * 0.9);
                 break;
             case 'easy':
-                easeFactor = Math.min(3.5, easeFactor + 0.15); // Good progress increase
+                easeFactor = Math.min(3.5, easeFactor + 0.15);
                 break;
             case 'perfect':
-                easeFactor = Math.min(3.5, easeFactor + 0.25); // Best progress increase
+                easeFactor = Math.min(3.5, easeFactor + 0.25);
                 interval = Math.round(interval * 1.2);
                 break;
         }
@@ -43,9 +45,9 @@ class SpacedRepetition {
         const nextReview = new Date();
         nextReview.setDate(nextReview.getDate() + interval);
 
-        console.log(`   Final interval: ${interval} days`);
-        console.log(`   Final easeFactor: ${easeFactor}`);
-        console.log(`   Next review: ${nextReview.toISOString()}`);
+        debugLog(`   Final interval: ${interval} days`);
+        debugLog(`   Final easeFactor: ${easeFactor}`);
+        debugLog(`   Next review: ${nextReview.toISOString()}`);
 
         return {
             nextReview: nextReview.toISOString(),
@@ -55,31 +57,30 @@ class SpacedRepetition {
         };
     }
 
-    static getWordsForReview() {
-        const vocabulary = window.DataManager?.vocabulary || [];
+    function getWordsForReview() {
+        const vocabulary = getVocabulary() || [];
         const now = new Date();
-        console.log('🔍 Checking words for review at:', now.toISOString());
+        debugLog('🔍 Checking words for review at:', now.toISOString());
         
         const wordsForReview = vocabulary.filter(word => {
-            // Always include new words (no nextReview date)
             if (!word.nextReview) {
-                console.log('✅ New word ready:', word.original);
+                debugLog('✅ New word ready:', word.original);
                 return true;
             }
             
             const reviewDate = new Date(word.nextReview);
             const isReady = reviewDate <= now;
             
-            console.log(`${isReady ? '✅' : '⏰'} ${word.original}: review ${reviewDate.toISOString()} vs now ${now.toISOString()}`);
+            debugLog(`${isReady ? '✅' : '⏰'} ${word.original}: review ${reviewDate.toISOString()} vs now ${now.toISOString()}`);
             
             return isReady;
         });
         
-        console.log(`📚 Found ${wordsForReview.length} words ready for review out of ${vocabulary.length} total`);
+        debugLog(`📚 Found ${wordsForReview.length} words ready for review out of ${vocabulary.length} total`);
         return wordsForReview;
     }
 
-    static calculateLearningProgress(easeFactor) {
+    function calculateLearningProgress(easeFactor) {
         const MIN_EASE = 1.3;
         const MAX_EASE = 3.5;
         
@@ -88,13 +89,29 @@ class SpacedRepetition {
         
         return Math.round(((easeFactor - MIN_EASE) / (MAX_EASE - MIN_EASE)) * 100);
     }
+
+    return { calculateNextReview, getWordsForReview, calculateLearningProgress };
 }
 
-// Export the class and make individual functions globally available
-window.SpacedRepetition = SpacedRepetition;
-window.calculateLearningProgress = SpacedRepetition.calculateLearningProgress;
+function createDefaultSpacedRepetition() {
+    const g = (typeof window !== 'undefined') ? window : globalThis;
+    return createSpacedRepetition({
+        getVocabulary: () => g.SV?.DataManager?.vocabulary || [],
+        debugLog: (...args) => g.SV?.debugLog?.(...args)
+    });
+}
 
-// Export for CommonJS (Node/Vitest)
+const defaultSR = createDefaultSpacedRepetition();
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = SpacedRepetition;
+    module.exports = defaultSR;
+    module.exports.createSpacedRepetition = createSpacedRepetition;
 }
+
+// Provide factory for browser attach in app-init
+try {
+    if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-restricted-syntax
+        window.createDefaultSpacedRepetition = createDefaultSpacedRepetition;
+    }
+} catch (_err) {}

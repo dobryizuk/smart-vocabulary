@@ -112,7 +112,29 @@ module.exports = [
       'prefer-const': 'error',
       'no-var': 'error',
       'no-empty': 'warn',
-      'no-empty-function': 'warn'
+      'no-empty-function': 'warn',
+      // Guard: disallow assignments to window.* outside app-init.js
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "AssignmentExpression[left.type='MemberExpression'][left.object.name='window']",
+          message: 'Do not assign to window.* directly; perform global attachments only in js/app-init.js.'
+        }
+      ]
+    }
+  },
+  // Allow window writes in app-init.js
+  {
+    files: ['js/app-init.js'],
+    rules: {
+      'no-restricted-syntax': 'off'
+    }
+  },
+  // Allow window writes for exposing ThemeManager class in browser
+  {
+    files: ['js/theme-manager.js'],
+    rules: {
+      'no-restricted-syntax': 'off'
     }
   },
   {
@@ -132,7 +154,8 @@ module.exports = [
     rules: {
       // Более мягкие правила для тестов
       'no-console': 'off',
-      'unused-imports/no-unused-vars': 'warn'
+      'unused-imports/no-unused-vars': 'warn',
+      'no-restricted-syntax': 'off'
     }
   }
 ];

@@ -11,8 +11,9 @@ test.describe.skip('Visual Regression Tests', () => {
     
     // Add sample data
     await page.evaluate(() => {
-      if (window.DataManager) {
-        window.DataManager.vocabulary = [
+      const dm = window.SV?.DataManager;
+      if (dm) {
+        dm.vocabulary = [
           {
             id: 'test1',
             original: 'beautiful',
@@ -46,8 +47,9 @@ test.describe.skip('Visual Regression Tests', () => {
     
     // Add sample word and go to learning
     await page.evaluate(() => {
-      if (window.DataManager) {
-        window.DataManager.vocabulary = [{
+      const dm2 = window.SV?.DataManager;
+      if (dm2) {
+        dm2.vocabulary = [{
           id: 'learn_test',
           original: 'learning',
           translation: 'обучение',

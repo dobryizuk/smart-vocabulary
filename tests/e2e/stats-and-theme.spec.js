@@ -7,9 +7,10 @@ test.describe('Statistics and Theme Tests', () => {
     // Clear any existing data
     await page.evaluate(() => {
       localStorage.clear();
-      if (window.DataManager) {
-        window.DataManager.vocabulary = [];
-        window.DataManager.userProgress = {};
+      const dm = window.SV?.DataManager;
+      if (dm) {
+        dm.vocabulary = [];
+        dm.userProgress = {};
       }
     });
   });
@@ -66,7 +67,7 @@ test.describe('Statistics and Theme Tests', () => {
     // If clicking didn't work, use JavaScript fallback
     if (!savedTheme) {
       console.log('Click didn\'t work, using JavaScript fallback...');
-      await page.evaluate(() => window.themeManager?.toggleTheme());
+      await page.evaluate(() => window.SV?.themeManager?.toggleTheme());
       await page.waitForTimeout(300);
       savedTheme = await page.evaluate(() => localStorage.getItem('smart-vocabulary-theme'));
     }
@@ -79,7 +80,7 @@ test.describe('Statistics and Theme Tests', () => {
     expect(documentTheme).toBe(savedTheme);
 
     // Toggle again (should flip)
-    await page.evaluate(() => window.themeManager?.toggleTheme());
+    await page.evaluate(() => window.SV?.themeManager?.toggleTheme());
     await page.waitForTimeout(300);
 
     const flippedTheme = await page.evaluate(() => localStorage.getItem('smart-vocabulary-theme'));

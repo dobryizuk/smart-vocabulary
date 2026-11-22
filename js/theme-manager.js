@@ -3,7 +3,14 @@
 // ============================================================================
 
 class ThemeManager {
-    constructor() {
+    constructor(context) {
+        const ctx = context ?? {};
+        this.doc = ctx.document ?? (typeof document !== 'undefined' ? document : null);
+        this.win = ctx.window ?? (typeof window !== 'undefined' ? window : null);
+        this.storage = ctx.storage ?? (typeof localStorage !== 'undefined' ? localStorage : null);
+        this.matchMedia = ctx.matchMedia ?? (this.win && this.win.matchMedia ? this.win.matchMedia.bind(this.win) : null);
+        this.navigator = ctx.navigator ?? (typeof navigator !== 'undefined' ? navigator : null);
+        this.debugLog = ctx.debugLog ?? ((..._args) => undefined);
         this.currentTheme = 'system';
         this.systemTheme = 'dark'; // Default fallback
         this.init();
@@ -22,13 +29,13 @@ class ThemeManager {
         // Listen for system theme changes
         this.setupSystemThemeListener();
         
-        // Create theme switcher UI
-        this.createThemeSwitcher();
+        // Do not create theme switcher here. It will be created centrally
+        // by app-init when the stats tab is shown.
     }
 
     loadThemePreference() {
         try {
-            const savedTheme = localStorage.getItem('smart-vocabulary-theme');
+            const savedTheme = this.storage ? this.storage.getItem('smart-vocabulary-theme') : null;
             if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
                 this.currentTheme = savedTheme;
             }
@@ -39,15 +46,15 @@ class ThemeManager {
 
     saveThemePreference() {
         try {
-            localStorage.setItem('smart-vocabulary-theme', this.currentTheme);
+            if (this.storage) this.storage.setItem('smart-vocabulary-theme', this.currentTheme);
         } catch (error) {
             console.warn('Failed to save theme preference:', error);
         }
     }
 
     detectSystemTheme() {
-        if (window.matchMedia) {
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        if (this.matchMedia) {
+            const mediaQuery = this.matchMedia('(prefers-color-scheme: dark)');
             this.systemTheme = mediaQuery.matches ? 'dark' : 'light';
         } else {
             // Fallback for test environments
@@ -56,8 +63,8 @@ class ThemeManager {
     }
 
     setupSystemThemeListener() {
-        if (window.matchMedia) {
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        if (this.matchMedia) {
+            const mediaQuery = this.matchMedia('(prefers-color-scheme: dark)');
             mediaQuery.addEventListener('change', (e) => {
                 this.systemTheme = e.matches ? 'dark' : 'light';
                 if (this.currentTheme === 'system') {
@@ -76,28 +83,39 @@ class ThemeManager {
 
     applyTheme() {
         const effectiveTheme = this.getEffectiveTheme();
-        document.documentElement.setAttribute('data-theme', effectiveTheme);
+        if (this.doc && this.doc.documentElement) {
+            this.doc.documentElement.setAttribute('data-theme', effectiveTheme);
+        }
         
         // Update theme color meta tag for PWA
         const themeColor = effectiveTheme === 'dark' ? '#0F0F0F' : '#FFFFFF';
-        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-        if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', themeColor);
+        if (this.doc) {
+            const metaThemeColor = this.doc.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                metaThemeColor.setAttribute('content', themeColor);
+            }
         }
         
         // Update manifest theme color if it exists
         this.updateManifestThemeColor(themeColor);
         
         // Trigger custom event for other components
-        window.dispatchEvent(new CustomEvent('themeChanged', {
-            detail: { theme: this.currentTheme, effectiveTheme }
-        }));
+        try {
+            if (this.win && typeof this.win.CustomEvent !== 'undefined' && this.win.dispatchEvent) {
+                this.win.dispatchEvent(new CustomEvent('themeChanged', {
+                    detail: { theme: this.currentTheme, effectiveTheme }
+                }));
+            }
+        } catch (err) {
+            this.debugLog('themeChanged dispatch failed:', err);
+        }
     }
 
     updateManifestThemeColor(themeColor) {
         // Update manifest.json theme_color if it exists
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
+        const nav = this.navigator;
+        if (nav && 'serviceWorker' in nav && nav.serviceWorker && nav.serviceWorker.controller) {
+            nav.serviceWorker.controller.postMessage({
                 type: 'UPDATE_THEME_COLOR',
                 themeColor
             });
@@ -126,13 +144,13 @@ class ThemeManager {
 
     createThemeSwitcher() {
         // Create theme switcher in statistics settings section
-        const dataManagement = document.getElementById('dataManagement');
+        const dataManagement = this.doc ? this.doc.getElementById('dataManagement') : null;
         if (!dataManagement) return;
 
         // Check if theme switcher already exists
         if (document.getElementById('theme-switcher')) return;
 
-        const themeSwitcher = document.createElement('button');
+        const themeSwitcher = this.doc ? this.doc.createElement('button') : null;
         themeSwitcher.id = 'theme-switcher';
         themeSwitcher.className = 'btn btn--secondary';
         themeSwitcher.setAttribute('aria-label', 'Toggle theme');
@@ -143,7 +161,7 @@ class ThemeManager {
         });
 
         // Add theme switcher to data management section
-        const themeSection = document.createElement('div');
+        const themeSection = this.doc ? this.doc.createElement('div') : null;
         themeSection.className = 'theme-section';
         
         // Create the HTML structure
@@ -189,7 +207,7 @@ class ThemeManager {
     }
 
     updateThemeSwitcherUI() {
-        const themeSwitcher = document.getElementById('theme-switcher');
+        const themeSwitcher = this.doc ? this.doc.getElementById('theme-switcher') : null;
         if (themeSwitcher) {
             themeSwitcher.innerHTML = this.getThemeIcon() + ' ' + this.getThemeText();
             
@@ -223,36 +241,10 @@ class ThemeManager {
 }
 
 // Initialize theme manager when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.themeManager = new ThemeManager();
-    
-    // Create theme switcher after a short delay to ensure other components are initialized
-    setTimeout(() => {
-        if (window.themeManager) {
-            window.themeManager.createThemeSwitcher();
-        }
-    }, 100);
-    
-    // Also try to create theme switcher when stats tab is shown
-    const originalShowTab = window.showTab;
-    window.showTab = function(tabName) {
-        if (originalShowTab) {
-            originalShowTab(tabName);
-        }
-        
-        // Create theme switcher when stats tab is shown
-        if (tabName === 'stats' && window.themeManager) {
-            setTimeout(() => {
-                window.themeManager.createThemeSwitcher();
-            }, 50);
-        }
-    };
-});
+// No self-instantiation here; app-init will create SV.themeManager and hook showTab
 
-// Export for module usage
+// Export for both CommonJS and browser
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ThemeManager;
 }
 
-// Export to global scope for tests
-window.ThemeManager = ThemeManager;

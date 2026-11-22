@@ -103,8 +103,8 @@ describe('Word Card Component', () => {
     it('should render action buttons with correct attributes', () => {
       const word = createTestWord();
       const actions = [
-        { type: 'primary', icon: '🔊', onclick: 'testFunction()', title: 'Test Action' },
-        { type: 'warning', icon: '✏️', onclick: 'editWord()', title: 'Edit' }
+        { type: 'primary', icon: '🔊', action: 'test-action', title: 'Test Action' },
+        { type: 'warning', icon: '✏️', action: 'edit-word', title: 'Edit' }
       ];
       
       const cardHtml = createWordCard(word, 'default', actions, false);
@@ -112,13 +112,13 @@ describe('Word Card Component', () => {
       
       const primaryBtn = container.querySelector('.action-btn--primary');
       expect(primaryBtn).toBeTruthy();
-      expect(primaryBtn.getAttribute('onclick')).toBe('testFunction()');
+      expect(primaryBtn.getAttribute('data-action')).toBe('test-action');
       expect(primaryBtn.getAttribute('title')).toBe('Test Action');
       expect(getTextContent(primaryBtn)).toContain('🔊');
       
       const warningBtn = container.querySelector('.action-btn--warning');
       expect(warningBtn).toBeTruthy();
-      expect(warningBtn.getAttribute('onclick')).toBe('editWord()');
+      expect(warningBtn.getAttribute('data-action')).toBe('edit-word');
       expect(warningBtn.getAttribute('title')).toBe('Edit');
       expect(getTextContent(warningBtn)).toContain('✏️');
     });
@@ -130,7 +130,7 @@ describe('Word Card Component', () => {
         original: 'expandable',
         translation: 'раскрываемый',
         repetition: 5,
-        nextReview: '2025-12-31T00:00:00.000Z',
+        nextReview: '2099-12-31T00:00:00.000Z',
         createdAt: '2024-01-01T00:00:00.000Z'
       });
       
@@ -152,7 +152,7 @@ describe('Word Card Component', () => {
       const metadataText = getTextContent(metadata);
       expect(metadataText).toContain('5 repetitions');
       expect(metadataText).toContain('Added 01/01/2024');
-      expect(metadataText).toContain('Next review: 31/12/2025');
+      expect(metadataText).toContain('Next review: 31/12/2099');
     });
 
     it('should have toggle button for expandable cards', () => {
@@ -170,9 +170,9 @@ describe('Word Card Component', () => {
       const card = container.querySelector('.word-card');
       expect(card.classList.contains('word-card--expanded')).toBe(false);
       const id = card.getAttribute('id');
-      window.toggleWordCard(id);
+      global.SV.UIComponents.toggleWordCard(id);
       expect(card.classList.contains('word-card--expanded')).toBe(true);
-      window.toggleWordCard(id);
+      global.SV.UIComponents.toggleWordCard(id);
       expect(card.classList.contains('word-card--expanded')).toBe(false);
     });
   });

@@ -2,54 +2,59 @@
 // DICTIONARY API INTEGRATION
 // ============================================================================
 
-// Dictionary API service for fetching definitions and translations
-class DictionaryService {
-    static async lookupWord(word) {
+// Dictionary API service for fetching definitions and translations (with DI)
+function createDictionaryService(context) {
+    const ctx = context || {};
+    const fetchImpl = ctx.fetch || (typeof fetch !== 'undefined' ? fetch.bind(window) : null);
+    const getTranslationSuggestion = ctx.getTranslationSuggestion || (() => null);
+    const warn = ctx.warn || ((...args) => console.warn(...args));
+
+    async function lookupWord(word) {
         const cleanWord = word.toLowerCase().trim();
         
         try {
             // Try Free Dictionary API first
-            const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+            const response = await fetchImpl(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
             
             if (!response.ok) {
                 throw new Error(`Dictionary API error: ${response.status}`);
             }
             
             const data = await response.json();
-            let result = this.parseApiResponse(data, cleanWord);
+            let result = parseApiResponse(data, cleanWord);
             
             // Try to enhance missing data with additional sources
-            result = await this.enhanceWithAdditionalSources(result, cleanWord);
+            result = await enhanceWithAdditionalSources(result, cleanWord);
             
             return result;
             
         } catch (error) {
-            console.warn('Dictionary API failed:', error.message);
-            return this.getFallbackDefinition(cleanWord);
+            warn('Dictionary API failed:', error.message);
+            return getFallbackDefinition(cleanWord);
         }
     }
 
-    static async enhanceWithAdditionalSources(result, word) {
+    async function enhanceWithAdditionalSources(result, word) {
         // Only enhance with real data from another API (no fabricated values)
         // If phonetic is missing, try to get it from Wiktionary
         if (!result.phonetic) {
             try {
-                const phonetic = await this.getPhoneticFromPronunciationAPI(word);
+                const phonetic = await getPhoneticFromPronunciationAPI(word);
                 if (phonetic) {
                     result.phonetic = phonetic;
                 }
             } catch (error) {
-                console.warn('Phonetic enhancement failed:', error.message);
+                warn('Phonetic enhancement failed:', error.message);
             }
         }
 
         return result;
     }
 
-    static async getPhoneticFromPronunciationAPI(word) {
+    async function getPhoneticFromPronunciationAPI(word) {
         try {
             // Try Wiktionary API for phonetic (alternative source)
-            const response = await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${word}`);
+            const response = await fetchImpl(`https://en.wiktionary.org/api/rest_v1/page/definition/${word}`);
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.english && data.english.length > 0) {
@@ -65,15 +70,15 @@ class DictionaryService {
                 }
             }
         } catch (error) {
-            console.warn('Wiktionary API failed:', error.message);
+            warn('Wiktionary API failed:', error.message);
         }
 
         return null;
     }
 
-    static parseApiResponse(data, word) {
+    function parseApiResponse(data, word) {
         if (!data || !Array.isArray(data) || data.length === 0) {
-            return this.getFallbackDefinition(word);
+            return getFallbackDefinition(word);
         }
 
         const entry = data[0];
@@ -126,7 +131,7 @@ class DictionaryService {
         };
     }
 
-    static getFallbackDefinition(word) {
+    function getFallbackDefinition(word) {
         return {
             word: word,
             phonetic: '',
@@ -139,45 +144,45 @@ class DictionaryService {
     }
 
     // Translation service with Google Translate API
-    static async translateWord(originalWord) {
+    async function translateWord(originalWord) {
         // First check local database
-        const localTranslation = window.DataManager?.getTranslationSuggestion?.(originalWord);
+        const localTranslation = getTranslationSuggestion(originalWord);
         if (localTranslation) {
             return localTranslation;
         }
 
         // Try Google Translate API (free tier)
         try {
-            const response = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(originalWord));
+            const response = await fetchImpl('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(originalWord));
             const data = await response.json();
             
             if (data && data[0] && data[0][0] && data[0][0][0]) {
                 return data[0][0][0];
             }
         } catch (error) {
-            console.warn('Google Translate failed:', error.message);
+            warn('Google Translate failed:', error.message);
         }
 
         // Fallback to MyMemory API
         try {
-            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalWord)}&langpair=en|ru`);
+            const response = await fetchImpl(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalWord)}&langpair=en|ru`);
             const data = await response.json();
             
             if (data && data.responseData && data.responseData.translatedText) {
                 return data.responseData.translatedText;
             }
         } catch (error) {
-            console.warn('MyMemory API failed:', error.message);
+            warn('MyMemory API failed:', error.message);
         }
 
         // Final fallback
         return `перевод слова "${originalWord}"`;
     }
 
-    static async lookupWithTranslation(word) {
+    async function lookupWithTranslation(word) {
         const [definition, translation] = await Promise.all([
-            this.lookupWord(word),
-            this.translateWord(word)
+            lookupWord(word),
+            translateWord(word)
         ]);
 
         return {
@@ -185,12 +190,22 @@ class DictionaryService {
             translation: translation
         };
     }
+
+    return { lookupWord, translateWord, lookupWithTranslation };
 }
 
-// Export the service
-window.DictionaryService = DictionaryService;
+function createDefaultDictionaryService() {
+    const g = (typeof window !== 'undefined') ? window : globalThis;
+    return createDictionaryService({
+        fetch: (typeof fetch !== 'undefined' ? fetch.bind(window) : null),
+        getTranslationSuggestion: (word) => g.SV?.DataManager?.getTranslationSuggestion?.(word),
+        warn: (...args) => console.warn(...args)
+    });
+}
 
-// CommonJS export
+const defaultDictionaryService = createDefaultDictionaryService();
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = DictionaryService;
+    module.exports = defaultDictionaryService;
+    module.exports.createDictionaryService = createDictionaryService;
 }

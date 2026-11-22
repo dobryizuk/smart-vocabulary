@@ -12,8 +12,10 @@
  */
 function buildActionsHtml(actions, expandable) {
     return actions.map(action => {
-        const clickHandler = expandable ? `event.stopPropagation(); ${action.onclick}` : action.onclick;
-        return `<button class="action-btn action-btn--${action.type}" onclick="${clickHandler}" title="${action.title || ''}">${action.icon}</button>`;
+        const dataAction = action.action || '';
+        const dataArg = action.arg != null ? ` data-arg="${String(action.arg).replace(/"/g, '&quot;')}"` : '';
+        const stopAttr = expandable ? ' data-stop-prop="true"' : '';
+        return `<button class="action-btn action-btn--${action.type}" data-action="${dataAction}"${dataArg}${stopAttr} title="${action.title || ''}">${action.icon}</button>`;
     }).join('');
 }
 
@@ -68,7 +70,7 @@ function buildNonExpandableDetails(word, variant) {
 
 function buildToggleButtonHTML(expandable, hasExtra, uniqueId) {
     if (!(expandable && hasExtra)) return '';
-    return `<div class="word-card__toggle" onclick="toggleWordCard('${uniqueId}')" title="Show/hide details">⌄</div>`;
+    return `<div class="word-card__toggle" data-action="toggle-card" data-target-id="${uniqueId}" title="Show/hide details">⌄</div>`;
 }
 
 function buildPhoneticHtml(word, variant) {
@@ -103,7 +105,7 @@ function buildHeaderSection(word, variant, originalClasses, translationClasses, 
 }
 
 function createWordCard(word, variant = 'default', actions = [], showProgress = false, expandable = false) {
-    const userProgress = window.DataManager?.userProgress || {};
+    const userProgress = window.SV?.DataManager?.userProgress || {};
     const baseProgress = userProgress[word.id] || { correctCount: 0, totalAttempts: 0, lastSeen: null };
     const uniqueId = `word-card-${word.id}`;
     
@@ -119,7 +121,7 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
     };
     
     // Use the same progress calculation as in learning tab (based on easeFactor)
-    const progressPercentage = window.SpacedRepetition?.calculateLearningProgress?.(word.easeFactor || 1.3) || 0;
+    const progressPercentage = window.SV?.SpacedRepetition?.calculateLearningProgress?.(word.easeFactor || 1.3) || 0;
     
     // Determine card classes based on variant
     const { cardClasses, headerClasses, originalClasses, translationClasses, actionsClasses } = buildVariantClasses(variant, expandable);
@@ -247,7 +249,14 @@ function createWordDetailSections(word, variant = 'default') {
 
     const baseClass = (type) => `detail-block detail-block--${type}${isLearning ? ' detail-block--learning' : ''}`;
     const title = (text) => `<div class="detail-title">${text}</div>`;
-    const wrap = (type, content) => `<div class="${baseClass(type)}">${content}</div>`;
+    const wrap = (type, content) => {
+        let testId = '';
+        if (type === 'definition') testId = 'detail-definition';
+        else if (type === 'synonyms') testId = 'detail-synonyms';
+        else if (type === 'examples') testId = 'detail-examples';
+        const testAttr = testId ? ` data-testid="${testId}"` : '';
+        return `<div class="${baseClass(type)}"${testAttr}>${content}</div>`;
+    };
 
     // Definition
     if (word.definition) {
@@ -296,7 +305,7 @@ function createDefinitionSection(word, isLearning = false) {
     if (!word.definition) return '';
     const baseClass = `detail-block detail-block--definition${isLearning ? ' detail-block--learning' : ''}`;
     const title = `<div class="detail-title">${isLearning ? 'Definition' : '📖 Definition'}</div>`;
-    return `<div class="${baseClass}">${title}<div class="detail-text">${word.definition}</div></div>`;
+    return `<div class="${baseClass}" data-testid="detail-definition">${title}<div class="detail-text">${word.definition}</div></div>`;
 }
 
 function createExamplesSection(word, isLearning = false) {
@@ -311,7 +320,7 @@ function createExamplesSection(word, isLearning = false) {
                 ? `<div class="detail-text" style="font-size: 0.85em; font-style: italic; margin-bottom: 4px;">"${text}"</div>`
                 : `• ${text}`;
         }).join(isLearning ? '' : '<br>');
-    return `<div class="${baseClass}">${title}<div class="detail-text">${examplesHtml}</div></div>`;
+    return `<div class="${baseClass}" data-testid="detail-examples">${title}<div class="detail-text">${examplesHtml}</div></div>`;
 }
 
 function createSynonymsSection(word, isLearning = false) {
@@ -319,7 +328,7 @@ function createSynonymsSection(word, isLearning = false) {
     const baseClass = `detail-block detail-block--synonyms${isLearning ? ' detail-block--learning' : ''}`;
     const title = `<div class="detail-title">Synonyms</div>`;
     const synonymChips = word.synonyms.map(synonym => `<span class="synonym-chip">${synonym}</span>`).join('');
-    return `<div class="${baseClass}">${title}<div class="detail-text">${synonymChips}</div></div>`;
+    return `<div class="${baseClass}" data-testid="detail-synonyms">${title}<div class="detail-text">${synonymChips}</div></div>`;
 }
 
 /**
@@ -484,19 +493,19 @@ function createWordMetadata(word, progress) {
 function createDifficultyButtons() {
     const buttonsHtml = `
         <div class="difficulty-buttons" style="margin-top: 20px; margin-left: 18px; margin-right: 18px;">
-            <button class="difficulty-btn difficulty-btn--hard" onclick="markDifficulty('hard')">
+            <button class="difficulty-btn difficulty-btn--hard" data-difficulty="hard">
                 <div class="difficulty-emoji">😰</div>
                 <div>Hard</div>
             </button>
-            <button class="difficulty-btn difficulty-btn--medium" onclick="markDifficulty('medium')">
+            <button class="difficulty-btn difficulty-btn--medium" data-difficulty="medium">
                 <div class="difficulty-emoji">🤔</div>
                 <div>Medium</div>
             </button>
-            <button class="difficulty-btn difficulty-btn--easy" onclick="markDifficulty('easy')">
+            <button class="difficulty-btn difficulty-btn--easy" data-difficulty="easy">
                 <div class="difficulty-emoji">😊</div>
                 <div>OK</div>
             </button>
-            <button class="difficulty-btn difficulty-btn--perfect" onclick="markDifficulty('perfect')">
+            <button class="difficulty-btn difficulty-btn--perfect" data-difficulty="perfect">
                 <div class="difficulty-emoji">🎯</div>
                 <div>Easy</div>
             </button>
@@ -506,9 +515,12 @@ function createDifficultyButtons() {
     return buttonsHtml;
 }
 
-function showDeleteConfirmation(word, onConfirm) {
+function showDeleteConfirmation(word, onConfirm, context) {
+    const ctx = context ?? {};
+    const doc = ctx.document ?? (typeof document !== 'undefined' ? document : null);
+    if (!doc) return;
     // Create overlay
-    const overlay = document.createElement('div');
+    const overlay = doc.createElement('div');
     overlay.style.cssText = `
         position: fixed; 
         top: 0; left: 0; right: 0; bottom: 0; 
@@ -520,7 +532,7 @@ function showDeleteConfirmation(word, onConfirm) {
     `;
     
     // Create dialog
-    const dialog = document.createElement('div');
+    const dialog = doc.createElement('div');
     dialog.style.cssText = `
         background: white; 
         border-radius: 12px; 
@@ -550,24 +562,24 @@ function showDeleteConfirmation(word, onConfirm) {
     `;
     
     overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
+    doc.body.appendChild(overlay);
     
     // Handle buttons
-    document.getElementById('cancelDelete').onclick = () => {
-        console.log('🗑️ Deletion cancelled by user');
-        document.body.removeChild(overlay);
+    doc.getElementById('cancelDelete').onclick = () => {
+        window.SV?.debugLog?.('🗑️ Deletion cancelled by user');
+        doc.body.removeChild(overlay);
     };
     
-    document.getElementById('confirmDelete').onclick = () => {
-        document.body.removeChild(overlay);
+    doc.getElementById('confirmDelete').onclick = () => {
+        doc.body.removeChild(overlay);
         onConfirm();
     };
     
     // Close on overlay click
     overlay.onclick = (e) => {
         if (e.target === overlay) {
-            console.log('🗑️ Deletion cancelled by user');
-            document.body.removeChild(overlay);
+            window.SV?.debugLog?.('🗑️ Deletion cancelled by user');
+            doc.body.removeChild(overlay);
         }
     };
 }
@@ -583,7 +595,10 @@ function createEmptyState(title, message, buttons = []) {
     const buttonsHtml = buttons.map(button => {
         const buttonClass = `btn btn-${button.type || 'primary'}`;
         const style = button.style ? ` style="${button.style}"` : '';
-        return `<button class="${buttonClass}" onclick="${button.onclick}"${style}>${button.text}</button>`;
+        const id = button.id ? ` id="${button.id}"` : '';
+        const dataAction = button.action ? ` data-action="${button.action}"` : '';
+        const dataArg = button.arg != null ? ` data-arg="${String(button.arg).replace(/"/g, '&quot;')}"` : '';
+        return `<button class="${buttonClass}"${dataAction}${dataArg}${id}${style}>${button.text}</button>`;
     }).join('');
     
     const buttonsContainer = buttons.length > 0 ? `
@@ -609,7 +624,7 @@ function createEmptyState(title, message, buttons = []) {
  */
 function createSessionProgress(currentIndex, totalWords) {
     return `
-        <div class="session-progress">
+        <div class="session-progress" data-testid="session-progress">
             ${currentIndex} of ${totalWords} words
         </div>
     `;
@@ -627,7 +642,9 @@ function createButtonGroup(buttons, justify = 'center') {
         const disabled = button.disabled ? ' disabled' : '';
         const id = button.id ? ` id="${button.id}"` : '';
         const style = button.style ? ` style="${button.style}"` : '';
-        return `<button class="${buttonClass}" onclick="${button.onclick}"${disabled}${id}${style}>${button.text}</button>`;
+        const dataAction = button.action ? ` data-action="${button.action}"` : '';
+        const dataArg = button.arg != null ? ` data-arg="${String(button.arg).replace(/"/g, '&quot;')}"` : '';
+        return `<button class="${buttonClass}"${dataAction}${dataArg}${disabled}${id}${style}>${button.text}</button>`;
     }).join('');
     
     return `
@@ -649,14 +666,15 @@ function createButtonGroup(buttons, justify = 'center') {
  * @param {string} testId - data-testid attribute
  * @returns {string} HTML string for button
  */
-function createButton(text, onclick, type = 'primary', disabled = false, id = '', style = '', className = '', testId = '') {
+function createButton(text, action, type = 'primary', disabled = false, id = '', style = '', className = '', testId = '', arg = '') {
     const buttonClass = `btn btn-${type}${className ? ' ' + className : ''}`;
     const disabledAttr = disabled ? ' disabled' : '';
     const idAttr = id ? ` id="${id}"` : '';
     const styleAttr = style ? ` style="${style}"` : '';
     const testIdAttr = testId ? ` data-testid="${testId}"` : '';
-    
-    return `<button class="${buttonClass}" onclick="${onclick}"${disabledAttr}${idAttr}${styleAttr}${testIdAttr}>${text}</button>`;
+    const actionAttr = action ? ` data-action="${action}"` : '';
+    const argAttr = arg !== '' ? ` data-arg="${String(arg).replace(/"/g, '&quot;')}"` : '';
+    return `<button class="${buttonClass}"${actionAttr}${argAttr}${disabledAttr}${idAttr}${styleAttr}${testIdAttr}>${text}</button>`;
 }
 
 /**
@@ -724,19 +742,6 @@ function createFlexContainer(content, direction = 'row', justify = 'flex-start',
  * @param {string} style - additional styles
  * @returns {string} HTML string for info box
  */
-function createInfoBox(content, variant = 'info', style = '') {
-    const variants = {
-        info: { bg: '#e8f5e8', border: '#2e7d32' },
-        success: { bg: '#f0fff4', border: '#38a169' },
-        warning: { bg: '#fffbf0', border: '#d69e2e' },
-        error: { bg: '#fff5f5', border: '#e53e3e' }
-    };
-    
-    const colors = variants[variant] || variants.info;
-    const boxStyle = `background: ${colors.bg}; padding: 15px; border-radius: 8px; border-left: 3px solid ${colors.border};${style ? ' ' + style : ''}`;
-    
-    return `<div style="${boxStyle}">${content}</div>`;
-}
 
 /**
  * Creates small text with common styling
@@ -757,7 +762,7 @@ function createSmallText(text, color = '#666', fontSize = '0.8em', style = '') {
  * @param {string} cardId - The ID of the word card to toggle
  */
 function toggleWordCard(cardId) {
-    const card = document.getElementById(cardId);
+    const card = (typeof document !== 'undefined') ? document.getElementById(cardId) : null;
     if (!card) return;
     
     const isExpanded = card.classList.contains('word-card--expanded');
@@ -776,7 +781,9 @@ function toggleWordCard(cardId) {
     }
 }
 
-window.UIComponents = {
+// Export functions (CommonJS consumers and app-init attach to SV)
+// App-init will attach these under SV.UIComponents
+const UIComponents = {
     createWordCard,
     createProgressComponent,
     createStatusBadge,
@@ -795,55 +802,12 @@ window.UIComponents = {
     createButton,
     createLabeledTextInput,
     createFlexContainer,
-    createInfoBox,
     createSmallText
 };
 
-// Make individual functions globally available for backwards compatibility
-window.createWordCard = createWordCard;
-window.createProgressComponent = createProgressComponent;
-window.createStatusBadge = createStatusBadge;
-window.createWordDetailSections = createWordDetailSections;
-window.createTranslationBlock = createTranslationBlock;
-window.createLearningAnswerContent = createLearningAnswerContent;
-window.createAnswerLayout = createAnswerLayout;
-window.createPrimaryAnswerBlock = createPrimaryAnswerBlock;
-window.createWordMetadata = createWordMetadata;
-window.createDifficultyButtons = createDifficultyButtons;
-window.createEmptyState = createEmptyState;
-window.createSessionProgress = createSessionProgress;
-window.createButtonGroup = createButtonGroup;
-window.createButton = createButton;
-window.createLabeledTextInput = createLabeledTextInput;
-window.createFlexContainer = createFlexContainer;
-window.createInfoBox = createInfoBox;
-window.createSmallText = createSmallText;
-window.showDeleteConfirmation = showDeleteConfirmation;
-window.toggleWordCard = toggleWordCard;
+// Functions are available through window.UIComponents namespace
 
 // Export for CommonJS (Node/Vitest)
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        createWordCard,
-        createProgressComponent,
-        createStatusBadge,
-        createWordDetailSections,
-        createTranslationBlock,
-        createLearningAnswerContent,
-        createAnswerLayout,
-        createPrimaryAnswerBlock,
-        createWordMetadata,
-        createDifficultyButtons,
-        showDeleteConfirmation,
-        toggleWordCard,
-        createEmptyState,
-        createSessionProgress,
-        createButtonGroup,
-        createButton,
-        createLabeledTextInput,
-        createFlexContainer,
-        createInfoBox,
-        createSmallText,
-        UIComponents: window.UIComponents
-    };
+    module.exports = UIComponents;
 }

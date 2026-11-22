@@ -113,12 +113,12 @@ describe('Translation Components', () => {
       expect(getTextContent(translationBlock)).toContain('всеобъемлющий');
       
       // Check definition
-      const definitionBlock = container.querySelector('.detail-block--definition');
+      const definitionBlock = container.querySelector('[data-testid="detail-definition"]');
       expect(definitionBlock).toBeTruthy();
       expect(getTextContent(definitionBlock)).toContain('Including all or nearly all elements');
       
       // Check synonyms
-      const synonymsBlock = container.querySelector('.detail-block--synonyms');
+      const synonymsBlock = container.querySelector('[data-testid="detail-synonyms"]');
       expect(synonymsBlock).toBeTruthy();
       const synonymsText = getTextContent(synonymsBlock);
       expect(synonymsText).toContain('complete');
@@ -126,7 +126,7 @@ describe('Translation Components', () => {
       expect(synonymsText).toContain('extensive');
       
       // Check examples
-      const examplesBlock = container.querySelector('.detail-block--examples');
+      const examplesBlock = container.querySelector('[data-testid="detail-examples"]');
       expect(examplesBlock).toBeTruthy();
       const examplesText = getTextContent(examplesBlock);
       expect(examplesText).toContain('A comprehensive study');
@@ -146,7 +146,7 @@ describe('Translation Components', () => {
       expect(translationBlock).toBeTruthy();
       expect(getTextContent(translationBlock)).toContain('тест');
       
-      const definitionBlock = container.querySelector('.detail-block--definition');
+      const definitionBlock = container.querySelector('[data-testid="detail-definition"]');
       expect(definitionBlock).toBeTruthy();
       expect(getTextContent(definitionBlock)).toContain('A trial');
     });
@@ -168,13 +168,13 @@ describe('Translation Components', () => {
       expect(getTextContent(translationBlock)).toContain('минимальный');
       
       // Should not have other detail blocks (since we didn't provide them)
-      const definitionBlock = container.querySelector('.detail-block--definition');
+      const definitionBlock = container.querySelector('[data-testid="detail-definition"]');
       expect(definitionBlock).toBeFalsy();
       
-      const synonymsBlock = container.querySelector('.detail-block--synonyms');
+      const synonymsBlock = container.querySelector('[data-testid="detail-synonyms"]');
       expect(synonymsBlock).toBeFalsy();
       
-      const examplesBlock = container.querySelector('.detail-block--examples');
+      const examplesBlock = container.querySelector('[data-testid="detail-examples"]');
       expect(examplesBlock).toBeFalsy();
     });
 
@@ -188,7 +188,7 @@ describe('Translation Components', () => {
       const container = renderToDOM(answerHtml);
       
       // Examples should be limited in learning mode
-      const examplesBlock = container.querySelector('.detail-block--examples');
+      const examplesBlock = container.querySelector('[data-testid="detail-examples"]');
       if (examplesBlock) {
         // In real implementation learning trimming applies only when variant passed to createWordDetailSections is 'learning'
         const examplesText = getTextContent(examplesBlock);

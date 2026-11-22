@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setupDOM, createTestWord, renderToDOM, getTextContent } from './test-helpers.js';
 
 describe('Word Detail Sections', () => {
-  let createWordDetailSections, createWordMetadata;
+  let createWordDetailSections; // createWordMetadata is used only in some tests below
 
   beforeEach(() => {
     setupDOM();
     const UI = require('../../js/ui-components.js');
     createWordDetailSections = UI.createWordDetailSections;
-    createWordMetadata = UI.createWordMetadata;
+    // createWordMetadata is used within tests that reference it directly
   });
 
   describe('Definition Section', () => {
@@ -20,7 +20,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const definitionBlock = container.querySelector('.detail-block--definition');
+      const definitionBlock = container.querySelector('[data-testid="detail-definition"]');
       expect(definitionBlock).toBeTruthy();
       
       const definitionHeader = container.querySelector('.detail-title');
@@ -39,7 +39,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const definitionBlock = container.querySelector('.detail-block--definition');
+      const definitionBlock = container.querySelector('[data-testid="detail-definition"]');
       expect(definitionBlock).toBeFalsy();
     });
   });
@@ -53,7 +53,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const synonymsBlock = container.querySelector('.detail-block--synonyms');
+      const synonymsBlock = container.querySelector('[data-testid="detail-synonyms"]');
       expect(synonymsBlock).toBeTruthy();
       
       const synonymsHeader = synonymsBlock.querySelector('.detail-title');
@@ -75,7 +75,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const synonymsBlock = container.querySelector('.detail-block--synonyms');
+      const synonymsBlock = container.querySelector('[data-testid="detail-synonyms"]');
       expect(synonymsBlock).toBeTruthy();
       
       const synonymsContent = synonymsBlock.querySelector('.detail-text');
@@ -93,7 +93,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const synonymsBlock = container.querySelector('.detail-block--synonyms');
+      const synonymsBlock = container.querySelector('[data-testid="detail-synonyms"]');
       expect(synonymsBlock).toBeFalsy();
     });
   });
@@ -111,7 +111,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const examplesBlock = container.querySelector('.detail-block--examples');
+      const examplesBlock = container.querySelector('[data-testid="detail-examples"]');
       expect(examplesBlock).toBeTruthy();
       
       const examplesHeader = examplesBlock.querySelector('.detail-title');
@@ -139,7 +139,7 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'learning');
       const container = renderToDOM(sectionsHtml);
       
-      const examplesBlock = container.querySelector('.detail-block--examples');
+      const examplesBlock = container.querySelector('[data-testid="detail-examples"]');
       expect(examplesBlock).toBeTruthy();
       
       // Should have learning class
@@ -194,13 +194,13 @@ describe('Word Detail Sections', () => {
       const sectionsHtml = createWordDetailSections(word, 'default');
       const container = renderToDOM(sectionsHtml);
       
-      const definitionBlock = container.querySelector('.detail-block--definition');
+      const definitionBlock = container.querySelector('[data-testid="detail-definition"]');
       expect(definitionBlock).toBeTruthy();
       
-      const synonymsBlock = container.querySelector('.detail-block--synonyms');
+      const synonymsBlock = container.querySelector('[data-testid="detail-synonyms"]');
       expect(synonymsBlock).toBeFalsy();
       
-      const examplesBlock = container.querySelector('.detail-block--examples');
+      const examplesBlock = container.querySelector('[data-testid="detail-examples"]');
       expect(examplesBlock).toBeFalsy();
     });
   });

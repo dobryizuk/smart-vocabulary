@@ -5,22 +5,38 @@ import { vi } from 'vitest';
 export function setupDOM() {
   document.body.innerHTML = '';
 
-  // Ensure globals
+  // Ensure globals and SV namespace
   global.window = global;
-  global.DataManager = {
+  global.SV = global.SV || {};
+  global.SV.DataManager = {
     vocabulary: [],
     userProgress: {}
   };
 
   // Minimal SpacedRepetition progress helper used by some tests
-  global.SpacedRepetition = {
+  global.SV.SpacedRepetition = {
     calculateLearningProgress: (easeFactor) => Math.round(((easeFactor - 1.3) / (3.5 - 1.3)) * 100)
+  };
+  
+  // Mock toggleWordCard for tests
+  global.SV.UIComponents = global.SV.UIComponents || {};
+  global.SV.UIComponents.toggleWordCard = (cardId) => {
+    const card = document.getElementById(cardId);
+    if (card) {
+      card.classList.toggle('word-card--expanded');
+      const toggle = card.querySelector('.word-card__toggle');
+      if (toggle) {
+        const isExpanded = card.classList.contains('word-card--expanded');
+        toggle.setAttribute('aria-expanded', isExpanded.toString());
+        toggle.textContent = isExpanded ? '▲' : '▼';
+      }
+    }
   };
 }
 
 export function createTestWord(overrides = {}) {
   return {
-    id: 'test-word-' + Math.random().toString(36).substr(2, 9),
+    id: 'test-word-' + (overrides.id || 'fixed'),
     original: 'test',
     translation: 'тест',
     definition: 'A trial or examination',
