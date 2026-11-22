@@ -11,6 +11,7 @@
     sessionStats: { correct: 0, total: 0, streak: 0 },
     currentDictionaryData: null,
     editingWordId: null,
+    reverseHintCount: 0,
   };
 
   const AppState = global.SV.AppState || { ...initialState };

@@ -143,6 +143,18 @@
     color: var(--color-text);
 }
 
+.typing-hint {
+    margin: -8px 18px 12px;
+    font-size: 1.2em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--color-accent-orange);
+}
+
+.typing-hint:empty {
+    display: none;
+}
+
 /* Learning Session States */
 .learning-session--start {
     text-align: center;

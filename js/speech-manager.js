@@ -125,7 +125,7 @@ function createSpeechManager(context) {
         const el = doc ? doc.getElementById(btnId) : null;
         if (el) {
             el.textContent = isOn ? onText : offText;
-            el.className = isOn ? 'btn btn-success' : 'btn btn-secondary';
+            el.className = isOn ? 'btn btn--success' : 'btn btn--secondary';
         }
         if (storage) storage.setItem('speechSettings', JSON.stringify(speechSettings));
     }

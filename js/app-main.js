@@ -205,13 +205,13 @@ function toggleAdditionalFields() {
     if (additionalFields.style.display === 'none' || !additionalFields.style.display) {
         additionalFields.style.display = 'block';
         toggleBtn.innerHTML = '➖ Hide Fields';
-        toggleBtn.classList.remove('btn-secondary');
-        toggleBtn.classList.add('btn-warning');
+        toggleBtn.classList.remove('btn--secondary');
+        toggleBtn.classList.add('btn--warning');
     } else {
         additionalFields.style.display = 'none';
         toggleBtn.innerHTML = '➕ More Fields';
-        toggleBtn.classList.remove('btn-warning');  
-        toggleBtn.classList.add('btn-secondary');
+        toggleBtn.classList.remove('btn--warning');  
+        toggleBtn.classList.add('btn--secondary');
     }
 }
 

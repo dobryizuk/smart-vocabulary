@@ -236,3 +236,75 @@ describe('Learning Answer Screen Layout', () => {
     expect(learningContent.lastElementChild.id).toBe('sessionProgressContainer');
   });
 });
+
+describe('Writing exercise hint', () => {
+  const startExercise = (original) => {
+    const word = { id: 'h1', original, translation: 'перевод', repetition: 2, easeFactor: 2.5, reviewHistory: [] };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    LS.showReverseTranslationCard();
+  };
+  const hint = () => document.getElementById('reverseHint').textContent;
+  const hintBtn = () => document.getElementById('hintReverseButton');
+
+  it('reveals one more letter per press, up to three', () => {
+    startExercise('Devolve');
+    expect(hint()).toBe('');
+    expect(hintBtn().textContent).toBe('💡 Hint');
+    expect(hintBtn().className).toBe('btn btn--secondary');
+
+    LS.showHintForReverse();
+    expect(hint()).toBe('💡 D…');
+    expect(hintBtn().textContent).toBe('💡 Hint (2 left)');
+
+    LS.showHintForReverse();
+    expect(hint()).toBe('💡 De…');
+
+    LS.showHintForReverse();
+    expect(hint()).toBe('💡 Dev…');
+    expect(hintBtn().disabled).toBe(true);
+
+    LS.showHintForReverse();
+    expect(hint()).toBe('💡 Dev…');
+  });
+
+  it('starts from zero hints for the next word', () => {
+    startExercise('Devolve');
+    LS.showHintForReverse();
+    startExercise('Forthright');
+
+    expect(hint()).toBe('');
+    LS.showHintForReverse();
+    expect(hint()).toBe('💡 F…');
+  });
+
+  it('never reveals the whole answer of a short word', () => {
+    startExercise('go');
+    LS.showHintForReverse();
+    LS.showHintForReverse();
+
+    expect(hint()).toBe('💡 g…');
+    expect(hintBtn().disabled).toBe(true);
+  });
+
+  it('disables the hint for a one-letter answer', () => {
+    startExercise('I');
+    expect(hintBtn().disabled).toBe(true);
+    LS.showHintForReverse();
+    expect(hint()).toBe('');
+  });
+
+  it('hides the hint button once the answer is shown', () => {
+    startExercise('Devolve');
+    LS.showAnswerForReverse();
+    expect(hintBtn().style.display).toBe('none');
+  });
+
+  it('counts letters, not spaces, in phrases', () => {
+    expect(LS.getHintPrefix('a lot', 2)).toBe('a l');
+    expect(LS.getHintPrefix('  break the ice'.trim(), 3)).toBe('bre');
+    expect(LS.getMaxHints('a lot')).toBe(3);
+    expect(LS.getMaxHints('ox')).toBe(1);
+    expect(LS.getMaxHints('')).toBe(0);
+  });
+});

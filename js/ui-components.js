@@ -593,7 +593,7 @@ function showDeleteConfirmation(word, onConfirm, context) {
  */
 function createEmptyState(title, message, buttons = []) {
     const buttonsHtml = buttons.map(button => {
-        const buttonClass = `btn btn-${button.type || 'primary'}`;
+        const buttonClass = `btn btn--${button.type || 'primary'}`;
         const style = button.style ? ` style="${button.style}"` : '';
         const id = button.id ? ` id="${button.id}"` : '';
         const dataAction = button.action ? ` data-action="${button.action}"` : '';
@@ -638,7 +638,7 @@ function createSessionProgress(currentIndex, totalWords) {
  */
 function createButtonGroup(buttons, justify = 'center') {
     const buttonsHtml = buttons.map(button => {
-        const buttonClass = `btn btn-${button.type || 'primary'}`;
+        const buttonClass = `btn btn--${button.type || 'primary'}`;
         const disabled = button.disabled ? ' disabled' : '';
         const id = button.id ? ` id="${button.id}"` : '';
         const style = button.style ? ` style="${button.style}"` : '';
@@ -667,7 +667,7 @@ function createButtonGroup(buttons, justify = 'center') {
  * @returns {string} HTML string for button
  */
 function createButton(text, action, type = 'primary', disabled = false, id = '', style = '', className = '', testId = '', arg = '') {
-    const buttonClass = `btn btn-${type}${className ? ' ' + className : ''}`;
+    const buttonClass = `btn btn--${type}${className ? ' ' + className : ''}`;
     const disabledAttr = disabled ? ' disabled' : '';
     const idAttr = id ? ` id="${id}"` : '';
     const styleAttr = style ? ` style="${style}"` : '';

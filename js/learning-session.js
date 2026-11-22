@@ -438,11 +438,57 @@ function levenshteinDistance(str1, str2) {
     return matrix[str2.length][str1.length];
 }
 
+const MAX_HINT_LETTERS = 3;
+
+function countLetters(text) {
+    return text.replace(/\s/g, '').length;
+}
+
+// Prefix holding `count` letters of the answer; spaces are kept but not counted
+function getHintPrefix(answer, count) {
+    let letters = 0;
+    let end = 0;
+    while (end < answer.length && letters < count) {
+        if (!/\s/.test(answer[end])) letters++;
+        end++;
+    }
+    return answer.slice(0, end);
+}
+
+// Up to 3 letters, but never the whole answer
+function getMaxHints(answer) {
+    return Math.max(0, Math.min(MAX_HINT_LETTERS, countLetters(answer) - 1));
+}
+
+function hintButtonText(remaining, used) {
+    return used === 0 ? '💡 Hint' : `💡 Hint (${remaining} left)`;
+}
+
+function showHintForReverse() {
+    const word = window.SV.AppState.currentLearningWord;
+    const hintEl = document.getElementById('reverseHint');
+    if (!word || !hintEl) return;
+
+    const answer = word.original.trim();
+    const maxHints = getMaxHints(answer);
+    const used = Math.min(window.SV.AppState.reverseHintCount + 1, maxHints);
+    window.SV.AppState.reverseHintCount = used;
+    hintEl.textContent = used > 0 ? `💡 ${getHintPrefix(answer, used)}…` : '';
+
+    const hintBtn = document.getElementById('hintReverseButton');
+    if (hintBtn) {
+        hintBtn.textContent = hintButtonText(maxHints - used, used);
+        hintBtn.disabled = used >= maxHints;
+    }
+    document.getElementById('reverseTranslationInput')?.focus?.();
+}
+
 function showReverseTranslationCard() {
     if (!window.SV.AppState.currentLearningWord) {
         endLearningSession();
         return;
     }
+    window.SV.AppState.reverseHintCount = 0;
 
     // Clear any pending timers before rendering a new screen
     clearLearningSessionTimeouts();
@@ -475,12 +521,14 @@ function showReverseTranslationCard() {
         onInput: 'validateReverseInput()'
     }) || '';
 
+    const hasHints = getMaxHints(window.SV.AppState.currentLearningWord.original.trim()) > 0;
     mainEl.innerHTML = `
         ${cardHtml}
         ${inputBlock}
-        
-        <!-- Action Button: Show Answer only -->
+        <div id="reverseHint" class="typing-hint" aria-live="polite"></div>
+
         ${window.SV?.UIComponents?.createButtonGroup?.([
+            { text: hintButtonText(0, 0), action: 'show-hint-reverse', type: 'secondary', id: 'hintReverseButton', disabled: !hasHints },
             { text: 'Show Answer', action: 'show-answer-reverse', type: 'primary', id: 'showAnswerReverseButton' }
         ]) || ''}
     `;
@@ -596,6 +644,8 @@ function showAnswerForReverse() {
     if (input) input.disabled = true;
     const showBtn = document.getElementById('showAnswerReverseButton');
     if (showBtn) showBtn.style.display = 'none';
+    const hintBtn = document.getElementById('hintReverseButton');
+    if (hintBtn) hintBtn.style.display = 'none';
     window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
 }
 
@@ -633,6 +683,9 @@ const LearningSessionExports = {
     validateReverseInput,
     checkReverseTranslation,
     showAnswerForReverse,
+    showHintForReverse,
+    getHintPrefix,
+    getMaxHints,
     showDifficultyButtonsForReverse,
     normalizeText,
     calculateTypingAccuracy,

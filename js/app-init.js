@@ -234,7 +234,7 @@ function updateLogToggleButton() {
     if (!btn) return;
     const enabled = window.SV?.LogRecorder?.enabled;
     btn.textContent = enabled ? '📝 Logging On' : '📝 Logging Off';
-    btn.className = enabled ? 'btn btn-success' : 'btn btn-secondary';
+    btn.className = enabled ? 'btn btn--success' : 'btn btn--secondary';
 }
 
 function toggleLogging() {
@@ -325,6 +325,9 @@ function wireEventHandlers() {
                     break;
                 case 'show-translation':
                     window.SV?.LearningSession?.showTranslation?.();
+                    break;
+                case 'show-hint-reverse':
+                    window.SV?.LearningSession?.showHintForReverse?.();
                     break;
                 case 'show-answer-reverse':
                     window.SV?.LearningSession?.showAnswerForReverse?.();
@@ -423,12 +426,12 @@ function updateSpeechToggleButtons() {
     const speechBtn = document.getElementById('speechToggle');
     if (speechBtn) {
         speechBtn.textContent = speechSettings.enabled ? '🔊 Sound On' : '🔇 Sound Off';
-        speechBtn.className = speechSettings.enabled ? 'btn btn-success' : 'btn btn-secondary';
+        speechBtn.className = speechSettings.enabled ? 'btn btn--success' : 'btn btn--secondary';
     }
     const autoPlayBtn = document.getElementById('autoPlayToggle');
     if (autoPlayBtn) {
         autoPlayBtn.textContent = speechSettings.autoPlay ? '🎵 Auto Play On' : '🔇 Auto Play Off';
-        autoPlayBtn.className = speechSettings.autoPlay ? 'btn btn-success' : 'btn btn-secondary';
+        autoPlayBtn.className = speechSettings.autoPlay ? 'btn btn--success' : 'btn btn--secondary';
     }
 }
 
