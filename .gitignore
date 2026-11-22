@@ -2,6 +2,7 @@
 CLAUDE.md
 release.sh
 developer/
+backups/
 
 # Keep tests private in production, but allow local testing
 # tests/
