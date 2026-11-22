@@ -29,13 +29,9 @@ function showTab(tabName) {
             renderWordList();
         }
     } else if (tabName === 'stats') {
-        if (typeof updateStats === 'function') {
-            updateStats();
-        }
+        window.SV?.Statistics?.updateStats?.();
     } else if (tabName === 'learn') {
-        if (typeof prepareLearningSession === 'function') {
-            prepareLearningSession();
-        }
+        window.SV?.LearningSession?.prepareLearningSession?.();
     }
 }
 
