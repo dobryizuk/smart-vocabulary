@@ -9,7 +9,6 @@ function createStatistics(context) {
     const getWordsForReview = ctx.getWordsForReview ?? (() => []);
     const doc = ctx.document ?? (typeof document !== 'undefined' ? document : null);
     const debugLog = ctx.debugLog ?? (() => undefined);
-    const appMain = ctx.appMain ?? {};
 
     function countTrailingSuccess(history) {
         if (!Array.isArray(history) || history.length === 0) return 0;
@@ -92,11 +91,7 @@ function createStatistics(context) {
         });
     }
 
-    function showDatabaseError() {
-        appMain.showMessage?.('Database loading error. Please try again.', 'error');
-    }
-
-    return { updateStats, showDatabaseError };
+    return { updateStats };
 }
 
 function createDefaultStatistics() {
@@ -106,8 +101,7 @@ function createDefaultStatistics() {
         calculateLearningProgress: (ease) => g.SV?.SpacedRepetition?.calculateLearningProgress?.(ease) ?? 0,
         getWordsForReview: () => g.SV?.SpacedRepetition?.getWordsForReview?.() ?? [],
         document: (typeof document !== 'undefined' ? document : null),
-        debugLog: (...args) => g.SV?.debugLog?.(...args),
-        appMain: g.SV?.AppMain || {}
+        debugLog: (...args) => g.SV?.debugLog?.(...args)
     });
 }
 

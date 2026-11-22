@@ -13,7 +13,8 @@ describe('AppMain.showTab', () => {
     `;
     window.SV = {
       LearningSession: { prepareLearningSession: vi.fn() },
-      Statistics: { updateStats: vi.fn() }
+      Statistics: { updateStats: vi.fn() },
+      themeManager: { createThemeSwitcher: vi.fn() }
     };
   });
 
@@ -22,6 +23,7 @@ describe('AppMain.showTab', () => {
 
     expect(window.SV.LearningSession.prepareLearningSession).toHaveBeenCalledTimes(1);
     expect(window.SV.Statistics.updateStats).not.toHaveBeenCalled();
+    expect(window.SV.themeManager.createThemeSwitcher).not.toHaveBeenCalled();
     expect(document.getElementById('learn-tab').classList.contains('active')).toBe(true);
   });
 
@@ -29,6 +31,7 @@ describe('AppMain.showTab', () => {
     AppMain.showTab('stats');
 
     expect(window.SV.Statistics.updateStats).toHaveBeenCalledTimes(1);
+    expect(window.SV.themeManager.createThemeSwitcher).toHaveBeenCalledTimes(1);
     expect(window.SV.LearningSession.prepareLearningSession).not.toHaveBeenCalled();
     expect(document.getElementById('stats-tab').classList.contains('active')).toBe(true);
   });

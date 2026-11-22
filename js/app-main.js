@@ -30,6 +30,7 @@ function showTab(tabName) {
         }
     } else if (tabName === 'stats') {
         window.SV?.Statistics?.updateStats?.();
+        window.SV?.themeManager?.createThemeSwitcher?.();
     } else if (tabName === 'learn') {
         window.SV?.LearningSession?.prepareLearningSession?.();
     }
@@ -392,18 +393,8 @@ const AppMainExports = {
     deleteWord
 };
 
-function createDefaultAppMain() {
-    return AppMainExports;
-}
-
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = AppMainExports;
-}
-
-// Provide factory for browser attach in app-init
-if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-restricted-syntax
-    window.createDefaultAppMain = createDefaultAppMain;
 }
 
 // Export only via CommonJS; app-init attaches to SV for browser

@@ -6,7 +6,6 @@
 function createDictionaryService(context) {
     const ctx = context || {};
     const fetchImpl = ctx.fetch || (typeof fetch !== 'undefined' ? fetch.bind(window) : null);
-    const getTranslationSuggestion = ctx.getTranslationSuggestion || (() => null);
     const warn = ctx.warn || ((...args) => console.warn(...args));
 
     // dictionaryapi.dev: examples, synonyms, IPA; its first sense is often rare or archaic
@@ -124,12 +123,6 @@ function createDictionaryService(context) {
 
     // Translation service with Google Translate API
     async function translateWord(originalWord) {
-        // First check local database
-        const localTranslation = getTranslationSuggestion(originalWord);
-        if (localTranslation) {
-            return localTranslation;
-        }
-
         // Try Google Translate API (free tier)
         try {
             const response = await fetchImpl('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=' + encodeURIComponent(originalWord));
@@ -174,10 +167,8 @@ function createDictionaryService(context) {
 }
 
 function createDefaultDictionaryService() {
-    const g = (typeof window !== 'undefined') ? window : globalThis;
     return createDictionaryService({
         fetch: (typeof fetch !== 'undefined' ? fetch.bind(window) : null),
-        getTranslationSuggestion: (word) => g.SV?.DataManager?.getTranslationSuggestion?.(word),
         warn: (...args) => console.warn(...args)
     });
 }

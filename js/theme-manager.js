@@ -240,9 +240,6 @@ class ThemeManager {
     }
 }
 
-// Initialize theme manager when DOM is ready
-// No self-instantiation here; app-init will create SV.themeManager and hook showTab
-
 // Export for both CommonJS and browser
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ThemeManager;

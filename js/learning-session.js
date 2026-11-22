@@ -689,16 +689,6 @@ const LearningSessionExports = {
     levenshteinDistance
 };
 
-function createDefaultLearningSession() {
-    return LearningSessionExports;
-}
-
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = LearningSessionExports;
-}
-
-// Provide factory for browser attach in app-init
-if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-restricted-syntax
-    window.createDefaultLearningSession = createDefaultLearningSession;
 }

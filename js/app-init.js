@@ -19,11 +19,7 @@ const { downloadFile } = require('./file-download.js');
     // Helper to attach module under SV namespace (bundled environment)
     function attach(name, getter) {
         try {
-            // 1) Prefer existing SV binding
-            let mod = (global.SV && global.SV[name]) || null;
-            // 2) Bundled require (esbuild provides module resolution)
-            if (!mod && typeof getter === 'function') mod = getter();
-            if (mod) global.SV[name] = mod;
+            global.SV[name] = getter();
         } catch (err) {
             global.SV?.debugLog?.('attach failed for', name, err);
         }
@@ -46,28 +42,11 @@ const { downloadFile } = require('./file-download.js');
     });
     // ThemeManager (class); attach via centralized helper
     attach('ThemeManager', () => require('./theme-manager.js'));
-    // In bundled environment, all modules are available immediately - no need for ensureCriticalModules
-    function ensureCriticalModules() {
-        // All modules already attached at bootstrap
-    }
-
     // Create single ThemeManager instance and on-demand theme switcher
     document.addEventListener('DOMContentLoaded', () => {
-        ensureCriticalModules();
         try {
             if (!global.SV.themeManager && global.SV.ThemeManager) {
                 global.SV.themeManager = new global.SV.ThemeManager();
-            }
-            // Create theme switcher when stats tab is shown
-            const originalShowTab = global.SV?.AppMain?.showTab;
-            const patchedShowTab = function(tabName) {
-                if (originalShowTab) originalShowTab(tabName);
-                if (tabName === 'stats' && global.SV?.themeManager) {
-                    global.SV.themeManager.createThemeSwitcher();
-                }
-            };
-            if (global.SV && global.SV.AppMain) {
-                global.SV.AppMain.showTab = patchedShowTab;
             }
         } catch (err) {
             global.SV?.debugLog?.('theme switcher init failed:', err);
@@ -190,11 +169,6 @@ function initializeComponents() {
             </div>
             ${createDiagnosticsHtml()}
         `;
-    }
-    
-    // Initialize theme switcher after data management is created
-    if (window.SV?.themeManager) {
-        window.SV.themeManager.createThemeSwitcher();
     }
 }
 
@@ -417,7 +391,7 @@ async function loadUserDataAndStats() {
             window.SV?.debugLog?.('✅ User progress loaded:', Object.keys(window.SV.DataManager.userProgress).length, 'entries');
         }
         window.SV?.debugLog?.('📚 Loading word database...');
-        await window.SV?.DataManager?.loadWordDatabase?.();
+        await window.SV?.DataManager?.initializeVocabulary?.();
         window.SV?.Statistics?.updateStats?.();
         window.SV?.debugLog?.('✅ App initialization complete!');
     } catch (error) {

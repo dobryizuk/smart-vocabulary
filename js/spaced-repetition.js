@@ -107,9 +107,3 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = defaultSR;
     module.exports.createSpacedRepetition = createSpacedRepetition;
 }
-
-// Provide factory for browser attach in app-init
-if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-restricted-syntax
-    window.createDefaultSpacedRepetition = createDefaultSpacedRepetition;
-}
