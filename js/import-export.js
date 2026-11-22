@@ -4,6 +4,8 @@
 
 const { downloadFile } = require('./file-download.js');
 
+const SNAPSHOT_KEY = 'snapshotBeforeImport';
+
 function createImportExport(context) {
     const ctx = context || {};
     const getVocabulary = ctx.getVocabulary || (() => []);
@@ -17,17 +19,11 @@ function createImportExport(context) {
     const stats = ctx.stats || {};
     const getNow = ctx.getNow || (() => new Date());
     const getURL = ctx.getURL || (() => (typeof URL !== 'undefined' ? URL : null));
+    const confirmAction = ctx.confirm || (() => true);
+    const reload = ctx.reload || (() => undefined);
 
     function createExportData(vocabularyData = null) {
-        let vocabularyToExport;
-        if (vocabularyData) {
-            vocabularyToExport = vocabularyData;
-        } else {
-            const allVocabulary = storage ? JSON.parse(storage.getItem('allVocabulary') || '[]') : [];
-            const current = getVocabulary();
-            vocabularyToExport = allVocabulary.length > 0 ? allVocabulary : current;
-        }
-        
+        const vocabularyToExport = vocabularyData || getVocabulary();
         const vocabularyWithProgress = vocabularyToExport.map(word => ({
             id: word.id,
             original: word.original,
@@ -47,6 +43,7 @@ function createImportExport(context) {
         return {
             vocabulary: vocabularyWithProgress,
             exportDate: getNow().toISOString(),
+            schemaVersion: 1,
             appVersion: "1.0",
             totalWords: vocabularyWithProgress.length
         };
@@ -54,11 +51,7 @@ function createImportExport(context) {
 
     async function exportData() {
         try {
-            const allVocabulary = storage ? JSON.parse(storage.getItem('allVocabulary') || '[]') : [];
-            
             debugLog('📦 Exporting data...');
-            debugLog(`📚 Vocabulary from localStorage: ${allVocabulary.length} words`);
-            
             const exportDataObj = createExportData();
             
             const jsonString = JSON.stringify(exportDataObj, null, 2);
@@ -78,8 +71,10 @@ function createImportExport(context) {
         if (!dataToImport.vocabulary || !Array.isArray(dataToImport.vocabulary)) {
             throw new Error('Invalid backup file format. Missing vocabulary data.');
         }
+        if (dataToImport.vocabulary.length === 0) {
+            throw new Error('The backup contains no words. Nothing was imported.');
+        }
         
-        const totalWords = dataToImport.totalWords || 0;
         const importedVocabulary = dataToImport.vocabulary;
         
         importedVocabulary.forEach((word, index) => {
@@ -105,11 +100,68 @@ function createImportExport(context) {
         
         return {
             vocabulary: importedVocabulary,
-            totalWords: totalWords,
+            totalWords: importedVocabulary.length,
             exportDate: dataToImport.exportDate,
             appVersion: dataToImport.appVersion,
             valid: true
         };
+    }
+
+    function readSnapshot() {
+        try {
+            return JSON.parse(storage?.getItem(SNAPSHOT_KEY) || 'null');
+        } catch {
+            return null;
+        }
+    }
+
+    function getSnapshotDate() {
+        return readSnapshot()?.savedAt?.slice(0, 10) || null;
+    }
+
+    function saveSnapshot() {
+        storage.setItem(SNAPSHOT_KEY, JSON.stringify({
+            savedAt: getNow().toISOString(),
+            allVocabulary: storage.getItem('allVocabulary'),
+            userProgress: storage.getItem('userProgress')
+        }));
+    }
+
+    function restoreSnapshot() {
+        const snapshot = readSnapshot();
+        if (!snapshot) return;
+        const question = `Go back to your data from before the restore on ${snapshot.savedAt.slice(0, 10)}? Progress made since then will be lost.`;
+        if (!confirmAction(question)) return;
+        ['allVocabulary', 'userProgress'].forEach(key => {
+            if (snapshot[key] === null) storage.removeItem(key);
+            else storage.setItem(key, snapshot[key]);
+        });
+        storage.removeItem(SNAPSHOT_KEY);
+        reload();
+    }
+
+    async function importFromText(text) {
+        try {
+            const processedData = validateAndProcessImportData(JSON.parse(text));
+            const backupDate = processedData.exportDate?.slice(0, 10) || 'unknown date';
+            const question = `Replace your ${getVocabulary().length} words with ${processedData.totalWords} words from the backup of ${backupDate}?`;
+            if (!confirmAction(question)) return;
+
+            saveSnapshot();
+            setVocabulary(processedData.vocabulary);
+            saveUserProgress();
+            saveAllVocabulary();
+
+            appMain.renderWordList?.();
+            stats.updateStats?.();
+            debugLog(`📥 Imported ${processedData.totalWords} words from ${backupDate}`);
+            appMain.showMessage?.(`Data imported successfully! ${processedData.totalWords} words loaded. Reloading...`, 'success');
+            reload();
+        } catch (error) {
+            console.error('❌ Import failed:', error);
+            const reason = error instanceof SyntaxError ? 'Please check the file format.' : error.message;
+            appMain.showMessage?.(`Import failed. ${reason}`, 'error');
+        }
     }
 
     function importData() {
@@ -120,48 +172,7 @@ function createImportExport(context) {
         
         input.onchange = async function(e) {
             const file = e.target.files[0];
-            if (!file) return;
-            
-            try {
-                const text = await file.text();
-                const importDataObj = JSON.parse(text);
-                
-                const processedData = validateAndProcessImportData(importDataObj);
-                
-                debugLog(`📥 Importing ${processedData.totalWords} words from ${processedData.exportDate || 'unknown date'}`);
-                
-                debugLog('🗑️ Clearing existing data...');
-                setVocabulary([]);
-                if (storage) {
-                    storage.removeItem('allVocabulary');
-                    storage.removeItem('userProgress');
-                }
-                
-                if (processedData.vocabulary && processedData.vocabulary.length > 0) {
-                    setVocabulary(processedData.vocabulary);
-                    debugLog(`✅ Vocabulary imported: ${processedData.vocabulary.length} words`);
-                }
-                
-                saveUserProgress();
-                saveAllVocabulary();
-                
-                debugLog('🔍 Verifying data integrity...');
-                const savedVocab = storage ? JSON.parse(storage.getItem('allVocabulary') || '[]') : [];
-                const savedProgress = storage ? JSON.parse(storage.getItem('userProgress') || '{}') : {};
-                debugLog(`✅ Verification: ${savedVocab.length} words, ${Object.keys(savedProgress).length} progress entries`);
-                
-                appMain.renderWordList?.();
-                stats.updateStats?.();
-                
-                debugLog('📥 Data imported successfully');
-                appMain.showMessage?.(`Data imported successfully! ${processedData.totalWords} words loaded. Reloading...`, 'success');
-                
-                location.reload();
-                
-            } catch (error) {
-                console.error('❌ Import failed:', error);
-                appMain.showMessage?.('Import failed. Please check the file format.', 'error');
-            }
+            if (file) await importFromText(await file.text());
         };
         
         doc.body.appendChild(input);
@@ -169,7 +180,7 @@ function createImportExport(context) {
         doc.body.removeChild(input);
     }
 
-    return { createExportData, exportData, validateAndProcessImportData, importData };
+    return { createExportData, exportData, validateAndProcessImportData, importFromText, importData, getSnapshotDate, restoreSnapshot };
 }
 
 function createDefaultImportExport() {
@@ -182,8 +193,13 @@ function createDefaultImportExport() {
         storage: (typeof localStorage !== 'undefined' ? localStorage : null),
         document: (typeof document !== 'undefined' ? document : null),
         debugLog: (...args) => g.SV?.debugLog?.(...args),
-        appMain: g.SV?.AppMain || {},
-        stats: g.SV?.Statistics || {},
+        appMain: {
+            showMessage: (...args) => g.SV?.AppMain?.showMessage?.(...args),
+            renderWordList: () => g.SV?.AppMain?.renderWordList?.()
+        },
+        stats: { updateStats: () => g.SV?.Statistics?.updateStats?.() },
+        confirm: (message) => g.confirm(message),
+        reload: () => g.location.reload(),
         getNow: () => new Date(),
         getURL: () => (typeof URL !== 'undefined' ? URL : null)
     });

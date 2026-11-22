@@ -144,7 +144,10 @@ function initializeComponents() {
     // Initialize data management
     const dataManagement = document.getElementById('dataManagement');
     if (dataManagement) {
-        const resetButton = window.SV?.UIComponents?.createButton?.('🗑️ Reset Progress', 'reset-progress', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;');
+        const snapshotDate = window.SV?.ImportExport?.getSnapshotDate?.();
+        const undoButton = snapshotDate
+            ? window.SV?.UIComponents?.createButton?.(`Undo last restore (${snapshotDate})`, 'undo-restore', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;', '', 'undo-restore-btn')
+            : '';
         const exportButton = window.SV?.UIComponents?.createButton?.('Backup', 'backup', 'success', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em;', '', 'backup-btn');
         const importButton = window.SV?.UIComponents?.createButton?.('Restore', 'restore', 'primary', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em; background: #17a2b8;', '', 'restore-btn');
         
@@ -157,7 +160,7 @@ function initializeComponents() {
         ) || '';
         
         const buttonsContainer = window.SV?.UIComponents?.createFlexContainer?.(
-            resetButton + importExportButtons,
+            importExportButtons + undoButton,
             'column',
             'flex-start',
             'stretch',
@@ -166,7 +169,7 @@ function initializeComponents() {
         ) || '';
         
         const infoText = window.SV?.UIComponents?.createSmallText?.(
-            'Words are stored locally on device. Progress can be reset if needed.',
+            'Words are stored locally on device.',
             '#666',
             '0.75em',
             'margin: 0;'
@@ -306,6 +309,9 @@ function wireEventHandlers() {
                     break;
                 case 'speak-word':
                     window.SV?.SpeechManager?.speakWord?.(arg);
+                    break;
+                case 'undo-restore':
+                    window.SV?.ImportExport?.restoreSnapshot?.();
                     break;
                 case 'toggle-logging':
                     toggleLogging();
@@ -456,8 +462,17 @@ function setupEnterKeyBindings() {
     }
 }
 
+function requestPersistentStorage() {
+    try {
+        navigator.storage?.persist?.()?.catch?.(() => undefined);
+    } catch (err) {
+        window.SV?.debugLog?.('persist request failed:', err);
+    }
+}
+
 async function bootApp() {
     window.SV?.debugLog?.('🚀 Starting Smart Vocabulary App initialization...');
+    requestPersistentStorage();
     initializeComponents();
     wireEventHandlers();
     window.SV?.SpeechManager?.initializeSpeech?.();

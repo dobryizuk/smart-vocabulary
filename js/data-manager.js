@@ -42,6 +42,7 @@ function createDataManager(context) {
             debugLog('💾 User progress saved:', Object.keys(userProgress).length, 'entries');
         } catch (error) {
             console.error('❌ Failed to save progress:', error.message);
+            appMain.showMessage?.('Could not save your progress: device storage may be full. Make a backup now.', 'error');
         }
     }
 
@@ -52,6 +53,7 @@ function createDataManager(context) {
             debugLog('💾 All vocabulary saved:', vocabulary.length, 'words');
         } catch (error) {
             console.error('❌ Failed to save vocabulary:', error.message);
+            appMain.showMessage?.('Could not save your words: device storage may be full. Make a backup now.', 'error');
         }
     }
 
@@ -64,23 +66,6 @@ function createDataManager(context) {
         } catch (error) {
             console.error('❌ Failed to load progress:', error.message);
             return {};
-        }
-    }
-
-    async function resetUserProgress() {
-        if (typeof confirm === 'function' ? confirm('This will reset all your learning progress but keep your words. Are you sure?') : true) {
-            try {
-                userProgress = {};
-                if (storage) storage.removeItem('userProgress');
-                debugLog('🗑️ User progress reset successfully');
-                await initializeVocabulary();
-                appMain.renderWordList?.();
-                stats.updateStats?.();
-                appMain.showMessage?.('Learning progress reset!', 'success');
-            } catch (error) {
-                console.error('❌ Failed to reset progress:', error.message);
-                appMain.showMessage?.('Failed to reset progress. Please try again.', 'error');
-            }
         }
     }
 
@@ -144,7 +129,6 @@ function createDataManager(context) {
         saveUserProgress,
         saveAllVocabulary,
         loadUserProgress,
-        resetUserProgress,
         loadWordDatabase,
         initializeVocabulary,
         get vocabulary() { return vocabulary; },
@@ -161,7 +145,7 @@ function createDefaultDataManager() {
     return createDataManager({
         storage: (typeof localStorage !== 'undefined' ? localStorage : null),
         debugLog: (...args) => g.SV?.debugLog?.(...args),
-        appMain: g.SV?.AppMain || {},
+        appMain: { showMessage: (...args) => g.SV?.AppMain?.showMessage?.(...args) },
         stats: g.SV?.Statistics || {},
         now: () => new Date()
     });
