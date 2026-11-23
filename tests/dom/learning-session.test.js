@@ -425,6 +425,28 @@ describe('Session resume and restart', () => {
     expect(LS.determineExerciseType(next)).toBe('reverse');
   });
 
+  it('persists nextReview, easeFactor and repetition from the previous interval', () => {
+    vi.useFakeTimers({ now: new Date('2026-11-22T10:00:00.000Z') });
+    try {
+      const word = {
+        original: 'w', translation: 't', repetition: 2, easeFactor: 2,
+        nextReview: '2026-11-22T09:00:00.000Z',
+        reviewHistory: [{ date: '2026-11-18T09:00:00.000Z', difficulty: 'easy', exerciseType: 'regular' }]
+      };
+      window.SV.AppState.currentLearningWord = word;
+      window.SV.AppState.learningSession = [word];
+
+      LS.markDifficulty('easy');
+
+      expect(word.easeFactor).toBeCloseTo(2.15);
+      expect(word.repetition).toBe(3);
+      expect(word.nextReview).toBe('2026-12-01T10:00:00.000Z');
+      expect(word).not.toHaveProperty('interval');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('stamps updatedAt on every answer and saves', () => {
     vi.useFakeTimers({ now: new Date('2026-11-22T10:00:00.000Z') });
     try {

@@ -175,9 +175,6 @@ function showLearningCard() {
     // Continue with regular exercise (existing code)
     const { mainEl, progressEl } = ensureLearningLayout(true);
     
-    // Calculate progress data for enhanced display (unused but kept for potential future use)
-    // const progressPercentage = Math.round(((currentLearningWord.easeFactor - 1.3) / (3.5 - 1.3)) * 100);
-    
     // Define actions for learning card
     const actions = [
         {
@@ -242,11 +239,7 @@ async function showTranslation() {
 function markDifficulty(difficulty) {
     const word = window.SV.AppState.currentLearningWord;
     const SRcalc = window.SV?.SpacedRepetition;
-    const reviewData = SRcalc?.calculateNextReview?.(
-        difficulty, 
-        word.repetition, 
-        word.easeFactor
-    );
+    const reviewData = SRcalc?.calculateNextReview?.(difficulty, word);
 
     if (reviewData) {
         const answeredAt = new Date().toISOString();
