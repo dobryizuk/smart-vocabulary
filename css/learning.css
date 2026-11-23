@@ -2,153 +2,335 @@
    LEARNING INTERFACE STYLES - Learning session components for both themes
    ============================================================================ */
 
-/* Learning Card */
-.learning-card {
-    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
-    border: 2px solid var(--color-accent-blue);
-    box-shadow: var(--shadow-lg);
-    padding: 16px 18px; /* match word-card padding */
-    margin: 0 0 12px 0; /* align with list cards spacing */
-    border-radius: var(--radius-lg);
-    max-width: none; /* full width like word list */
-}
-
-/* Word Display */
-.card-word {
-    font-size: 2em;
-    margin-bottom: 16px;
-    color: var(--color-text);
-    font-weight: 700;
-    line-height: 1.2;
-    text-align: center;
-}
-
-/* Translation Display */
-/* Now using detail-block--translation from components.css for consistency */
-
-/* Definition Display */
-/* purgecss ignore */
-.card-definition {
-    background: rgba(10, 132, 255, 0.1);
-    padding: 12px 16px;
-    margin: 10px 0;
-    color: var(--color-text);
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(10, 132, 255, 0.2);
-}
-
-/* Examples Display */
-/* purgecss ignore */
-.card-examples {
-    background: rgba(255, 149, 0, 0.1);
-    padding: 12px 16px;
-    margin: 10px 0;
-    color: var(--color-text);
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 149, 0, 0.2);
-}
-
-/* Difficulty Buttons */
-.difficulty-buttons {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    margin: 16px 0;
-    /* width: 100%; */
-}
-
-.difficulty-btn {
-    padding: 10px 6px;
-    min-height: 55px;
-    font-size: 0.75em;
-    border-radius: var(--radius-sm);
-    max-width: none;
+/* Screen layout: progress header on top, exercise below */
+#learningContent {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
     width: 100%;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
+    max-width: 100%;
+    padding: 12px 20px;
+    background: var(--color-bg);
+}
+
+/* Blocks are spaced by their own bottom margin: buttons hidden after the reveal leave no gap behind */
+#learningMain {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+#cardTranslation:empty {
+    display: none;
+}
+
+/* Session progress: thin bar and "n / total" above the exercise */
+#sessionProgressContainer:empty {
+    display: none;
+}
+
+.session-progress {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.session-progress__track {
+    flex: 1;
+    height: 8px;
+    overflow: hidden;
+    background: var(--ui-track);
+    border-radius: 4px;
+}
+
+.session-progress__fill {
+    height: 100%;
+    background: var(--ui-accent);
+    border-radius: 4px;
+}
+
+.session-progress__count {
+    font-size: 0.875rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: none;
+    font-variant-numeric: tabular-nums;
+    color: var(--ui-text-muted);
+}
+
+.learning-prompt {
+    margin: 4px 0 16px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-text-muted);
+}
+
+/* Recognition card */
+.word-card--learning {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 14px;
+    margin: 0 0 16px;
+    padding: 32px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-card);
+    box-shadow: var(--shadow-sm);
 }
 
-.difficulty-btn:hover,
-.difficulty-btn:active,
-.difficulty-btn:focus {
-    background: inherit;
+.word-card.word-card--learning:hover {
     transform: none;
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
 }
 
-/* Difficulty button variants (flat, no hover/active) */
-.difficulty-btn--hard { background: var(--color-accent-red); color: white; border-color: var(--color-accent-red); }
-.difficulty-btn--medium { background: var(--color-accent-orange); color: white; border-color: var(--color-accent-orange); }
-.difficulty-btn--easy { background: var(--color-accent-blue); color: white; border-color: var(--color-accent-blue); }
-.difficulty-btn--perfect { background: var(--color-accent-green); color: white; border-color: var(--color-accent-green); }
+.word-card--learning .word-card__top {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
 
-/* No hover overrides for any difficulty buttons */
-
-/* Session Progress */
-.session-progress {
-    background: rgba(10, 132, 255, 0.1);
-    padding: 8px 12px;
-    margin: 12px 0;
-    font-size: 0.85em;
-    color: var(--color-accent-blue);
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(10, 132, 255, 0.2);
+.word-card--learning .word-card__header {
+    flex: none;
     text-align: center;
-    font-weight: 600;
 }
 
-/* Learning Content Container */
-#learningContent {
-    background: var(--color-bg);
-    flex: 1;
+.word-card--learning .word-card__original {
+    margin: 0;
+    font-size: 2.5rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+}
+
+.word-card--learning .word-card__phonetic {
+    display: block;
+    margin: 10px 0 0;
+    padding: 0;
+    font: inherit;
+    font-size: 0.45em;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--ui-text-muted);
+    background: none;
+    border: none;
+}
+
+.word-card__chips {
+    display: flex;
+    gap: 8px;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-muted);
+    border-radius: var(--radius-pill);
+}
+
+.word-card--learning .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin: 14px 0 0;
+    padding: 0;
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+    border: none;
+    border-radius: 50%;
+}
+
+/* Prompt card of the build and writing exercises */
+.exercise-card {
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: stretch;
-    padding: 0; /* edge-to-edge like word list */
-    width: 100%;
-    max-width: 100%;
+    align-items: center;
+    gap: 12px;
+    padding: 28px 24px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-card);
+    box-shadow: var(--shadow-sm);
 }
 
-/* Ensure blocks rendered below the learning card match the card's inner width
-   (same as the progress bar inside the card, which is card width minus 18px padding) */
-#learningMain > :not(.learning-card) {
-    margin-left: 18px;
-    margin-right: 18px;
+.exercise-card__chip {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-muted);
+    border-radius: var(--radius-pill);
 }
 
-/* Align the bottom session progress to the same inner width */
-#sessionProgressContainer {
-    margin: 0 18px;
-}
-
-/* Reverse translation input block (no inline styles in logic) */
-.learning-input-block {
-    margin: 20px 18px; /* horizontal margins come from #learningMain > :not(.learning-card) */
-}
-
-.learning-input-block label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
+.exercise-card__title {
+    margin: 0;
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
     color: var(--color-text);
 }
 
+.exercise-card__definition {
+    margin: 0;
+    max-width: 290px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--ui-text-muted);
+}
+
+/* Answer revealed: translation, definition, examples, synonyms */
+#learningContent .detail-block {
+    margin: 0 0 16px;
+    padding: 16px 20px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+#learningContent .detail-title {
+    margin-bottom: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--ui-text-muted);
+}
+
+#learningContent .detail-text {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+#learningContent .detail-block--translation .detail-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--ui-accent-text);
+}
+
+#learningContent .synonym-chip {
+    margin: 2px 6px 2px 0;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+    border: none;
+    border-radius: var(--radius-pill);
+}
+
+/* Rating buttons end the revealed answer and stay reachable while it scrolls */
+.difficulty-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    position: sticky;
+    bottom: 0;
+    padding: 12px 0 8px;
+    background: var(--color-bg);
+}
+
+.difficulty-buttons__prompt {
+    grid-column: 1 / -1;
+    margin: 0 0 2px;
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+}
+
+.difficulty-btn {
+    min-height: 64px;
+    padding: 8px 4px;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: 14px;
+}
+
+.difficulty-btn--hard { color: var(--ui-warn-text); background: var(--ui-warn-soft); }
+.difficulty-btn--medium { color: var(--color-text); background: var(--ui-disabled-bg); }
+.difficulty-btn--easy { color: var(--ui-accent-text); background: var(--ui-accent-soft); }
+.difficulty-btn--perfect { color: var(--ui-on-accent); background: var(--ui-accent); }
+
+/* Buttons and input of the exercises */
+#learningContent .btn-group {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 10px;
+}
+
+#learningContent .btn {
+    min-height: 56px;
+    color: var(--ui-on-accent);
+    background: var(--ui-accent);
+    border-radius: var(--ui-radius-control);
+}
+
+#learningContent .btn--secondary {
+    color: var(--color-text);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+}
+
+.learning-input-block {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.learning-input-block label {
+    padding: 0 4px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+}
+
+.learning-input-block .form-control {
+    height: 60px;
+    padding: 0 18px;
+    font-size: 1.25rem;
+    font-weight: 500;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+.learning-input-block .form-control:focus {
+    border-color: var(--ui-accent);
+    background: var(--ui-surface);
+    box-shadow: 0 0 0 4px var(--ui-accent-soft);
+    outline: none;
+}
+
+.typing-feedback:empty {
+    display: none;
+}
+
 .typing-hint {
-    margin: -8px 18px 12px;
+    margin: 0 0 16px;
+    text-align: center;
     font-size: 1.2em;
     font-weight: 700;
     letter-spacing: 0.1em;
-    color: var(--color-accent-orange);
+    color: var(--ui-accent-text);
 }
 
 .typing-hint:empty {
@@ -232,3 +414,139 @@
 }
 
 /* (Responsive/animations/accessibility variants removed per simplification request) */
+/* Build exercise: assemble the word from letter tiles */
+.build-slots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    margin: 22px 0;
+}
+
+.build-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 28px;
+    height: 40px;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--color-text);
+    border-bottom: 2px solid var(--ui-border-muted);
+}
+
+.build-slot--fixed {
+    color: var(--ui-text-muted);
+}
+
+.build-slot--active {
+    background: var(--ui-accent-soft);
+    border-bottom-color: var(--ui-accent);
+    border-radius: 6px 6px 0 0;
+}
+
+.build-slots--correct .build-slot {
+    border-bottom-color: var(--ui-success);
+}
+
+.build-slots--wrong .build-slot {
+    border-bottom-color: var(--ui-danger);
+}
+
+.build-tiles {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.build-tile {
+    position: relative;
+    min-height: 56px;
+    font: inherit;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-tile);
+    box-shadow: 0 2px 0 var(--ui-border);
+    cursor: pointer;
+}
+
+.build-tile:disabled {
+    color: var(--ui-disabled-text);
+    background: var(--ui-disabled-bg);
+    border-color: transparent;
+    box-shadow: none;
+    cursor: default;
+}
+
+.build-tile__count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    box-sizing: border-box;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ui-on-accent);
+    background: var(--ui-accent);
+    border: 2px solid var(--color-bg);
+    border-radius: 11px;
+}
+
+.build-tile:disabled .build-tile__count {
+    background: var(--ui-disabled-text);
+}
+
+.build-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.build-control {
+    min-height: 56px;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+    cursor: pointer;
+}
+
+.build-control--primary {
+    color: var(--ui-on-accent);
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+}
+
+.build-control:disabled {
+    color: var(--ui-disabled-text);
+    background: var(--ui-disabled-bg);
+    border-color: transparent;
+    cursor: default;
+}
+
+.build-feedback {
+    margin-bottom: 8px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.build-feedback--correct {
+    color: var(--ui-success);
+}
+
+.build-feedback--wrong {
+    color: var(--ui-danger);
+}

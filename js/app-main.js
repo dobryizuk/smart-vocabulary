@@ -169,9 +169,7 @@ async function addWord() {
         repetition: 0,
         easeFactor: 1.3,
         nextReview: null,
-        reviewHistory: [],
-        lastExerciseType: null,
-        lastExerciseDate: null
+        reviewHistory: []
     };
 
     // Add to vocabulary array

@@ -8,10 +8,12 @@
   const initialState = {
     currentLearningWord: null,
     learningSession: [],
+    sessionTotal: 0,
     sessionStats: { correct: 0, total: 0, streak: 0 },
     currentDictionaryData: null,
     editingWordId: null,
     reverseHintCount: 0,
+    buildState: null,
   };
 
   const AppState = global.SV.AppState || { ...initialState };

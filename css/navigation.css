@@ -98,6 +98,8 @@
 
 /* Make learning tab edge-to-edge like the word list */
 #learn-tab .tab-content-inner {
+    display: flex;
+    flex-direction: column;
     padding: 0;
 }
 

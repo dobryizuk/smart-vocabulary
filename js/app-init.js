@@ -346,6 +346,15 @@ function wireEventHandlers() {
                 case 'show-answer-reverse':
                     window.SV?.LearningSession?.showAnswerForReverse?.();
                     break;
+                case 'build-place':
+                    window.SV?.LearningSession?.placeBuildLetter?.(arg);
+                    break;
+                case 'build-undo':
+                    window.SV?.LearningSession?.undoBuildLetter?.();
+                    break;
+                case 'build-check':
+                    window.SV?.LearningSession?.checkBuildAnswer?.();
+                    break;
                 case 'show-tab':
                     if (arg) window.SV?.AppMain?.showTab?.(arg);
                     break;

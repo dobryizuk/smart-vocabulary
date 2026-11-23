@@ -29,6 +29,24 @@
     --color-synonym-3: #FD7E14;
     --color-synonym-4: #6F42C1;
     
+    /* Redesign tokens */
+    --ui-accent: #3543D0;
+    --ui-accent-soft: #E3E6FC;
+    --ui-on-accent: #FFFFFF;
+    --ui-surface: #FFFFFF;
+    --ui-surface-muted: #F0F1F4;
+    --ui-border: #D7DBE2;
+    --ui-border-muted: #C5CAD3;
+    --ui-text-muted: #4F5564;
+    --ui-disabled-bg: #E9EBEF;
+    --ui-disabled-text: #B9BFC9;
+    --ui-success: #198754;
+    --ui-danger: #DC3545;
+    --ui-accent-text: #2B37B5;
+    --ui-track: #E3E6EB;
+    --ui-warn-soft: #FDEDE4;
+    --ui-warn-text: #9A3412;
+    
     /* Progress indicator */
     --color-progress: #0D6EFD;
     
@@ -91,6 +109,24 @@
     --color-synonym-3: #FF9F0A;
     --color-synonym-4: #BF5AF2;
     
+    /* Redesign tokens */
+    --ui-accent: #7C88F5;
+    --ui-accent-soft: #2A2F63;
+    --ui-on-accent: #0F0F0F;
+    --ui-surface: #1C1C1E;
+    --ui-surface-muted: #2C2C2E;
+    --ui-border: #38383A;
+    --ui-border-muted: #48484A;
+    --ui-text-muted: #98989A;
+    --ui-disabled-bg: #242426;
+    --ui-disabled-text: #5A5A5E;
+    --ui-success: #30D158;
+    --ui-danger: #FF453A;
+    --ui-accent-text: #AEB6FF;
+    --ui-track: #262932;
+    --ui-warn-soft: #3A2A22;
+    --ui-warn-text: #F6A97F;
+    
     /* Progress indicator */
     --color-progress: #0A84FF;
     
@@ -119,6 +155,9 @@
     --radius-md: 12px;
     --radius-lg: 14px;
     --radius-pill: 9999px;
+    --ui-radius-card: 28px;
+    --ui-radius-control: 16px;
+    --ui-radius-tile: 14px;
     
     /* Spacing */
     --space-1: 6px;
@@ -161,6 +200,24 @@
     --color-synonym-2: #30D158;
     --color-synonym-3: #FF9F0A;
     --color-synonym-4: #BF5AF2;
+    
+    /* Redesign tokens */
+    --ui-accent: #7C88F5;
+    --ui-accent-soft: #2A2F63;
+    --ui-on-accent: #0F0F0F;
+    --ui-surface: #1C1C1E;
+    --ui-surface-muted: #2C2C2E;
+    --ui-border: #38383A;
+    --ui-border-muted: #48484A;
+    --ui-text-muted: #98989A;
+    --ui-disabled-bg: #242426;
+    --ui-disabled-text: #5A5A5E;
+    --ui-success: #30D158;
+    --ui-danger: #FF453A;
+    --ui-accent-text: #AEB6FF;
+    --ui-track: #262932;
+    --ui-warn-soft: #3A2A22;
+    --ui-warn-text: #F6A97F;
     
     /* Progress indicator */
     --color-progress: #0A84FF;

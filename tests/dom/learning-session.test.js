@@ -25,148 +25,57 @@ window.SV.UIComponents = UI.UIComponents || UI;
 // Load learning session code via CommonJS exports
 const LS = require('../../js/learning-session.js');
 
-describe('Learning Session - Reverse Translation Logic', () => {
-  describe('isEligibleForReverseTranslation', () => {
-    const eligible = (...reviews) => LS.isEligibleForReverseTranslation({
-      repetition: 3,
-      reviewHistory: reviews.map(([exerciseType, difficulty]) => ({ exerciseType, difficulty, date: '2026-11-01' }))
-    });
+describe('Exercise stage of a word', () => {
+  const stageAfter = (...reviews) => LS.determineExerciseType({ reviewHistory: reviews });
 
-    it('blocks writing for a word that was never rated', () => {
-      expect(LS.isEligibleForReverseTranslation({ repetition: 0 })).toBe(false);
-      expect(LS.isEligibleForReverseTranslation({ repetition: 2, reviewHistory: [] })).toBe(false);
-    });
-
-    it('unlocks writing after recognition is rated OK or Easy', () => {
-      expect(eligible(['regular', 'easy'])).toBe(true);
-      expect(eligible(['regular', 'perfect'])).toBe(true);
-    });
-
-    it('keeps writing locked after recognition is rated Medium or Hard', () => {
-      expect(eligible(['regular', 'medium'])).toBe(false);
-      expect(eligible(['regular', 'hard'])).toBe(false);
-      expect(eligible(['regular', 'easy'], ['regular', 'medium'])).toBe(false);
-    });
-
-    it('locks writing after Hard until recognition is rated OK again', () => {
-      expect(eligible(['regular', 'easy'], ['regular', 'hard'])).toBe(false);
-      expect(eligible(['regular', 'easy'], ['regular', 'hard'], ['regular', 'medium'])).toBe(false);
-      expect(eligible(['regular', 'easy'], ['regular', 'hard'], ['regular', 'easy'])).toBe(true);
-    });
-
-    it('locks writing when Hard is chosen in the writing exercise itself', () => {
-      expect(eligible(['regular', 'easy'], ['reverse', 'hard'])).toBe(false);
-      expect(eligible(['regular', 'easy'], ['reverse', 'hard'], ['regular', 'easy'])).toBe(true);
-    });
-
-    it('stays unlocked after a non-Hard writing rating', () => {
-      expect(eligible(['regular', 'easy'], ['reverse', 'medium'])).toBe(true);
-      expect(eligible(['regular', 'perfect'], ['reverse', 'easy'])).toBe(true);
-    });
-
-    it('treats legacy reviews without exerciseType as recognition', () => {
-      expect(LS.isEligibleForReverseTranslation({ repetition: 2, reviewHistory: [{ difficulty: 'easy' }] })).toBe(true);
-      expect(LS.isEligibleForReverseTranslation({ repetition: 2, reviewHistory: [{ difficulty: 'medium' }] })).toBe(false);
-    });
+  it('starts every word with recognition', () => {
+    expect(LS.determineExerciseType({ repetition: 0 })).toBe('regular');
+    expect(stageAfter()).toBe('regular');
   });
 
-  describe('determineExerciseType', () => {
-    beforeEach(() => {
-      // Mock learningSession
-      global.learningSession = [];
-    });
-
-    it('should return regular for new words', () => {
-      const newWord = { repetition: 0 };
-      expect(LS.determineExerciseType(newWord)).toBe('regular');
-    });
-
-    it('should return regular for words not eligible for reverse translation', () => {
-      const hardWord = {
-        repetition: 2,
-        reviewHistory: [{ difficulty: 'hard' }]
-      };
-      expect(LS.determineExerciseType(hardWord)).toBe('regular');
-    });
-
-    it('should return reverse for eligible words that have not shown reverse yet', () => {
-      const eligibleWord = {
-        repetition: 2,
-        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
-        sessionExerciseTypes: ['regular']
-      };
-      expect(LS.determineExerciseType(eligibleWord)).toBe('reverse');
-    });
-
-    it('should return regular for eligible words that have not shown regular yet', () => {
-      const eligibleWord = {
-        repetition: 2,
-        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
-        sessionExerciseTypes: ['reverse']
-      };
-      expect(LS.determineExerciseType(eligibleWord)).toBe('regular');
-    });
-
-    it('should return regular for eligible words that have shown both types', () => {
-      const eligibleWord = {
-        repetition: 2,
-        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
-        sessionExerciseTypes: ['regular', 'reverse']
-      };
-      expect(LS.determineExerciseType(eligibleWord)).toBe('regular');
-    });
-
-    it('should alternate for single word in session', () => {
-      const word = {
-        repetition: 2,
-        reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
-        lastExerciseType: 'reverse',
-        lastExerciseDate: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutes ago
-      };
-      
-  // Set AppState under SV
-  window.SV = window.SV || {};
-  window.SV.AppState = window.SV.AppState || { currentLearningWord: null, learningSession: [], sessionStats: { correct: 0, total: 0, streak: 0 } };
-  window.SV.AppState.learningSession = [word];
-  global.learningSession = [word];
-  window.learningSession = [word];
-      
-  // Ensure the global variable used inside the module is available
-  global.learningSession = [word];
-      
-      expect(LS.determineExerciseType(word)).toBe('regular');
-    });
+  it('moves forward after OK or Easy', () => {
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'regular' })).toBe('build');
+    expect(stageAfter({ difficulty: 'perfect', exerciseType: 'regular' })).toBe('build');
+    expect(stageAfter({ difficulty: 'perfect', exerciseType: 'build' })).toBe('reverse');
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'build' })).toBe('reverse');
   });
 
-  describe('canShowReverseExercise', () => {
-    it('should allow reverse exercise if no last exercise date', () => {
-      const word = {};
-      expect(LS.canShowReverseExercise(word)).toBe(true);
-    });
+  it('stays on writing after OK or Easy in writing', () => {
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'reverse' })).toBe('reverse');
+    expect(stageAfter({ difficulty: 'perfect', exerciseType: 'reverse' })).toBe('reverse');
+  });
 
-    it('should allow reverse exercise if different exercise type', () => {
-      const word = {
-        lastExerciseDate: new Date().toISOString(),
-        lastExerciseType: 'regular'
-      };
-      expect(LS.canShowReverseExercise(word)).toBe(true);
-    });
+  it('moves back one stage after Hard, but not below recognition', () => {
+    expect(stageAfter({ difficulty: 'hard', exerciseType: 'reverse' })).toBe('build');
+    expect(stageAfter({ difficulty: 'hard', exerciseType: 'build' })).toBe('regular');
+    expect(stageAfter({ difficulty: 'hard', exerciseType: 'regular' })).toBe('regular');
+  });
 
-    it('should allow reverse exercise if enough time has passed', () => {
-      const word = {
-        lastExerciseDate: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
-        lastExerciseType: 'reverse'
-      };
-      expect(LS.canShowReverseExercise(word)).toBe(true);
-    });
+  it('keeps the stage after Medium', () => {
+    expect(stageAfter({ difficulty: 'medium', exerciseType: 'regular' })).toBe('regular');
+    expect(stageAfter({ difficulty: 'medium', exerciseType: 'build' })).toBe('build');
+    expect(stageAfter({ difficulty: 'medium', exerciseType: 'reverse' })).toBe('reverse');
+  });
 
-    it('should not allow reverse exercise if same type and not enough time passed', () => {
-      const word = {
-        lastExerciseDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 minutes ago
-        lastExerciseType: 'reverse'
-      };
-      expect(LS.canShowReverseExercise(word)).toBe(false);
-    });
+  it('looks only at the last review', () => {
+    expect(stageAfter(
+      { difficulty: 'hard', exerciseType: 'regular' },
+      { difficulty: 'easy', exerciseType: 'regular' }
+    )).toBe('build');
+    expect(stageAfter(
+      { difficulty: 'easy', exerciseType: 'build' },
+      { difficulty: 'hard', exerciseType: 'reverse' }
+    )).toBe('build');
+  });
+
+  it('treats legacy reviews without exerciseType as recognition', () => {
+    expect(stageAfter({ difficulty: 'easy' })).toBe('build');
+    expect(stageAfter({ difficulty: 'hard' })).toBe('regular');
+  });
+
+  it('continues from where a legacy history ended', () => {
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'regular' }, { difficulty: 'easy', exerciseType: 'reverse' })).toBe('reverse');
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'reverse' }, { difficulty: 'easy', exerciseType: 'regular' })).toBe('build');
   });
 });
 
@@ -206,19 +115,20 @@ describe('Learning Answer Screen Layout', () => {
     const root = document.getElementById('cardTranslation');
     const order = indexesInParent(root, [
       '.card-translation',
-      '.difficulty-buttons',
       '.detail-block--definition',
       '.detail-block--examples',
-      '.detail-block--synonyms'
+      '.detail-block--synonyms',
+      '.difficulty-buttons'
     ]);
     // Ensure strictly increasing order
     expect(order).toEqual([...order].sort((a, b) => a - b));
 
-    // Progress should exist and container should be last in learningContent
+    // Progress should exist and its container should be first in learningContent
     const progressContainer = document.getElementById('sessionProgressContainer');
     expect(progressContainer.querySelector('[data-testid="session-progress"]')).toBeTruthy();
     const learningContent = document.getElementById('learningContent');
-    expect(learningContent.lastElementChild.id).toBe('sessionProgressContainer');
+    expect(learningContent.firstElementChild.id).toBe('sessionProgressContainer');
+    expect(learningContent.querySelectorAll('#sessionProgressContainer')).toHaveLength(1);
   });
 
   it('renders correct order for reverse translation after Show Answer', () => {
@@ -233,20 +143,53 @@ describe('Learning Answer Screen Layout', () => {
     const mainEl = document.getElementById('learningMain') || document.getElementById('learningContent');
     const firstSpecific = mainEl.querySelector('.card-translation');
     const buttons = mainEl.querySelector('.difficulty-buttons');
-    const def = mainEl.querySelector('.detail-block--definition');
     const ex = mainEl.querySelector('.detail-block--examples');
     const syn = mainEl.querySelector('.detail-block--synonyms');
 
-    expect(firstSpecific && buttons && def && ex && syn).toBeTruthy();
+    expect(firstSpecific && buttons && ex && syn).toBeTruthy();
     const children = Array.from(mainEl.children);
     const idx = (el) => children.indexOf(el);
-    const indices = [idx(firstSpecific), idx(buttons), idx(def), idx(ex), idx(syn)];
+    const indices = [idx(firstSpecific), idx(ex), idx(syn), idx(buttons)];
     expect(indices).toEqual([...indices].sort((a, b) => a - b));
+
+    // The definition is already on the exercise card, so the answer does not repeat it
+    expect(mainEl.querySelector('.detail-block--definition')).toBeNull();
+    expect(mainEl.querySelectorAll('.exercise-card__definition')).toHaveLength(1);
 
     const progressContainer = document.getElementById('sessionProgressContainer');
     expect(progressContainer.querySelector('[data-testid="session-progress"]')).toBeTruthy();
     const learningContent = document.getElementById('learningContent');
-    expect(learningContent.lastElementChild.id).toBe('sessionProgressContainer');
+    expect(learningContent.firstElementChild.id).toBe('sessionProgressContainer');
+    expect(learningContent.querySelectorAll('#sessionProgressContainer')).toHaveLength(1);
+  });
+});
+
+describe('Session progress', () => {
+  const words = ['a', 'b', 'c'].map((original) => ({
+    id: original, original, translation: 't', repetition: 0, easeFactor: 2, reviewHistory: []
+  }));
+
+  const progressText = () => document.querySelector('[data-testid="session-progress"]').textContent.trim();
+  const progressWidth = () => document.querySelector('.session-progress__fill').style.width;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    window.SV.AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
+    window.SV.DataManager = { vocabulary: words.map((w) => ({ ...w })), save: vi.fn() };
+  });
+
+  it('counts the current card against the whole session', () => {
+    LS.forceStartLearning();
+    expect(progressText()).toBe('1 / 3');
+    expect(progressWidth()).toBe('33%');
+
+    LS.markDifficulty('easy');
+    expect(progressText()).toBe('2 / 3');
+    expect(progressWidth()).toBe('67%');
+
+    LS.markDifficulty('hard');
+    expect(progressText()).toBe('3 / 3');
+    expect(progressWidth()).toBe('100%');
   });
 });
 
@@ -408,21 +351,52 @@ describe('Session resume and restart', () => {
     expect(window.SV.AppState.learningSession).toHaveLength(10);
   });
 
-  it('offers reverse again in a new session to words that did both exercises in an earlier one', () => {
-    const shownBothBefore = () => ({
-      original: 'w', translation: 't', nextReview: null, repetition: 2, easeFactor: 2.5,
-      reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }],
-      sessionExerciseTypes: ['regular', 'reverse']
+  it('opens each word of a new session with the exercise of its stage', () => {
+    const wordAt = (original, exerciseType) => ({
+      original, translation: 't', nextReview: null, repetition: 2, easeFactor: 2.5,
+      reviewHistory: [{ difficulty: 'easy', exerciseType }]
     });
-    window.SV.DataManager.vocabulary = [shownBothBefore(), shownBothBefore()];
-    expect(LS.determineExerciseType(window.SV.DataManager.vocabulary[1])).toBe('regular');
+    window.SV.DataManager.vocabulary = [wordAt('a', 'regular')];
 
     LS.forceStartLearning();
 
-    const [current, next] = window.SV.AppState.learningSession;
-    expect(current.currentExerciseType).toBe('reverse');
-    expect(next.sessionExerciseTypes).toEqual([]);
-    expect(LS.determineExerciseType(next)).toBe('reverse');
+    expect(window.SV.AppState.currentLearningWord.currentExerciseType).toBe('build');
+    expect(document.querySelector('.build-slots')).toBeTruthy();
+  });
+
+  it('reveals the answer and rating buttons after checking a built word', () => {
+    const word = {
+      original: 'ab', translation: 't', repetition: 2, easeFactor: 2.5,
+      reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }]
+    };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    LS.showLearningCard();
+    expect(document.querySelector('.difficulty-buttons')).toBeNull();
+    expect(document.querySelector('[data-action="build-check"]').disabled).toBe(true);
+
+    LS.placeBuildLetter('a');
+    LS.placeBuildLetter('b');
+    expect(document.querySelector('[data-action="build-check"]').disabled).toBe(false);
+    LS.checkBuildAnswer();
+
+    expect(document.querySelector('.build-feedback--correct')).toBeTruthy();
+    expect(document.querySelector('.card-translation').textContent).toContain('ab');
+    expect(document.querySelector('.difficulty-buttons')).toBeTruthy();
+  });
+
+  it('records build in the review history', () => {
+    const word = {
+      original: 'ab', translation: 't', repetition: 2, easeFactor: 2.5,
+      reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }]
+    };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    LS.showLearningCard();
+
+    LS.markDifficulty('easy');
+
+    expect(word.reviewHistory.at(-1)).toMatchObject({ difficulty: 'easy', exerciseType: 'build' });
   });
 
   it('persists nextReview, easeFactor and repetition from the previous interval', () => {

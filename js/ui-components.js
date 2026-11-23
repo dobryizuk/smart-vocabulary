@@ -73,13 +73,13 @@ function buildToggleButtonHTML(expandable, hasExtra, uniqueId) {
     return `<div class="word-card__toggle" data-action="toggle-card" data-target-id="${uniqueId}" title="Show/hide details">⌄</div>`;
 }
 
-function buildPhoneticHtml(word, variant) {
-    if (variant === 'learning' || !word.phonetic) return '';
+function buildPhoneticHtml(word) {
+    if (!word.phonetic) return '';
     return `<span class="word-card__phonetic">${word.phonetic}</span>`;
 }
 
-function buildOriginalHtml(word, originalClasses, variant) {
-    const phoneticHtml = buildPhoneticHtml(word, variant);
+function buildOriginalHtml(word, originalClasses) {
+    const phoneticHtml = buildPhoneticHtml(word);
     return `
         <div class="${originalClasses.join(' ')}">
             ${word.original}
@@ -94,10 +94,10 @@ function buildTranslationHtml(word, translationClasses, variant) {
 }
 
 function buildHeaderSection(word, variant, originalClasses, translationClasses, headerClasses) {
-    const originalHtml = buildOriginalHtml(word, originalClasses, variant);
+    const originalHtml = buildOriginalHtml(word, originalClasses);
     const translationHtml = buildTranslationHtml(word, translationClasses, variant);
     return `
-        <div class="${headerClasses.join(' ')}" style="flex: 1;">
+        <div class="${headerClasses.join(' ')}">
             ${originalHtml}
             ${translationHtml}
         </div>
@@ -143,16 +143,18 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
     const toggleButton = buildToggleButtonHTML(expandable, (metadata || detailSections), uniqueId);
     
     const headerHtml = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="word-card__top">
             ${buildHeaderSection(word, variant, originalClasses, translationClasses, headerClasses)}
             ${actionsHtml ? `<div class="${actionsClasses.join(' ')}">${actionsHtml}</div>` : ''}
         </div>
     `;
 
     const { definitionHtml, examplesHtml } = buildNonExpandableDetails(word, variant);
+    const chipsHtml = variant === 'learning' ? `<div class="word-card__chips">${createStatusBadge(progressPercentage)}</div>` : '';
 
     return `
         <div class="${cardClasses.join(' ')}" id="${uniqueId}">
+            ${chipsHtml}
             ${headerHtml}
             ${progressHtml}
             ${definitionHtml}
@@ -331,18 +333,18 @@ function createSynonymsSection(word, isLearning = false) {
 /**
  * Creates answer layout with fixed order:
  * 1) specificHtml (exercise-specific block)
- * 2) difficulty buttons
- * 3) definition
- * 4) examples
- * 5) synonyms
+ * 2) definition (unless the exercise card above already shows it)
+ * 3) examples
+ * 4) synonyms
+ * 5) difficulty buttons
  */
-function createAnswerLayout({ specificHtml = '', word }) {
+function createAnswerLayout({ specificHtml = '', word, showDefinition = true }) {
     const buttons = createDifficultyButtons();
     // Borrow list-view styles for detail blocks in learning
-    const definition = createDefinitionSection(word, false);
+    const definition = showDefinition ? createDefinitionSection(word, false) : '';
     const examples = createExamplesSection(word, false);
     const synonyms = createSynonymsSection(word, false);
-    return [specificHtml, buttons, definition, examples, synonyms].join('');
+    return [specificHtml, definition, examples, synonyms, buttons].join('');
 }
 
 /**
@@ -356,7 +358,7 @@ function createPrimaryAnswerBlock(label, value) {
     return `
         <div class="card-translation detail-block detail-block--translation">
             <div class="detail-title">${label}</div>
-            <div class="detail-text" style="font-size: 1.3em; font-weight: 700;">${value}</div>
+            <div class="detail-text">${value}</div>
         </div>
     `;
 }
@@ -463,28 +465,15 @@ function createWordMetadata(word, progress) {
  * @returns {string} HTML string for difficulty buttons
  */
 function createDifficultyButtons() {
-    const buttonsHtml = `
-        <div class="difficulty-buttons" style="margin-top: 20px; margin-left: 18px; margin-right: 18px;">
-            <button class="difficulty-btn difficulty-btn--hard" data-difficulty="hard">
-                <div class="difficulty-emoji">😰</div>
-                <div>Hard</div>
-            </button>
-            <button class="difficulty-btn difficulty-btn--medium" data-difficulty="medium">
-                <div class="difficulty-emoji">🤔</div>
-                <div>Medium</div>
-            </button>
-            <button class="difficulty-btn difficulty-btn--easy" data-difficulty="easy">
-                <div class="difficulty-emoji">😊</div>
-                <div>OK</div>
-            </button>
-            <button class="difficulty-btn difficulty-btn--perfect" data-difficulty="perfect">
-                <div class="difficulty-emoji">🎯</div>
-                <div>Easy</div>
-            </button>
+    return `
+        <div class="difficulty-buttons">
+            <p class="difficulty-buttons__prompt">How well did you know it?</p>
+            <button class="difficulty-btn difficulty-btn--hard" data-difficulty="hard">Hard</button>
+            <button class="difficulty-btn difficulty-btn--medium" data-difficulty="medium">Medium</button>
+            <button class="difficulty-btn difficulty-btn--easy" data-difficulty="easy">OK</button>
+            <button class="difficulty-btn difficulty-btn--perfect" data-difficulty="perfect">Easy</button>
         </div>
     `;
-    
-    return buttonsHtml;
 }
 
 function showDeleteConfirmation(word, onConfirm, context) {
@@ -595,9 +584,13 @@ function createEmptyState(title, message, buttons = []) {
  * @returns {string} HTML string for session progress
  */
 function createSessionProgress(currentIndex, totalWords) {
+    const percent = totalWords > 0 ? Math.round((currentIndex / totalWords) * 100) : 0;
     return `
         <div class="session-progress" data-testid="session-progress">
-            ${currentIndex} of ${totalWords} words
+            <div class="session-progress__track" aria-hidden="true">
+                <div class="session-progress__fill" style="width: ${percent}%;"></div>
+            </div>
+            <span class="session-progress__count">${currentIndex} / ${totalWords}</span>
         </div>
     `;
 }
@@ -670,9 +663,7 @@ function createLabeledTextInput({
     const inputAttr = onInput ? ` oninput="${onInput}"` : '';
     return `
         <div class="learning-input-block">
-            <label>
-                ${label}
-            </label>
+            <label for="${inputId}">${label}</label>
             <input type="text" id="${inputId}" class="form-control" placeholder="${placeholder}"
                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus${keypressAttr}${inputAttr}>
             <div id="typingFeedback" class="typing-feedback"></div>

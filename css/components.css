@@ -102,6 +102,17 @@
 .word-card--expandable .word-card__phonetic { display: none; }
 .word-card--expandable.word-card--expanded .word-card__phonetic { display: inline-block; }
 
+/* Header row of a card: text on the left, actions on the right */
+.word-card__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.word-card__header {
+    flex: 1;
+}
+
 /* Action Buttons */
 .word-card__actions {
     z-index: 10;
@@ -203,13 +214,6 @@
     border: 1px solid rgba(255, 159, 10, 0.25);
 }
 
-/* purgecss ignore */
-.detail-block--translation {
-    background: linear-gradient(135deg, rgba(10, 132, 255, 0.12) 0%, rgba(10, 132, 255, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-blue);
-    border: 1px solid rgba(10, 132, 255, 0.25);
-}
-
 .detail-title {
     font-size: 0.7em;
     font-weight: 800;
@@ -231,11 +235,6 @@
 /* purgecss ignore */
 .detail-block--examples .detail-title {
     color: var(--color-accent-orange);
-}
-
-/* purgecss ignore */
-.detail-block--translation .detail-title {
-    color: var(--color-accent-blue);
 }
 
 .detail-text {
