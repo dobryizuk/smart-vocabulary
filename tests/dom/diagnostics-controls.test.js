@@ -4,7 +4,7 @@ describe('Settings page diagnostics controls', () => {
   let anchorClick;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div class="container"><div id="dataManagement"></div></div>';
+    document.body.innerHTML = '<div class="container"><div id="settingsView"></div></div>';
     global.window = global;
     window.SV = window.SV || {};
     require('../../js/app-state.js');
@@ -24,7 +24,7 @@ describe('Settings page diagnostics controls', () => {
   });
 
   it('renders the logging toggle and save button', () => {
-    expect(document.querySelector('[data-testid="log-toggle-btn"]').textContent).toBe('📝 Logging Off');
+    expect(document.querySelector('[data-testid="log-toggle-btn"]').getAttribute('aria-checked')).toBe('false');
     expect(document.querySelector('[data-testid="save-logs-btn"]')).toBeTruthy();
   });
 
@@ -32,11 +32,11 @@ describe('Settings page diagnostics controls', () => {
     const toggle = document.querySelector('[data-testid="log-toggle-btn"]');
     toggle.click();
     expect(window.SV.LogRecorder.enabled).toBe(true);
-    expect(toggle.textContent).toBe('📝 Logging On');
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
 
     toggle.click();
     expect(window.SV.LogRecorder.enabled).toBe(false);
-    expect(toggle.textContent).toBe('📝 Logging Off');
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
   });
 
   it('saves recorded logs as a text file with environment info', async () => {

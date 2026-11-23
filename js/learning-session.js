@@ -5,6 +5,7 @@
 // AppState is provided by js/app-state.js and attached globally
 
 const WordBuilder = require('./word-builder.js');
+const { escapeHtml } = require('./ui-components.js');
 
 // ============================================================================
 // LEARNING SESSION FUNCTIONS  
@@ -54,32 +55,25 @@ function beginSession(candidates) {
     AppState.learningSession = selectSessionBatch(candidates, size);
     AppState.sessionTotal = AppState.learningSession.length;
     AppState.currentLearningWord = AppState.learningSession[0];
+    window.SV?.Today?.showSession?.();
     showLearningCard();
 }
 
+// Opening the Today tab: a running session continues, otherwise the overview shows
 function prepareLearningSession() {
     const AppState = window.SV.AppState;
-    ensureLearningLayout();
-
     if (AppState.currentLearningWord && AppState.learningSession.length > 0) {
+        window.SV?.Today?.showSession?.();
         showLearningCard();
         return;
     }
-
-    const wordsForReview = window.SV?.SpacedRepetition?.getWordsForReview?.() || [];
-    if (wordsForReview.length === 0) {
-        const vocabulary = window.SV?.DataManager?.vocabulary || [];
-        renderLearningEmptyState(vocabulary.length > 0);
-        return;
-    }
-
-    beginSession(wordsForReview);
+    window.SV?.Today?.showOverview?.();
 }
 
 function startLearning() {
     const wordsForReview = window.SV?.SpacedRepetition?.getWordsForReview?.() || [];
     if (wordsForReview.length === 0) {
-        prepareLearningSession();
+        window.SV?.Today?.showOverview?.();
         return;
     }
     beginSession(wordsForReview);
@@ -105,8 +99,6 @@ function renderSessionProgress() {
     return window.SV?.UIComponents?.createSessionProgress?.(sessionTotal - learningSession.length + 1, sessionTotal) || '';
 }
 
-const SPEAKER_ICON = '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"></path></svg>';
-
 function ensureLearningLayout(resetMain = false) {
     const learningContent = document.getElementById('learningContent');
     if (!learningContent) return { mainEl: null, progressEl: null };
@@ -124,21 +116,6 @@ function ensureLearningLayout(resetMain = false) {
         mainEl.innerHTML = '';
     }
     return { mainEl, progressEl };
-}
-
-function renderLearningEmptyState(hasWords) {
-    const { mainEl, progressEl } = ensureLearningLayout(true);
-    if (!mainEl || !progressEl) return;
-    const actions = [
-        { text: 'Start New Session', action: 'force-start-learning', type: 'primary' }
-    ];
-    const title = hasWords ? 'Great job! 🎉' : 'Ready to learn! 📚';
-    const subtitle = hasWords
-        ? 'No words need review right now. Start a new session to practice.'
-        : 'Add some words first, then start a new session.';
-    const emptyStateHtml = window.SV?.UIComponents?.createEmptyState?.(title, subtitle, actions) || '';
-    mainEl.innerHTML = emptyStateHtml;
-    progressEl.innerHTML = '';
 }
 
 function forceStartLearning() {
@@ -182,21 +159,9 @@ function showLearningCard() {
     // Continue with regular exercise (existing code)
     const { mainEl, progressEl } = ensureLearningLayout(true);
     
-    // Define actions for learning card
-    const actions = [
-        {
-            type: 'primary',
-            icon: SPEAKER_ICON,
-            action: 'speak-word',
-            arg: window.SV.AppState.currentLearningWord.original,
-            title: 'Pronounce word'
-        }
-    ];
-    
-    // Prepare actions for learning card only (progress metadata is computed by UI component as needed)
-    
     // Create unified word card for learning
     const UI = window.SV?.UIComponents;
+    const actions = [UI?.createSpeakAction?.(window.SV.AppState.currentLearningWord.original)].filter(Boolean);
     const cardHtml = UI?.createWordCard?.(window.SV.AppState.currentLearningWord, 'learning', actions) || '';
     mainEl.insertAdjacentHTML('beforeend', `<p class="learning-prompt">Do you know this word?</p>${cardHtml}`);
     mainEl.insertAdjacentHTML('beforeend', `
@@ -223,7 +188,7 @@ async function showTranslation() {
 
     // Build specific block for direct translation: compact translation header
     const UI2 = window.SV?.UIComponents;
-    const specificHtml = UI2?.createTranslationBlock?.(window.SV.AppState.currentLearningWord, 'learning') || '';
+    const specificHtml = UI2?.createTranslationBlock?.(window.SV.AppState.currentLearningWord) || '';
     const layoutHtml = UI2?.createAnswerLayout?.({
         specificHtml,
         word: window.SV.AppState.currentLearningWord,
@@ -282,11 +247,11 @@ function endLearningSession() {
     
     const UI3 = window.SV?.UIComponents;
     const emptyStateHtml = UI3?.createEmptyState?.(
-        'Session Complete! 🎉',
+        'Session Complete!',
         message,
         [
-            { text: '🔄 Start New Session', action: 'start-learning', type: 'primary' },
-            { text: '📊 View Statistics', action: 'show-tab', type: 'secondary', arg: 'stats' }
+            { text: 'Start New Session', action: 'start-learning', type: 'primary' },
+            { text: 'Back to Today', action: 'show-tab', type: 'secondary', arg: 'today' }
         ]
     ) || '';
     
@@ -399,7 +364,7 @@ function getMaxHints(answer) {
 }
 
 function hintButtonText(remaining, used) {
-    return used === 0 ? '💡 Hint' : `💡 Hint (${remaining} left)`;
+    return used === 0 ? 'Hint' : `Hint (${remaining} left)`;
 }
 
 function showHintForReverse() {
@@ -411,7 +376,7 @@ function showHintForReverse() {
     const maxHints = getMaxHints(answer);
     const used = Math.min(window.SV.AppState.reverseHintCount + 1, maxHints);
     window.SV.AppState.reverseHintCount = used;
-    hintEl.textContent = used > 0 ? `💡 ${getHintPrefix(answer, used)}…` : '';
+    hintEl.textContent = used > 0 ? `${getHintPrefix(answer, used)}…` : '';
 
     const hintBtn = document.getElementById('hintReverseButton');
     if (hintBtn) {
@@ -496,11 +461,11 @@ function validateReverseInput() {
     if (userInput.length > 0) {
         const accuracy = calculateTypingAccuracy(userInput, window.SV.AppState.currentLearningWord.original);
         if (accuracy.accuracy === 100) {
-            feedback.innerHTML = '<span style="color: #28a745;">✓ Perfect match!</span>';
+            feedback.innerHTML = '<span class="typing-feedback--success">Perfect match!</span>';
         } else if (accuracy.accuracy >= 90) {
-            feedback.innerHTML = '<span style="color: #ffc107;">Close enough!</span>';
+            feedback.innerHTML = '<span class="typing-feedback--warn">Close enough!</span>';
         } else {
-            feedback.innerHTML = '<span style="color: #6c757d;">Keep typing...</span>';
+            feedback.innerHTML = '<span class="typing-feedback--muted">Keep typing...</span>';
         }
     } else {
         feedback.innerHTML = '';
@@ -519,13 +484,13 @@ function checkReverseTranslation() {
     // Show result feedback
     const feedback = document.getElementById('typingFeedback');
     if (result.accuracy === 100) {
-        feedback.innerHTML = `<span style="color: #28a745; font-weight: 600;">🎯 Perfect! "${correctAnswer}"</span>`;
+        feedback.innerHTML = `<span class="typing-feedback--success">Perfect! "${correctAnswer}"</span>`;
     } else if (result.accuracy >= 90) {
-        feedback.innerHTML = `<span style="color: #28a745; font-weight: 600;">✅ Correct! "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
+        feedback.innerHTML = `<span class="typing-feedback--success">Correct! "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
     } else if (result.accuracy >= 70) {
-        feedback.innerHTML = `<span style="color: #ffc107; font-weight: 600;">📝 Close: "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
+        feedback.innerHTML = `<span class="typing-feedback--warn">Close: "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
     } else {
-        feedback.innerHTML = `<span style="color: #dc3545; font-weight: 600;">❌ Answer: "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
+        feedback.innerHTML = `<span class="typing-feedback--danger">Answer: "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
     }
     
     // Store the result for automatic difficulty marking
@@ -578,10 +543,6 @@ function showAnswerForReverse() {
 // BUILD EXERCISE
 // ============================================================================
 
-function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
-}
-
 // Prompt card of the exercises where the word is produced from its translation
 function renderExerciseCard({ extraClass = '', chip, title, definition }) {
     const definitionHtml = definition ? `<p class="exercise-card__definition">${escapeHtml(definition)}</p>` : '';
@@ -616,7 +577,7 @@ function renderBuildTiles(state) {
 }
 
 function renderBuildFeedback(correct) {
-    const text = correct ? '✅ Correct!' : '❌ Not quite';
+    const text = correct ? 'Correct!' : 'Not quite';
     return `<div class="build-feedback build-feedback--${correct ? 'correct' : 'wrong'}" role="status">${text}</div>`;
 }
 

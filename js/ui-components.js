@@ -2,12 +2,21 @@
 // UNIFIED COMPONENT TEMPLATES
 // ============================================================================
 
+const { getWordStatus } = require('./spaced-repetition.js');
+
+const { icon } = require('./icons.js');
+
+function createSpeakAction(text) {
+    return { type: 'primary', icon: icon('speaker'), action: 'speak-word', arg: text, title: 'Pronounce word' };
+}
+
 /**
  * Creates a unified word card component
  * @param {Object} word - Word object with original, translation, phonetic, etc.
  * @param {string} variant - 'compact', 'learning', or 'default'
  * @param {Array} actions - Array of action button objects
- * @param {boolean} showProgress - Whether to show progress component
+ * @param {boolean} expandable - Whether the card toggles its details
+ * @param {string} reviewLabel - Label of the next review shown in compact rows
  * @returns {string} HTML string for the word card
  */
 function buildActionsHtml(actions, expandable) {
@@ -17,10 +26,6 @@ function buildActionsHtml(actions, expandable) {
         const stopAttr = expandable ? ' data-stop-prop="true"' : '';
         return `<button class="action-btn action-btn--${action.type}" data-action="${dataAction}"${dataArg}${stopAttr} title="${action.title || ''}">${action.icon}</button>`;
     }).join('');
-}
-
-function computeProgressVariant(variant) {
-    return variant === 'compact' ? 'inline' : 'default';
 }
 
 function computeReview(nextReview) {
@@ -70,7 +75,7 @@ function buildNonExpandableDetails(word, variant) {
 
 function buildToggleButtonHTML(expandable, hasExtra, uniqueId) {
     if (!(expandable && hasExtra)) return '';
-    return `<div class="word-card__toggle" data-action="toggle-card" data-target-id="${uniqueId}" title="Show/hide details">⌄</div>`;
+    return `<div class="word-card__toggle" data-action="toggle-card" data-target-id="${uniqueId}" title="Show/hide details"></div>`;
 }
 
 function buildPhoneticHtml(word) {
@@ -104,7 +109,12 @@ function buildHeaderSection(word, variant, originalClasses, translationClasses, 
     `;
 }
 
-function createWordCard(word, variant = 'default', actions = [], showProgress = false, expandable = false) {
+function buildSideHtml(word, reviewLabel) {
+    const reviewHtml = reviewLabel ? `<span class="word-card__review">${reviewLabel}</span>` : '';
+    return `<div class="word-card__side">${createStatusBadge(word)}${reviewHtml}</div>`;
+}
+
+function createWordCard(word, variant = 'default', actions = [], expandable = false, reviewLabel = '') {
     const uniqueId = `word-card-${word.id}`;
     
     // Create extended progress with all metadata fields
@@ -117,18 +127,11 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
         addedDate: new Date(word.createdAt || word.addedDate)
     };
     
-    // Use the same progress calculation as in learning tab (based on easeFactor)
-    const progressPercentage = window.SV?.SpacedRepetition?.calculateLearningProgress?.(word.easeFactor || 1.3) || 0;
-    
     // Determine card classes based on variant
     const { cardClasses, headerClasses, originalClasses, translationClasses, actionsClasses } = buildVariantClasses(variant, expandable);
     
     // Build actions HTML (with event stopping for expandable cards)
     const actionsHtml = buildActionsHtml(actions, expandable);
-    
-    // Build progress component if requested
-    const progressVariant = computeProgressVariant(variant);
-    const progressHtml = showProgress ? createProgressComponent(progressPercentage, progressVariant, '') : '';
     
     // Create metadata and details
     const metadata = createWordMetadata(word, progress);
@@ -142,98 +145,38 @@ function createWordCard(word, variant = 'default', actions = [], showProgress = 
     // Toggle button for expandable cards
     const toggleButton = buildToggleButtonHTML(expandable, (metadata || detailSections), uniqueId);
     
+    const sideHtml = variant === 'compact' ? buildSideHtml(word, reviewLabel) : '';
     const headerHtml = `
         <div class="word-card__top">
             ${buildHeaderSection(word, variant, originalClasses, translationClasses, headerClasses)}
+            ${sideHtml}
             ${actionsHtml ? `<div class="${actionsClasses.join(' ')}">${actionsHtml}</div>` : ''}
+            ${toggleButton}
         </div>
     `;
 
     const { definitionHtml, examplesHtml } = buildNonExpandableDetails(word, variant);
-    const chipsHtml = variant === 'learning' ? `<div class="word-card__chips">${createStatusBadge(progressPercentage)}</div>` : '';
+    const chipsHtml = variant === 'learning' ? `<div class="word-card__chips">${createStatusBadge(word)}</div>` : '';
 
     return `
         <div class="${cardClasses.join(' ')}" id="${uniqueId}">
             ${chipsHtml}
             ${headerHtml}
-            ${progressHtml}
             ${definitionHtml}
             ${examplesHtml}
             ${expandableContent}
-            ${toggleButton}
-        </div>
-    `;
-}
-
-/**
- * Creates a progress component
- * @param {number} percentage - Progress percentage (0-100)
- * @param {string} variant - 'default', 'inline', or 'compact'
- * @param {string} label - Optional label for the progress
- * @returns {string} HTML string for the progress component
- */
-function createProgressComponent(percentage, variant = 'default', label = 'Learning Progress') {
-    const componentClasses = ['progress-component'];
-    const barClasses = ['progress-component__bar'];
-    const percentageClasses = ['progress-component__percentage'];
-    
-    if (variant === 'inline') {
-        componentClasses.push('progress-component--inline');
-    }
-    if (variant === 'compact') {
-        barClasses.push('progress-component__bar--compact');
-        percentageClasses.push('progress-component__percentage--compact');
-    }
-    
-    const isCompact = variant === 'compact';
-    const barHeight = isCompact ? '6px' : '8px';
-    
-    // Clamp and sanitize percentage
-    const numeric = Number(percentage);
-    const safePercentage = Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 0;
-
-    const headerHtml = label ? `
-        <div class="progress-component__header">
-            <span class="progress-component__label">${label}</span>
-            <span class="${percentageClasses.join(' ')}">${safePercentage}%</span>
-        </div>
-    ` : `
-        <div class="progress-component__header">
-            <span class="${percentageClasses.join(' ')}">${safePercentage}%</span>
-        </div>
-    `;
-
-    return `
-        <div class="${componentClasses.join(' ')}">
-            ${headerHtml}
-            <div class="${barClasses.join(' ')}" style="height: ${barHeight};">
-                <div class="progress-component__fill" style="width: ${safePercentage}%;"></div>
-            </div>
         </div>
     `;
 }
 
 /**
  * Creates status badge component
- * @param {number} percentage - Progress percentage to determine status
+ * @param {Object} word - Word whose review history determines the status
  * @returns {string} HTML string for status badge
  */
-function createStatusBadge(percentage) {
-    let status = 'new';
-    let statusText = 'New';
-    
-    if (percentage >= 80) {
-        status = 'mastered';
-        statusText = 'Mastered';
-    } else if (percentage >= 50) {
-        status = 'familiar';
-        statusText = 'Familiar';
-    } else if (percentage > 0) {
-        status = 'learning';
-        statusText = 'Learning';
-    }
-    
-    return `<span class="status-badge status-badge--${status}" role="status" aria-label="${statusText}" title="${statusText}">${statusText}</span>`;
+function createStatusBadge(word) {
+    const { key, label } = getWordStatus(word);
+    return `<span class="status-badge status-badge--${key}" role="status" aria-label="${label}" title="${label}">${label}</span>`;
 }
 
 /**
@@ -260,7 +203,7 @@ function createWordDetailSections(word, variant = 'default') {
     // Definition
     if (word.definition) {
         sectionsHtml += wrap('definition', [
-            title(isLearning ? 'Definition' : '📖 Definition'),
+            title('Definition'),
             `<div class="detail-text">${word.definition}</div>`
         ].join(''));
     }
@@ -289,7 +232,7 @@ function createWordDetailSections(word, variant = 'default') {
             }).join(isLearning ? '' : '<br>');
 
         sectionsHtml += wrap('examples', [
-            title('💡 Examples'),
+            title('Examples'),
             `<div class="detail-text">${examplesHtml}</div>`
         ].join(''));
     }
@@ -303,14 +246,14 @@ function createWordDetailSections(word, variant = 'default') {
 function createDefinitionSection(word, isLearning = false) {
     if (!word.definition) return '';
     const baseClass = `detail-block detail-block--definition${isLearning ? ' detail-block--learning' : ''}`;
-    const title = `<div class="detail-title">${isLearning ? 'Definition' : '📖 Definition'}</div>`;
+    const title = `<div class="detail-title">${'Definition'}</div>`;
     return `<div class="${baseClass}" data-testid="detail-definition">${title}<div class="detail-text">${word.definition}</div></div>`;
 }
 
 function createExamplesSection(word, isLearning = false) {
     if (!(word.examples && word.examples.length > 0)) return '';
     const baseClass = `detail-block detail-block--examples${isLearning ? ' detail-block--learning' : ''}`;
-    const title = `<div class="detail-title">${isLearning ? 'Examples' : '💡 Examples'}</div>`;
+    const title = `<div class="detail-title">${'Examples'}</div>`;
     const examplesHtml = word.examples
         .slice(0, isLearning ? 2 : word.examples.length)
         .map(example => {
@@ -366,29 +309,24 @@ function createPrimaryAnswerBlock(label, value) {
 /**
  * Creates translation block component for learning screen
  * @param {Object} word - Word object
- * @param {string} variant - Component variant ('learning', 'default')
  * @returns {string} HTML string for translation block
  */
-function createTranslationBlock(word, variant = 'learning') {
+function createTranslationBlock(word) {
     if (!word.translation) return '';
-    
-    const isCompact = variant === 'learning';
-    
-    return createPrimaryAnswerBlock(isCompact ? 'Translation' : '🔤 Translation', word.translation);
+    return createPrimaryAnswerBlock('Translation', word.translation);
 }
 
 /**
  * Creates complete answer content for learning screen (translation + details + metadata)
  * @param {Object} word - Word object
  * @param {Object} progress - Progress object
- * @param {string} variant - Component variant ('learning', 'default')
  * @returns {string} HTML string for complete answer content
  */
-function createLearningAnswerContent(word, progress, variant = 'learning') {
+function createLearningAnswerContent(word, progress) {
     let content = '';
     
     // Add translation block
-    content += createTranslationBlock(word, variant);
+    content += createTranslationBlock(word);
     
     // Add word detail sections styled like expanded list cards
     content += createWordDetailSections(word, 'default');
@@ -480,45 +418,20 @@ function showDeleteConfirmation(word, onConfirm, context) {
     const ctx = context ?? {};
     const doc = ctx.document ?? (typeof document !== 'undefined' ? document : null);
     if (!doc) return;
-    // Create overlay
     const overlay = doc.createElement('div');
-    overlay.style.cssText = `
-        position: fixed; 
-        top: 0; left: 0; right: 0; bottom: 0; 
-        background: rgba(0,0,0,0.5); 
-        z-index: 1000; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-    `;
-    
-    // Create dialog
+    overlay.className = 'confirm-overlay';
+
     const dialog = doc.createElement('div');
-    dialog.style.cssText = `
-        background: white; 
-        border-radius: 12px; 
-        padding: 24px; 
-        margin: 20px; 
-        max-width: 300px; 
-        text-align: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-    `;
-    
+    dialog.className = 'confirm-dialog';
     dialog.innerHTML = `
-        <h3 style="margin: 0 0 16px 0; color: #e53e3e;">🗑️ Delete Word</h3>
-        <p style="margin: 0 0 20px 0; color: #333;">
+        <h3 class="confirm-dialog__title">Delete Word</h3>
+        <p class="confirm-dialog__text">
             Delete "<strong>${word.original}</strong>"?<br>
-            <small style="color: #666;">This action cannot be undone.</small>
+            <small class="confirm-dialog__note">This action cannot be undone.</small>
         </p>
-        <div style="display: flex; gap: 12px;">
-            <button id="cancelDelete" style="
-                flex: 1; padding: 12px; border: 1px solid #ccc; 
-                background: white; border-radius: 8px; cursor: pointer;
-            ">Cancel</button>
-            <button id="confirmDelete" style="
-                flex: 1; padding: 12px; border: none; 
-                background: #e53e3e; color: white; border-radius: 8px; cursor: pointer;
-            ">Delete</button>
+        <div class="confirm-dialog__actions">
+            <button id="cancelDelete" class="confirm-dialog__btn">Cancel</button>
+            <button id="confirmDelete" class="confirm-dialog__btn confirm-dialog__btn--danger">Delete</button>
         </div>
     `;
     
@@ -543,6 +456,10 @@ function showDeleteConfirmation(word, onConfirm, context) {
             doc.body.removeChild(overlay);
         }
     };
+}
+
+function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
 /**
@@ -706,19 +623,6 @@ function createFlexContainer(content, direction = 'row', justify = 'flex-start',
  * @returns {string} HTML string for info box
  */
 
-/**
- * Creates small text with common styling
- * @param {string} text - Text content
- * @param {string} color - Text color (default: #666)
- * @param {string} fontSize - Font size (default: 0.8em)
- * @param {string} style - additional styles
- * @returns {string} HTML string for small text
- */
-function createSmallText(text, color = '#666', fontSize = '0.8em', style = '') {
-    const textStyle = `font-size: ${fontSize}; color: ${color};${style ? ' ' + style : ''}`;
-    return `<div style="${textStyle}">${text}</div>`;
-}
-
 // Export functions
 /**
  * Toggle the expand/collapse state of a word card
@@ -747,8 +651,8 @@ function toggleWordCard(cardId) {
 // Export functions (CommonJS consumers and app-init attach to SV)
 // App-init will attach these under SV.UIComponents
 const UIComponents = {
+    createSpeakAction,
     createWordCard,
-    createProgressComponent,
     createStatusBadge,
     createWordDetailSections,
     createTranslationBlock,
@@ -759,13 +663,13 @@ const UIComponents = {
     createDifficultyButtons,
     showDeleteConfirmation,
     toggleWordCard,
+    escapeHtml,
     createEmptyState,
     createSessionProgress,
     createButtonGroup,
     createButton,
     createLabeledTextInput,
-    createFlexContainer,
-    createSmallText
+    createFlexContainer
 };
 
 // Functions are available through window.UIComponents namespace

@@ -7,74 +7,41 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--color-surface);
-    backdrop-filter: var(--blur-backdrop);
-    border-top: 1px solid var(--color-border);
+    background: var(--ui-surface);
+    border-top: 1px solid var(--ui-border);
     display: flex;
     justify-content: space-around;
-    align-items: center;
-    padding: 6px 0;
+    align-items: flex-start;
+    padding: 6px 12px;
     z-index: 1000;
-    box-shadow: var(--shadow-sm);
 }
 
 .tab-btn {
     flex: 1;
     background: none;
     border: none;
-    color: var(--color-text-secondary);
-    font-size: 0.75em;
-    font-weight: 500;
-    padding: 6px 2px;
+    color: var(--ui-text-muted);
+    font: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 4px 2px;
     cursor: pointer;
-    transition: var(--transition-fast);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    border-radius: var(--radius-sm);
-    min-height: 40px;
+    min-width: 64px;
+    min-height: 48px;
     justify-content: center;
     -webkit-tap-highlight-color: transparent;
 }
 
+.tab-icon {
+    display: flex;
+}
+
 .tab-btn.active {
-    color: var(--color-accent-blue);
-}
-
-.tab-btn:active {
-    transform: none;
-}
-
-.tab-btn:focus {
-    outline: none;
-}
-
-.tab-btn:focus:not(:active) {
-    color: var(--color-text-secondary);
-}
-
-/* Theme Section in Statistics */
-.theme-section {
-    background: var(--color-surface-elevated);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    text-align: center;
-    margin-bottom: 16px;
-    border: 1px solid var(--color-border);
-}
-
-.theme-section h4 {
-    color: var(--color-text);
-    margin-bottom: 12px;
-    font-size: 1.1em;
-    font-weight: 600;
-}
-
-.theme-section .btn {
-    min-width: 100px;
-    padding: 8px 12px;
-    font-size: 0.85em;
+    color: var(--ui-accent);
 }
 
 /* Tab Content */
@@ -96,11 +63,20 @@
     background: var(--color-bg);
 }
 
-/* Make learning tab edge-to-edge like the word list */
-#learn-tab .tab-content-inner {
+/* The learning session fills the Today tab edge to edge; the overview pads itself */
+#today-tab .tab-content-inner {
     display: flex;
     flex-direction: column;
     padding: 0;
+}
+
+#add-tab .tab-content-inner,
+#list-tab .tab-content-inner,
+#stats-tab .tab-content-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 28px 20px 16px;
 }
 
 /* Mobile-first defaults applied; media queries removed for iPhone 14 baseline */

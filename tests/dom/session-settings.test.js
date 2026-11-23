@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-const { createSessionSettings, SESSION_SIZE_KEY } = require('../../js/session-settings.js');
+const { createSessionSettings, stepSessionSize, SESSION_SIZE_KEY } = require('../../js/session-settings.js');
 
 function settingsWith(value) {
   const data = value === undefined ? {} : { [SESSION_SIZE_KEY]: value };
@@ -51,5 +51,22 @@ describe('Session size setting', () => {
     const s = createSessionSettings({ storage: null });
     s.setSessionSize(12);
     expect(s.getSessionSize()).toBe(15);
+  });
+});
+
+describe('Session size stepper', () => {
+  it('moves by the step inside the range', () => {
+    expect(stepSessionSize(15, 1)).toBe(16);
+    expect(stepSessionSize(15, -1)).toBe(14);
+  });
+
+  it('stops at the limits', () => {
+    expect(stepSessionSize(10, -1)).toBe(10);
+    expect(stepSessionSize(20, 1)).toBe(20);
+  });
+
+  it('reaches the limits from the inside', () => {
+    expect(stepSessionSize(11, -1)).toBe(10);
+    expect(stepSessionSize(19, 1)).toBe(20);
   });
 });

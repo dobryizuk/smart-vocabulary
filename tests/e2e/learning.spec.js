@@ -23,25 +23,27 @@ test.describe('Learning Tests', () => {
     await expect(page.getByText('No words yet!')).toBeVisible();
     await expect(page.getByText('Add your first word')).toBeVisible();
     
-    // Switch to learn tab
-    await page.getByTestId('learn-tab-btn').click();
-    
-    // Should show learning empty state
+    // Switch to the Today tab
+    await page.getByTestId('today-tab-btn').click();
+
+    // Should show the empty state of the review card
     await expect(page.getByText(/ready to learn/i)).toBeVisible();
     await expect(page.getByText(/add some words first/i)).toBeVisible();
   });
 
   test('should handle learning flow when words exist', async ({ page }) => {
     // First add a word
+    await page.getByTestId('add-tab-btn').click();
     await page.getByTestId('original-word-input').fill('hello');
     await page.waitForSelector('[data-testid="toggle-fields-btn"]', { timeout: 5000 });
     await page.getByTestId('toggle-fields-btn').click();
     await page.getByRole('textbox', { name: /translation/i }).fill('привет');
     await page.getByTestId('save-word-btn').click();
     
-    // Go to learn tab
-    await page.getByTestId('learn-tab-btn').click();
-    
+    // Start the session from Today
+    await page.getByTestId('today-tab-btn').click();
+    await page.getByTestId('start-session-btn').click();
+
     // Should show learning interface with the word
     const learningContent = page.locator('#learningContent, [data-testid="learning-content"]');
     await expect(learningContent).toContainText('hello');

@@ -1,0 +1,622 @@
+/* ============================================================================
+   STATS TAB - Progress and Settings views
+   ============================================================================ */
+
+#progressView:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+#settingsView:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Progress: streak and total */
+.progress-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.progress-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+.progress-tile--streak {
+    color: var(--ui-warn-text);
+    background: var(--ui-warn-soft);
+    border-color: transparent;
+}
+
+.progress-tile__icon {
+    display: flex;
+    color: var(--ui-accent);
+}
+
+.progress-tile__value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+}
+
+.progress-tile--streak .progress-tile__value {
+    color: inherit;
+}
+
+.progress-tile__label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+}
+
+.progress-tile--streak .progress-tile__label {
+    color: inherit;
+}
+
+/* Progress: status buckets */
+.progress-buckets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.progress-bucket {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 14px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-tile);
+}
+
+.progress-bucket--wide {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.progress-bucket__value {
+    font-size: 1.375rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.progress-bucket__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--ui-text-muted);
+}
+
+.progress-bucket--wide .progress-bucket__label {
+    font-size: 0.875rem;
+}
+
+.progress-bucket__swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.progress-bucket__swatch--mastered {
+    background: var(--ui-success);
+}
+
+.progress-bucket__swatch--learning {
+    background: var(--ui-accent);
+}
+
+.progress-bucket__swatch--difficult {
+    background: var(--ui-warn-text);
+}
+
+.progress-bucket__swatch--new {
+    background: var(--ui-border-muted);
+}
+
+/* Progress: answers of the last seven days */
+.progress-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 18px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+.progress-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.progress-card__title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.progress-card__aside {
+    font-size: 0.8125rem;
+    color: var(--ui-text-muted);
+}
+
+.week-chart {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.week-chart__day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.week-chart__track {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    height: 64px;
+}
+
+.week-chart__bar {
+    width: 100%;
+    background: var(--ui-accent-soft);
+    border-radius: 6px;
+}
+
+.week-chart__day--today .week-chart__bar {
+    background: var(--ui-accent);
+}
+
+.week-chart__letter {
+    font-size: 0.6875rem;
+    color: var(--ui-text-muted);
+}
+
+.week-chart__day--today .week-chart__letter {
+    font-weight: 600;
+    color: var(--ui-accent-text);
+}
+
+/* Lists of rows: Progress links and Settings groups */
+.progress-links,
+.settings-list {
+    overflow: hidden;
+    list-style: none;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+.progress-links > li + li,
+.settings-list > li + li {
+    border-top: 1px solid var(--ui-border);
+}
+
+.progress-link,
+.settings-action {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 18px;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.progress-link {
+    justify-content: space-between;
+}
+
+.progress-link__label,
+.progress-link__detail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.progress-link__label svg {
+    color: var(--ui-accent);
+}
+
+.progress-link__detail {
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--ui-text-muted);
+}
+
+/* Settings */
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.settings-header h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.settings-header__back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+    color: var(--ui-accent-text);
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.settings-section__title {
+    margin: 10px 4px 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-text-muted);
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 56px;
+    padding: 0 18px;
+}
+
+.settings-row__label {
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.settings-action {
+    gap: 12px;
+}
+
+.settings-action svg {
+    color: var(--ui-text-muted);
+}
+
+.settings-note {
+    margin: 0 4px;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--ui-text-muted);
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    margin-right: -8px;
+    background: var(--ui-surface-muted);
+    border-radius: var(--radius-md);
+}
+
+.stepper__btn {
+    width: 44px;
+    height: 44px;
+    font: inherit;
+    font-size: 1.25rem;
+    color: var(--color-text);
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+}
+
+.stepper__btn:disabled {
+    color: var(--ui-disabled-text);
+    cursor: default;
+}
+
+.stepper__value {
+    min-width: 32px;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.switch {
+    position: relative;
+    flex: none;
+    width: 51px;
+    height: 44px;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.switch::before {
+    content: "";
+    position: absolute;
+    inset: 6px 0;
+    background: var(--ui-border-muted);
+    border-radius: 16px;
+    transition: background var(--transition-fast);
+}
+
+.switch[aria-checked="true"]::before {
+    background: var(--ui-accent);
+}
+
+.switch__knob {
+    position: absolute;
+    top: 8px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    background: #FFFFFF;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform var(--transition-fast);
+}
+
+.switch[aria-checked="true"] .switch__knob {
+    transform: translateX(20px);
+}
+
+.segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    background: var(--ui-track);
+    border-radius: var(--ui-radius-tile);
+}
+
+.segmented__option {
+    height: 44px;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+}
+
+.segmented__option[aria-pressed="true"] {
+    font-weight: 600;
+    color: var(--color-text);
+    background: var(--ui-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.settings-card {
+    overflow: hidden;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+/* Cloud backup: signed out */
+.signin {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+}
+
+.signin__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+    border-radius: 18px;
+}
+
+.signin__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.signin__lead {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--ui-text-muted);
+}
+
+.signin__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.signin__label {
+    padding: 0 4px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+}
+
+.signin__input,
+.signin__password {
+    height: 54px;
+    padding: 0 16px;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--color-text);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-tile);
+}
+
+.signin__input:focus,
+.signin__password:focus-within {
+    outline: none;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 4px var(--ui-accent-soft);
+}
+
+.signin__password {
+    display: flex;
+    align-items: center;
+    padding-right: 4px;
+}
+
+.signin__input--bare,
+.signin__input--bare:focus {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.signin__reveal {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--ui-text-muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+}
+
+.signin__submit {
+    height: 56px;
+    margin-top: 8px;
+    font: inherit;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--ui-on-accent);
+    cursor: pointer;
+    background: var(--ui-accent);
+    border: none;
+    border-radius: var(--ui-radius-control);
+}
+
+.signin__submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.signin__error {
+    font-size: 0.8125rem;
+    color: var(--ui-danger);
+}
+
+.signin__error:empty {
+    display: none;
+}
+
+.signin__note {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--ui-text-muted);
+    text-align: center;
+}
+
+/* Cloud backup: signed in */
+.account__who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ui-border);
+}
+
+.account__avatar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+    border-radius: 50%;
+}
+
+.account__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.account__email {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.account__status {
+    font-size: 0.8125rem;
+    color: var(--ui-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.account__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account__action {
+    height: 50px;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--ui-accent-text);
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.account__action:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.account__action + .account__action {
+    border-left: 1px solid var(--ui-border);
+}
+
+.account__action--danger {
+    color: var(--ui-danger);
+}

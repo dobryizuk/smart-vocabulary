@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setupDOM, createTestWord, renderToDOM } from './test-helpers.js';
+const { icon } = require('../../js/icons.js');
 
 describe('Word Card Action Delegation', () => {
   let UI;
@@ -33,10 +34,10 @@ describe('Word Card Action Delegation', () => {
   it('should call editWord with id when edit button is clicked', () => {
     const word = createTestWord({ id: 'abc123' });
     const actions = [
-      { type: 'warning', icon: '✏️', action: 'edit-word', arg: word.id, title: 'Edit word' }
+      { type: 'warning', icon: icon('pencil'), action: 'edit-word', arg: word.id, title: 'Edit word' }
     ];
 
-    const html = UI.createWordCard(word, 'compact', actions, false, true);
+    const html = UI.createWordCard(word, 'compact', actions, true);
     const container = renderToDOM(html);
 
     const spy = vi.fn();
@@ -51,10 +52,10 @@ describe('Word Card Action Delegation', () => {
   it('should call deleteWord with id when delete button is clicked', () => {
     const word = createTestWord({ id: 'del1' });
     const actions = [
-      { type: 'danger', icon: '🗑️', action: 'delete-word', arg: word.id, title: 'Delete word' }
+      { type: 'danger', icon: icon('trash'), action: 'delete-word', arg: word.id, title: 'Delete word' }
     ];
 
-    const html = UI.createWordCard(word, 'compact', actions, false, true);
+    const html = UI.createWordCard(word, 'compact', actions, true);
     const container = renderToDOM(html);
 
     const spy = vi.fn();
@@ -69,10 +70,10 @@ describe('Word Card Action Delegation', () => {
   it('should call speakWord with original when speak button is clicked', () => {
     const word = createTestWord({ original: 'alpha' });
     const actions = [
-      { type: 'primary', icon: '🔊', action: 'speak-word', arg: word.original, title: 'Pronounce' }
+      { type: 'primary', icon: icon('speaker'), action: 'speak-word', arg: word.original, title: 'Pronounce' }
     ];
 
-    const html = UI.createWordCard(word, 'compact', actions, false, true);
+    const html = UI.createWordCard(word, 'compact', actions, true);
     const container = renderToDOM(html);
 
     const spy = vi.fn();

@@ -40,10 +40,10 @@ describe('Word Card Component', () => {
       });
       
       const actions = [
-        { type: 'primary', icon: '🔊', onclick: 'speak()', title: 'Speak' }
+        { type: 'primary', icon: 'Say', onclick: 'speak()', title: 'Speak' }
       ];
       
-      const cardHtml = createWordCard(word, 'compact', actions, true);
+      const cardHtml = createWordCard(word, 'compact', actions, false, 'In 3 days');
       const container = renderToDOM(cardHtml);
       
       const card = container.querySelector('.word-card');
@@ -51,10 +51,16 @@ describe('Word Card Component', () => {
       
       const actionBtn = container.querySelector('.action-btn--primary');
       expect(actionBtn).toBeTruthy();
-      expect(getTextContent(actionBtn)).toContain('🔊');
+      expect(getTextContent(actionBtn)).toContain('Say');
       
-      const progressComponent = container.querySelector('.progress-component');
-      expect(progressComponent).toBeTruthy();
+      expect(getTextContent(container.querySelector('.word-card__side .status-badge'))).toBe('New');
+      expect(getTextContent(container.querySelector('.word-card__review'))).toBe('In 3 days');
+    });
+
+    it('omits the review label in a compact card when none is given', () => {
+      const container = renderToDOM(createWordCard(createTestWord(), 'compact'));
+
+      expect(container.querySelector('.word-card__review')).toBeNull();
     });
 
     it('should create learning variant that hides translation', () => {
@@ -103,8 +109,8 @@ describe('Word Card Component', () => {
     it('should render action buttons with correct attributes', () => {
       const word = createTestWord();
       const actions = [
-        { type: 'primary', icon: '🔊', action: 'test-action', title: 'Test Action' },
-        { type: 'warning', icon: '✏️', action: 'edit-word', title: 'Edit' }
+        { type: 'primary', icon: 'Say', action: 'test-action', title: 'Test Action' },
+        { type: 'warning', icon: 'Edit', action: 'edit-word', title: 'Edit' }
       ];
       
       const cardHtml = createWordCard(word, 'default', actions, false);
@@ -114,13 +120,13 @@ describe('Word Card Component', () => {
       expect(primaryBtn).toBeTruthy();
       expect(primaryBtn.getAttribute('data-action')).toBe('test-action');
       expect(primaryBtn.getAttribute('title')).toBe('Test Action');
-      expect(getTextContent(primaryBtn)).toContain('🔊');
+      expect(getTextContent(primaryBtn)).toContain('Say');
       
       const warningBtn = container.querySelector('.action-btn--warning');
       expect(warningBtn).toBeTruthy();
       expect(warningBtn.getAttribute('data-action')).toBe('edit-word');
       expect(warningBtn.getAttribute('title')).toBe('Edit');
-      expect(getTextContent(warningBtn)).toContain('✏️');
+      expect(getTextContent(warningBtn)).toContain('Edit');
     });
   });
 
@@ -134,7 +140,7 @@ describe('Word Card Component', () => {
         createdAt: '2024-01-01T00:00:00.000Z'
       });
       
-      const cardHtml = createWordCard(word, 'compact', [], true, true); // expandable = true
+      const cardHtml = createWordCard(word, 'compact', [], true); // expandable = true
       const container = renderToDOM(cardHtml);
       
       const card = container.querySelector('.word-card');
@@ -157,7 +163,7 @@ describe('Word Card Component', () => {
 
     it('renders metadata as plain gray chips without emoji', () => {
       const word = createTestWord({ repetition: 7, nextReview: '2025-10-31T00:00:00.000Z', createdAt: '2025-09-11T00:00:00.000Z' });
-      const container = renderToDOM(createWordCard(word, 'compact', [], true, true));
+      const container = renderToDOM(createWordCard(word, 'compact', [], true));
       const chips = Array.from(container.querySelectorAll('.word-metadata span'));
 
       expect(chips.map(c => c.textContent)).toEqual(['Added 11/09/2025', '7 repetitions', 'Ready for review (31/10/2025)']);
@@ -170,11 +176,12 @@ describe('Word Card Component', () => {
         synonyms: ['test1', 'test2']
       });
       
-      const cardHtml = createWordCard(word, 'compact', [], false, true); // expandable = true
+      const cardHtml = createWordCard(word, 'compact', [], true); // expandable = true
       const container = renderToDOM(cardHtml);
       
       const toggleButton = container.querySelector('.word-card__toggle');
       expect(toggleButton).toBeTruthy();
+      expect(toggleButton.closest('.word-card__top')).toBeTruthy();
 
       const card = container.querySelector('.word-card');
       expect(card.classList.contains('word-card--expanded')).toBe(false);

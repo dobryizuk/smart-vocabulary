@@ -12,11 +12,6 @@ export function setupDOM() {
     vocabulary: []
   };
 
-  // Minimal SpacedRepetition progress helper used by some tests
-  global.SV.SpacedRepetition = {
-    calculateLearningProgress: (easeFactor) => Math.round(((easeFactor - 1.3) / (3.5 - 1.3)) * 100)
-  };
-  
   // Mock toggleWordCard for tests
   global.SV.UIComponents = global.SV.UIComponents || {};
   global.SV.UIComponents.toggleWordCard = (cardId) => {
@@ -119,11 +114,7 @@ export function nextTick() {
 }
 
 export function setupThemeManagerDOM() {
-  document.body.innerHTML = `
-    <div id="dataManagement">
-      <h4>Data Management</h4>
-    </div>
-  `;
+  document.body.innerHTML = '';
 
   const metaThemeColor = document.createElement('meta');
   metaThemeColor.name = 'theme-color';

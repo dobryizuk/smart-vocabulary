@@ -142,24 +142,21 @@ function createSpeechManager(context) {
         }
     }
 
-    function persistAndUpdate(btnId, isOn, onText, offText) {
-        const el = doc ? doc.getElementById(btnId) : null;
-        if (el) {
-            el.textContent = isOn ? onText : offText;
-            el.className = isOn ? 'btn btn--success' : 'btn btn--secondary';
-        }
+    function persistAndUpdate(switchId, isOn) {
+        const el = doc ? doc.getElementById(switchId) : null;
+        if (el) el.setAttribute('aria-checked', String(isOn));
         if (storage) storage.setItem('speechSettings', JSON.stringify(speechSettings));
     }
 
     function toggleSpeech() {
         speechSettings.enabled = !speechSettings.enabled;
-        persistAndUpdate('speechToggle', speechSettings.enabled, '🔊 Sound On', '🔇 Sound Off');
+        persistAndUpdate('speechToggle', speechSettings.enabled);
         return speechSettings.enabled;
     }
 
     function toggleAutoPlay() {
         speechSettings.autoPlay = !speechSettings.autoPlay;
-        persistAndUpdate('autoPlayToggle', speechSettings.autoPlay, '🎵 Auto Play On', '🔇 Auto Play Off');
+        persistAndUpdate('autoPlayToggle', speechSettings.autoPlay);
         return speechSettings.autoPlay;
     }
 

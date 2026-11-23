@@ -60,7 +60,7 @@ test.describe.skip('Visual Regression Tests', () => {
       }
     });
     
-    await page.getByTestId('learn-tab-btn').click();
+    await page.getByTestId('start-session-btn').click();
     await page.waitForTimeout(1500); // Let learning interface load
     
     // Update screenshot

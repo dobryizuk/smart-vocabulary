@@ -87,34 +87,6 @@ describe('Theme Manager', () => {
     });
   });
 
-  describe('Theme Toggle Functionality', () => {
-    it('should toggle between light and dark correctly', () => {
-      // Start with system theme
-      expect(themeManager.getCurrentTheme()).toBe('system');
-      
-      // First toggle should set either light or dark
-      themeManager.toggleTheme();
-      const firstToggle = themeManager.getCurrentTheme();
-      expect(['light', 'dark']).toContain(firstToggle);
-      
-      // Second toggle should switch to the other theme
-      themeManager.toggleTheme();
-      const secondToggle = themeManager.getCurrentTheme();
-      expect(secondToggle).not.toBe(firstToggle);
-      expect(['light', 'dark']).toContain(secondToggle);
-    });
-
-    it('should cycle through themes correctly when starting from concrete theme', () => {
-      themeManager.setTheme('light');
-      
-      themeManager.toggleTheme();
-      expect(themeManager.getCurrentTheme()).toBe('dark');
-      
-      themeManager.toggleTheme();
-      expect(themeManager.getCurrentTheme()).toBe('light');
-    });
-  });
-
   describe('Theme Events', () => {
     it('should dispatch themeChanged event when theme changes', () => {
       const eventSpy = vi.fn();
@@ -146,31 +118,6 @@ describe('Theme Manager', () => {
       // The implementation might still dispatch events, so let's be more flexible
       // We just check that the theme didn't change
       expect(themeManager.getCurrentTheme()).toBe('light');
-    });
-  });
-
-  describe('Theme Icons and Text', () => {
-    it('should return correct theme icon for each theme', () => {
-      themeManager.setTheme('light');
-      expect(themeManager.getThemeIcon()).toBe('☀️');
-      
-      themeManager.setTheme('dark');
-      expect(themeManager.getThemeIcon()).toBe('🌙');
-      
-      themeManager.setTheme('system');
-      expect(themeManager.getThemeIcon()).toBe('🌓');
-    });
-
-    it('should return correct theme text for each theme', () => {
-      themeManager.setTheme('light');
-      expect(themeManager.getThemeText()).toBe('Light');
-      
-      themeManager.setTheme('dark');
-      expect(themeManager.getThemeText()).toBe('Dark');
-      
-      themeManager.setTheme('system');
-      const themeText = themeManager.getThemeText();
-      expect(themeText).toMatch(/^System \((light|dark)\)$/);
     });
   });
 
@@ -215,78 +162,51 @@ describe('Theme Manager', () => {
     });
   });
 
-  describe('Theme Switcher UI', () => {
-    beforeEach(() => {
-      setupThemeManagerDOM();
-    });
+  describe('Theme control', () => {
+    function mountThemeControl() {
+      document.body.innerHTML = ['light', 'dark', 'system']
+        .map(theme => `<button data-action="set-theme" data-arg="${theme}" aria-pressed="false"></button>`).join('');
+    }
+    const pressed = () => [...document.querySelectorAll('[data-action="set-theme"]')]
+      .filter(option => option.getAttribute('aria-pressed') === 'true')
+      .map(option => option.dataset.arg);
 
-    it('should create theme switcher button with correct structure', () => {
-      themeManager.createThemeSwitcher();
-      
-      const themeSwitcher = document.getElementById('theme-switcher');
-      expect(themeSwitcher).toBeTruthy();
-      expect(themeSwitcher.classList.contains('btn')).toBe(true);
-      expect(themeSwitcher.classList.contains('btn--secondary')).toBe(true);
-    });
+    it('marks the chosen theme as pressed when it changes', () => {
+      mountThemeControl();
 
-    it('should create theme section with proper content', () => {
-      themeManager.createThemeSwitcher();
-      
-      const themeSection = document.querySelector('.theme-section');
-      expect(themeSection).toBeTruthy();
-      
-      const heading = themeSection.querySelector('h4');
-      expect(heading.textContent).toBe('Appearance');
-      
-      const description = themeSection.querySelector('p');
-      expect(description.textContent).toBe('Choose your preferred theme');
-    });
+      themeManager.setTheme('dark');
+      expect(pressed()).toEqual(['dark']);
 
-    it('should update theme switcher UI when theme changes', () => {
-      themeManager.createThemeSwitcher();
-      
-      const themeSwitcher = document.getElementById('theme-switcher');
-      const initialText = themeSwitcher.textContent;
-      
       themeManager.setTheme('light');
-      
-      expect(themeSwitcher.textContent).not.toBe(initialText);
-      expect(themeSwitcher.textContent).toContain('☀️');
-      expect(themeSwitcher.textContent).toContain('Light');
+      expect(pressed()).toEqual(['light']);
+
+      themeManager.setTheme('system');
+      expect(pressed()).toEqual(['system']);
     });
 
-    it('should handle theme switcher click correctly', () => {
-      themeManager.createThemeSwitcher();
-      
-      // start from a concrete theme for determinism
-      themeManager.setTheme('light');
-      const btn = document.getElementById('theme-switcher');
-      expect(btn).toBeTruthy();
+    it('persists the chosen theme and applies it to the document', () => {
+      mountThemeControl();
 
-      // Real interaction: click button should call toggle and persist
-      btn.click();
-      expect(themeManager.getCurrentTheme()).toBe('dark');
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'smart-vocabulary-theme',
-        expect.stringMatching(/^(light|dark)$/)
-      );
+      themeManager.setTheme('dark');
+
+      expect(localStorage.setItem).toHaveBeenCalledWith('smart-vocabulary-theme', 'dark');
+      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     });
 
-    it('should not create duplicate theme switchers', () => {
-      themeManager.createThemeSwitcher();
-      themeManager.createThemeSwitcher();
-      
-      const themeSwitchers = document.querySelectorAll('#theme-switcher');
-      expect(themeSwitchers).toHaveLength(1);
+    it('keeps the pressed state on an invalid theme', () => {
+      mountThemeControl();
+      themeManager.setTheme('dark');
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      themeManager.setTheme('neon');
+
+      expect(pressed()).toEqual(['dark']);
     });
 
-    it('should handle missing DOM structure gracefully', () => {
-      // Clear DOM
+    it('works without any theme control on the page', () => {
       document.body.innerHTML = '';
-      
-      expect(() => {
-        themeManager.createThemeSwitcher();
-      }).not.toThrow();
+
+      expect(() => themeManager.setTheme('light')).not.toThrow();
     });
   });
 });

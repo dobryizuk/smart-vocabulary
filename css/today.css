@@ -1,0 +1,225 @@
+/* ============================================================================
+   TODAY TAB - overview: streak, words ready for review, vocabulary, tricky words
+   ============================================================================ */
+
+#todayView:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 28px 20px 16px;
+}
+
+.today-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.today-header__date {
+    margin-bottom: 4px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+}
+
+.streak-chip {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ui-warn-text);
+    background: var(--ui-warn-soft);
+    border-radius: var(--radius-pill);
+}
+
+/* Ready for review */
+.review-card {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px;
+    color: var(--ui-on-accent);
+    background: var(--ui-accent);
+    border-radius: 24px;
+}
+
+.review-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.review-card__eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.review-card__count {
+    font-size: 2.875rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.review-card__detail {
+    font-size: 0.9375rem;
+    opacity: 0.9;
+}
+
+.review-card__start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 52px;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ui-accent-text);
+    cursor: pointer;
+    background: var(--ui-on-accent);
+    border: none;
+    border-radius: var(--radius-lg);
+}
+
+/* Nothing due: the calm empty state sits in a card of its own */
+[data-testid="today-empty"] .empty-state {
+    margin: 0;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+}
+
+/* Your vocabulary */
+.today-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 20px;
+}
+
+.today-card__head,
+.today-section__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.today-card__title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+}
+
+.today-card__aside {
+    font-size: 0.875rem;
+    color: var(--ui-text-muted);
+}
+
+.vocab-bar {
+    display: flex;
+    gap: 3px;
+    height: 10px;
+}
+
+.vocab-bar__segment {
+    border-radius: 5px;
+}
+
+.vocab-buckets {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.vocab-bucket {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Tricky words */
+.today-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.today-section__head {
+    padding: 0 4px;
+}
+
+.today-section__link {
+    min-width: 44px;
+    min-height: 44px;
+    margin-right: -8px;
+    padding: 0 8px;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ui-accent-text);
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.tricky-list {
+    overflow: hidden;
+    list-style: none;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 20px;
+}
+
+.tricky-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+}
+
+.tricky-row + .tricky-row {
+    border-top: 1px solid var(--ui-border);
+}
+
+.tricky-row__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.tricky-row__original {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.tricky-row__translation {
+    font-size: 0.875rem;
+    color: var(--ui-text-muted);
+}
+
+.tricky-row__chip {
+    flex: none;
+    padding: 4px 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-muted);
+    border-radius: var(--radius-pill);
+}
+
+.tricky-row__chip--warn {
+    color: var(--ui-warn-text);
+    background: var(--ui-warn-soft);
+}

@@ -1,107 +1,115 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-describe('Statistics module', () => {
-  let createStatistics;
+const { createStatistics } = require('../../js/statistics.js');
 
-  function setupStatsDOM() {
-    document.body.innerHTML = `
-      <div id="statsGrid">
-        <span id="totalWordsCount"></span>
-        <span id="learnedWordsCount"></span>
-        <span id="inProgressWordsCount"></span>
-        <span id="difficultWordsCount"></span>
-        <span id="reviewWordsCount"></span>
-        <span id="streakCount"></span>
-      </div>
-    `;
-  }
+const NOW = new Date(2026, 10, 20, 10, 0);
+const day = (daysAgo, hour = 12) => new Date(2026, 10, 20 - daysAgo, hour).toISOString();
+const answer = (daysAgo, difficulty) => ({ date: day(daysAgo), difficulty });
 
-  beforeEach(() => {
-    // jsdom env
-    global.window = global;
-    global.document = window.document;
-    setupStatsDOM();
-    // fresh require each test to avoid cache side-effects
-     
-    const mod = require('../../js/statistics.js');
-    createStatistics = mod.createStatistics;
-  });
+const VOCABULARY = [
+    { id: 'm', original: 'mastered', nextReview: '2026-12-30T00:00:00.000Z', reviewHistory: [answer(2, 'easy'), answer(1, 'perfect'), answer(0, 'easy')] },
+    { id: 'l', original: 'learning', nextReview: '2026-12-30T00:00:00.000Z', reviewHistory: [answer(1, 'hard'), answer(0, 'easy'), answer(0, 'medium')] },
+    { id: 'd', original: 'difficult', nextReview: '2020-01-01T00:00:00.000Z', reviewHistory: [answer(3, 'hard')] },
+    { id: 'n', original: 'fresh', nextReview: null, reviewHistory: [] }
+];
 
-  it('does not leak a global window.Statistics', () => {
-    expect(global.Statistics).toBeUndefined();
-  });
+describe('Progress screen', () => {
+    let vocabulary;
+    let syncStatus;
+    let stats;
+    const byTestId = (testId) => document.querySelector(`[data-testid="${testId}"]`);
+    const text = (testId) => byTestId(testId).textContent.replace(/\s+/g, ' ').trim();
 
-  it('updates counters based on vocabulary and review readiness', () => {
-    const vocabulary = [
-      // progress ~ 80 (>=75) → well known
-      { id: 'w1', original: 'one', easeFactor: 3.06, reviewHistory: [{ difficulty: 'easy' }, { difficulty: 'perfect' }] },
-      // progress ~ 60 (50-74) → in progress
-      { id: 'w2', original: 'two', easeFactor: 2.62, reviewHistory: [{ difficulty: 'hard' }, { difficulty: 'easy' }] },
-      // progress ~ 30 (<50) → difficult
-      { id: 'w3', original: 'three', easeFactor: 1.96, reviewHistory: [{ difficulty: 'hard' }] }
-    ];
-
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-
-    // two words ready for review: w1 new (no nextReview) and w2 past date; w3 future (not ready)
-    vocabulary[0].nextReview = undefined;
-    vocabulary[1].nextReview = oneDayAgo;
-    vocabulary[2].nextReview = tomorrow;
-
-    const calcProgress = (ease) => {
-      const MIN_EASE = 1.3; const MAX_EASE = 3.5;
-      if (ease <= MIN_EASE) return 0;
-      if (ease >= MAX_EASE) return 100;
-      return Math.round(((ease - MIN_EASE) / (MAX_EASE - MIN_EASE)) * 100);
-    };
-
-    const getWordsForReview = () => vocabulary.filter(w => !w.nextReview || new Date(w.nextReview) <= new Date());
-
-    const stats = createStatistics({
-      getVocabulary: () => vocabulary,
-      calculateLearningProgress: calcProgress,
-      getWordsForReview,
-      document,
-      debugLog: () => undefined
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="progressView"></div>';
+        vocabulary = VOCABULARY;
+        syncStatus = { state: 'signed-out' };
+        stats = createStatistics({
+            getVocabulary: () => vocabulary,
+            getSyncStatus: () => syncStatus,
+            getNow: () => NOW,
+            document
+        });
     });
 
-    stats.updateStats();
+    it('shows the streak and the best streak', () => {
+        stats.updateStats();
 
-    const text = (id) => document.getElementById(id).textContent;
-
-    expect(text('totalWordsCount')).toBe('3');
-    expect(text('learnedWordsCount')).toBe('1');
-    expect(text('inProgressWordsCount')).toBe('1');
-    expect(text('difficultWordsCount')).toBe('1');
-    expect(text('reviewWordsCount')).toBe('2');
-  });
-
-  it('calculates streak as max trailing easy/perfect per word', () => {
-    const vocabulary = [
-      { id: 'a', original: 'a', easeFactor: 3.06, reviewHistory: [
-        { difficulty: 'hard' }, { difficulty: 'easy' }, { difficulty: 'perfect' }
-      ]}, // trailing successes = 2
-      { id: 'b', original: 'b', easeFactor: 2.0, reviewHistory: [
-        { difficulty: 'easy' }, { difficulty: 'easy' }, { difficulty: 'hard' }
-      ]}, // trailing successes = 0
-      { id: 'c', original: 'c', easeFactor: 1.5, reviewHistory: [
-        { difficulty: 'easy' }, { difficulty: 'perfect' }, { difficulty: 'easy' }
-      ]}  // trailing successes = 3
-    ];
-
-    const stats = createStatistics({
-      getVocabulary: () => vocabulary,
-      calculateLearningProgress: () => 0,
-      getWordsForReview: () => [],
-      document,
-      debugLog: () => undefined
+        expect(text('progress-streak-current')).toBe('4');
+        expect(text('progress-streak-best')).toBe('4');
+        expect(text('progress-streak')).toContain('day streak');
     });
 
-    stats.updateStats();
-    expect(document.getElementById('streakCount').textContent).toBe('3');
-  });
+    it('shows the word total', () => {
+        stats.updateStats();
+
+        expect(text('progress-total-value')).toBe('4');
+        expect(text('progress-total')).toContain('words');
+    });
+
+    it('buckets the words by the status chips and counts the words that need review', () => {
+        stats.updateStats();
+
+        expect(text('progress-bucket-mastered')).toBe('1 Mastered');
+        expect(text('progress-bucket-learning')).toBe('1 Learning');
+        expect(text('progress-bucket-difficult')).toBe('1 Difficult');
+        expect(text('progress-bucket-new')).toBe('1 New');
+        expect(text('progress-due')).toBe('2 Need review');
+    });
+
+    it('draws one bar per day of the last week with the answers of each', () => {
+        stats.updateStats();
+
+        const bars = [...document.querySelectorAll('[data-testid="week-day"]')];
+        expect(bars.map(bar => bar.dataset.count)).toEqual(['0', '0', '0', '1', '1', '2', '3']);
+        expect(text('progress-week-total')).toBe('7 total');
+        expect(bars.at(-1).classList.contains('week-chart__day--today')).toBe(true);
+        expect(document.querySelector('.week-chart').getAttribute('aria-label')).toMatch(/^Reviews per day: \w{3} 0, .* \w{3} 3$/);
+    });
+
+    it('keeps an empty bar visible and scales the busiest day to the full height', () => {
+        stats.updateStats();
+
+        const heights = [...document.querySelectorAll('.week-chart__bar')].map(bar => bar.style.height);
+        expect(heights[0]).toBe('4%');
+        expect(heights.at(-1)).toBe('100%');
+    });
+
+    it('shows the sync status in the Cloud backup row and opens Settings from both rows', () => {
+        syncStatus = { state: 'synced', lastSyncedAt: '2026-11-20T09:40:00.000Z' };
+        stats.updateStats();
+
+        expect(text('progress-cloud-status')).toMatch(/^Synced \d/);
+        expect(byTestId('progress-cloud-row').dataset.action).toBe('open-settings');
+        expect(byTestId('open-settings-btn').dataset.action).toBe('open-settings');
+    });
+
+    it('says when the user is not signed in', () => {
+        stats.updateStats();
+
+        expect(text('progress-cloud-status')).toBe('Not signed in');
+    });
+
+    it('renders an empty vocabulary with zeros and an empty chart', () => {
+        vocabulary = [];
+        stats.updateStats();
+
+        expect(text('progress-streak-current')).toBe('0');
+        expect(text('progress-total-value')).toBe('0');
+        expect(text('progress-due')).toBe('0 Need review');
+        expect(text('progress-week-total')).toBe('0 total');
+    });
+
+    it('tolerates a vocabulary that is not an array and a missing container', () => {
+        vocabulary = undefined;
+        expect(() => stats.updateStats()).not.toThrow();
+        expect(text('progress-total-value')).toBe('0');
+
+        document.body.innerHTML = '';
+        expect(() => stats.updateStats()).not.toThrow();
+    });
+
+    it('does not leak a global window.Statistics', () => {
+        expect(global.Statistics).toBeUndefined();
+    });
 });
-
-

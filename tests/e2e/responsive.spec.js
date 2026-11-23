@@ -32,8 +32,8 @@ test.describe('Responsive Design Tests', () => {
     await expect(originalInput).toBeVisible();
     await originalInput.fill('mobile test');
     
-    // Font size should be 16px to prevent zoom on iOS
-    const fontSize = await originalInput.evaluate(el => getComputedStyle(el).fontSize);
-    expect(fontSize).toBe('16px');
+    // Font size must be at least 16px to prevent zoom on iOS
+    const fontSize = await originalInput.evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+    expect(fontSize).toBeGreaterThanOrEqual(16);
   });
 });

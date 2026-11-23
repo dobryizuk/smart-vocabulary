@@ -146,20 +146,91 @@ describe('Spaced Repetition Algorithm', () => {
     });
   });
 
-  describe('calculateLearningProgress', () => {
-    it('should return 0 for minimum ease factor', () => {
-      const progress = SpacedRepetition.calculateLearningProgress(1.3);
-      expect(progress).toBe(0);
+  describe('isDue', () => {
+    const now = new Date('2026-11-10T10:00:00.000Z');
+
+    it('treats a word without nextReview as due', () => {
+      expect(SpacedRepetition.isDue({ nextReview: null }, now)).toBe(true);
+      expect(SpacedRepetition.isDue({}, now)).toBe(true);
     });
 
-    it('should return 100 for maximum ease factor', () => {
-      const progress = SpacedRepetition.calculateLearningProgress(3.5);
-      expect(progress).toBe(100);
+    it('is due when nextReview is in the past or exactly now', () => {
+      expect(SpacedRepetition.isDue({ nextReview: '2026-11-09T10:00:00.000Z' }, now)).toBe(true);
+      expect(SpacedRepetition.isDue({ nextReview: now.toISOString() }, now)).toBe(true);
     });
 
-    it('should return 50 for middle ease factor', () => {
-      const progress = SpacedRepetition.calculateLearningProgress(2.4);
-      expect(progress).toBe(50);
+    it('is not due when nextReview is in the future', () => {
+      expect(SpacedRepetition.isDue({ nextReview: '2026-11-10T10:00:00.001Z' }, now)).toBe(false);
+    });
+
+    it('selects the same words as getWordsForReview', () => {
+      const words = [
+        { original: 'new', nextReview: null },
+        { original: 'past', nextReview: '2020-01-01T00:00:00.000Z' },
+        { original: 'future', nextReview: '2999-01-01T00:00:00.000Z' }
+      ];
+      const sr = require('../../js/spaced-repetition.js').createSpacedRepetition({ getVocabulary: () => words });
+
+      expect(sr.getWordsForReview().map(w => w.original)).toEqual(['new', 'past']);
+    });
+  });
+
+  describe('getRecentScore', () => {
+    const answered = (...difficulties) => ({ reviewHistory: difficulties.map(difficulty => ({ difficulty })) });
+
+    it('is null without answers', () => {
+      expect(SpacedRepetition.getRecentScore({})).toBeNull();
+      expect(SpacedRepetition.getRecentScore(answered())).toBeNull();
+    });
+
+    it('is the mean of the last five answers', () => {
+      expect(SpacedRepetition.getRecentScore(answered('easy', 'hard'))).toBe(0.5);
+      expect(SpacedRepetition.getRecentScore(answered('hard', 'hard', 'easy', 'perfect', 'medium', 'hard', 'easy'))).toBe(0.7);
+    });
+  });
+
+  describe('getWordStatus', () => {
+    const answered = (...difficulties) => ({ reviewHistory: difficulties.map(difficulty => ({ difficulty })) });
+    const key = (word) => SpacedRepetition.getWordStatus(word).key;
+
+    it('is new without any answers', () => {
+      expect(SpacedRepetition.getWordStatus(answered())).toEqual({ key: 'new', label: 'New' });
+      expect(key({})).toBe('new');
+    });
+
+    it('scores perfect and easy as 1, medium as 0.5, hard as 0', () => {
+      expect(key(answered('perfect'))).toBe('mastered');
+      expect(key(answered('easy'))).toBe('mastered');
+      expect(key(answered('medium'))).toBe('learning');
+      expect(key(answered('hard'))).toBe('difficult');
+    });
+
+    it('works with fewer than five answers', () => {
+      expect(key(answered('hard', 'easy'))).toBe('learning');
+    });
+
+    it('counts only the last five answers', () => {
+      expect(key(answered('hard', 'hard', 'hard', 'easy', 'easy', 'easy', 'easy', 'easy'))).toBe('mastered');
+      expect(key(answered('easy', 'easy', 'easy', 'easy', 'hard', 'hard', 'hard', 'hard', 'hard'))).toBe('difficult');
+    });
+
+    it('treats a mean of 0.5 as learning and just below as difficult', () => {
+      expect(key(answered('hard', 'easy'))).toBe('learning');
+      expect(key(answered('easy', 'easy', 'hard', 'hard', 'hard'))).toBe('difficult');
+    });
+
+    it('treats a mean of 0.8 as mastered and just below as learning', () => {
+      expect(key(answered('easy', 'easy', 'easy', 'easy', 'hard'))).toBe('mastered');
+      expect(key(answered('easy', 'easy', 'easy', 'medium', 'hard'))).toBe('learning');
+    });
+
+    it('counts medium as half', () => {
+      expect(key(answered('medium', 'medium'))).toBe('learning');
+      expect(key(answered('medium', 'medium', 'hard', 'hard'))).toBe('difficult');
+    });
+
+    it('counts an unknown rating as 0', () => {
+      expect(key(answered('bogus'))).toBe('difficult');
     });
   });
 });

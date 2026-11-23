@@ -21,38 +21,48 @@ test.describe('Navigation Tests', () => {
     const tabNav = page.getByTestId('tab-nav');
     await expect(tabNav).toBeVisible();
     
-    // Check all tabs are present
-    await expect(page.getByTestId('add-tab-btn')).toBeVisible();
+    // Tabs are Today, Words, Add, Progress, in that order
+    const tabs = page.getByTestId('tab-nav').getByRole('button');
+    await expect(tabs).toHaveText(['Today', 'Words', 'Add', 'Progress']);
+    await expect(page.getByTestId('today-tab-btn')).toBeVisible();
     await expect(page.getByTestId('list-tab-btn')).toBeVisible();
-    await expect(page.getByTestId('learn-tab-btn')).toBeVisible();
+    await expect(page.getByTestId('add-tab-btn')).toBeVisible();
     await expect(page.getByTestId('stats-tab-btn')).toBeVisible();
-    
-    // Add tab should be active by default
-    await expect(page.getByTestId('add-tab-btn')).toHaveClass(/active/);
+    await expect(tabs.locator('svg')).toHaveCount(4);
+
+    // The app opens on Today
+    await expect(page.getByTestId('today-tab-btn')).toHaveClass(/active/);
+    await expect(page.locator('#today-tab')).toBeVisible();
+  });
+
+  test('every tab target is at least 44px tall', async ({ page }) => {
+    for (const button of await page.getByTestId('tab-nav').getByRole('button').all()) {
+      expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    }
   });
 
   test('should navigate between tabs correctly', async ({ page }) => {
-    // Start on Add tab
-    await expect(page.locator('#add-tab')).toBeVisible();
-    
-    // Click List tab
+    // Start on Today tab
+    await expect(page.locator('#today-tab')).toBeVisible();
+
+    // Click Words tab
     await page.getByTestId('list-tab-btn').click();
     await expect(page.locator('#list-tab')).toBeVisible();
-    await expect(page.locator('#add-tab')).not.toBeVisible();
-    
-    // Click Learn tab
-    await page.getByTestId('learn-tab-btn').click();
-    await expect(page.locator('#learn-tab')).toBeVisible();
-    await expect(page.locator('#list-tab')).not.toBeVisible();
-    
-    // Click Stats tab
-    await page.getByTestId('stats-tab-btn').click();
-    await expect(page.locator('#stats-tab')).toBeVisible();
-    await expect(page.locator('#learn-tab')).not.toBeVisible();
-    
-    // Click back to Add tab
+    await expect(page.locator('#today-tab')).not.toBeVisible();
+
+    // Click Add tab
     await page.getByTestId('add-tab-btn').click();
     await expect(page.locator('#add-tab')).toBeVisible();
+    await expect(page.locator('#list-tab')).not.toBeVisible();
+
+    // Click Progress tab
+    await page.getByTestId('stats-tab-btn').click();
+    await expect(page.locator('#stats-tab')).toBeVisible();
+    await expect(page.locator('#add-tab')).not.toBeVisible();
+
+    // Click back to Today tab
+    await page.getByTestId('today-tab-btn').click();
+    await expect(page.locator('#today-tab')).toBeVisible();
     await expect(page.locator('#stats-tab')).not.toBeVisible();
   });
 });

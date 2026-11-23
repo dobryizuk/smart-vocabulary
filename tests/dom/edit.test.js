@@ -6,9 +6,9 @@ describe('Edit flow (DOM)', () => {
     // Basic form DOM structure similar to index.html
     document.body.innerHTML = `
       <div class="tab-nav" data-testid="tab-nav">
-        <button class="tab-btn active" data-action="show-tab" data-arg="add" data-testid="add-tab-btn"></button>
+        <button class="tab-btn" data-action="show-tab" data-arg="today" data-testid="today-tab-btn"></button>
         <button class="tab-btn" data-action="show-tab" data-arg="list" data-testid="list-tab-btn"></button>
-        <button class="tab-btn" data-action="show-tab" data-arg="learn" data-testid="learn-tab-btn"></button>
+        <button class="tab-btn active" data-action="show-tab" data-arg="add" data-testid="add-tab-btn"></button>
         <button class="tab-btn" data-action="show-tab" data-arg="stats" data-testid="stats-tab-btn"></button>
       </div>
       <div id="add-tab" class="tab-content active"></div>

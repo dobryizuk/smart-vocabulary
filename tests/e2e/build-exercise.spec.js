@@ -20,7 +20,7 @@ test.describe('Build exercise', () => {
   });
 
   test('builds a word from tiles, checks it, rates it and moves on', async ({ page }) => {
-    await page.getByTestId('learn-tab-btn').click();
+    await page.getByTestId('start-session-btn').click();
 
     await expect(page.getByText('Build the word')).toBeVisible();
     await expect(page.locator('.build-card')).toContainText('привет');
@@ -52,7 +52,7 @@ test.describe('Build exercise', () => {
   });
 
   test('undo takes the last letter back and a wrong word is flagged', async ({ page }) => {
-    await page.getByTestId('learn-tab-btn').click();
+    await page.getByTestId('start-session-btn').click();
 
     await page.locator('.build-tile[data-arg="o"]').click();
     await page.getByRole('button', { name: 'Undo' }).click();

@@ -37,6 +37,8 @@ test.describe('Cloud backup', () => {
         await expectServerBlocked(page, requests);
 
         await page.getByTestId('stats-tab-btn').click();
+        await expect(page.getByTestId('progress-cloud-status')).toHaveText('Not signed in');
+        await page.getByTestId('progress-cloud-row').click();
         await expect(page.getByTestId('sync-sign-in-form')).toBeVisible();
         await expect(page.getByTestId('sync-email')).toHaveAttribute('autocomplete', 'username');
         await expect(page.getByTestId('sync-password')).toHaveAttribute('autocomplete', 'current-password');
@@ -56,6 +58,7 @@ test.describe('Cloud backup', () => {
         await addWord(page, 'kept', 'сохранено');
 
         await page.getByTestId('stats-tab-btn').click();
+        await page.getByTestId('open-settings-btn').click();
         await expectServerBlocked(page, requests);
         await page.getByTestId('sync-email').fill('learner@example.com');
         await page.getByTestId('sync-password').fill('not-a-real-password');

@@ -12,6 +12,7 @@ test.describe('Word Management Tests', () => {
         dm.vocabulary = [];
       }
     });
+    await page.getByTestId('add-tab-btn').click();
   });
 
   test('should add a new word successfully', async ({ page }) => {
@@ -64,7 +65,7 @@ test.describe('Word Management Tests', () => {
     await toggleButton.click();
     await page.waitForTimeout(300);
 
-    // Click edit icon (✏️) which is visible when expanded
+    // Click the edit icon, which is visible when expanded
     const editBtn = wordCard.locator('.action-btn--warning');
     await expect(editBtn).toBeVisible();
     await editBtn.click();
@@ -72,7 +73,7 @@ test.describe('Word Management Tests', () => {
     // We should be navigated to Add tab with prefilled fields
     await expect(page.locator('#add-tab')).toBeVisible();
     await expect(page.getByTestId('add-tab-btn')).toHaveClass(/active/);
-    await expect(page.getByRole('textbox', { name: /original word/i })).toHaveValue('pencil');
+    await expect(page.getByRole('textbox', { name: /word or phrase/i })).toHaveValue('pencil');
     await expect(page.getByRole('textbox', { name: /translation/i })).toHaveValue('карандаш');
 
     // Change fields

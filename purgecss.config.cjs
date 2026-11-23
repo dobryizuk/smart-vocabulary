@@ -8,15 +8,12 @@ module.exports = {
   ],
   safelist: [
     'detail-block',
-    'theme-section',
     /^detail-block--/, 
     /^card-(translation|definition|examples)$/,
     /^metadata-chip/,
     /^word-card__/,
     /^action-btn/,
-    /^progress-component__/,
     /^progress-indicator/,
-    /^stat-card/,
     /^difficulty-btn/,
     /^btn(.*)?$/
   ],

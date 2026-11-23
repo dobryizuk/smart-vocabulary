@@ -63,18 +63,8 @@
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="light"] .action-btn {
-    background: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
 [data-theme="light"] .metadata-chip {
     background: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="light"] .progress-component__bar {
-    background: rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 

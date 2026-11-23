@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-test('detail blocks should have visible backgrounds and borders', async ({ page }) => {
+test('detail blocks should have a visible background', async ({ page }) => {
   await page.goto('/');
   
   // Check if app is initialized
@@ -15,6 +15,7 @@ test('detail blocks should have visible backgrounds and borders', async ({ page 
   console.log('App initialization status:', svInitialized);
 
   // Add a word with definition, synonyms and examples
+  await page.getByTestId('add-tab-btn').click();
   await page.getByTestId('original-word-input').fill('flair');
   // Ensure form buttons are initialized
   await page.waitForSelector('[data-testid="toggle-fields-btn"]', { timeout: 5000 });
@@ -34,13 +35,11 @@ test('detail blocks should have visible backgrounds and borders', async ({ page 
   await toggle.click();
   await page.waitForTimeout(300);
 
-  // Helpers to assert block styles
-  async function hasBorderAndBg(el) {
+  // Helper to assert a block is set apart from the row by its own background
+  async function hasDistinctBg(el) {
     return await el.evaluate((node) => {
-      const cs = getComputedStyle(node);
-      const hasBorder = (parseFloat(cs.borderLeftWidth) > 0) || (cs.borderLeftStyle !== 'none');
-      const hasBg = cs.backgroundImage !== 'none' || cs.backgroundColor !== 'rgba(0, 0, 0, 0)';
-      return hasBorder && hasBg;
+      const bg = getComputedStyle(node).backgroundColor;
+      return bg !== 'rgba(0, 0, 0, 0)' && bg !== getComputedStyle(node.closest('.word-group__rows')).backgroundColor;
     });
   }
 
@@ -49,8 +48,8 @@ test('detail blocks should have visible backgrounds and borders', async ({ page 
 
   await expect(def).toBeVisible();
   await expect(syn).toBeVisible();
-  expect(await hasBorderAndBg(def)).toBeTruthy();
-  expect(await hasBorderAndBg(syn)).toBeTruthy();
+  expect(await hasDistinctBg(def)).toBeTruthy();
+  expect(await hasDistinctBg(syn)).toBeTruthy();
   
 });
 

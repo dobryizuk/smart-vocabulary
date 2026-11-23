@@ -6,8 +6,34 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MIN_EASE = 1.3;
 const MAX_EASE = 3.5;
 const MAX_INTERVAL_DAYS = 180;
+const STATUS_WINDOW = 5;
+const STATUS_LABELS = { mastered: 'Mastered', learning: 'Learning', difficult: 'Difficult', new: 'New' };
+const ANSWER_SCORE = { perfect: 1, easy: 1, medium: 0.5, hard: 0 };
 const EASE_DELTA = { hard: -0.15, medium: 0.05, easy: 0.15, perfect: 0.25 };
 const INTERVAL_MULTIPLIER = { medium: 0.9, easy: 1, perfect: 1.2 };
+
+// A word is due when it was never reviewed or its review date has come
+function isDue(word, now = new Date()) {
+    return !word.nextReview || new Date(word.nextReview) <= now;
+}
+
+const status = (key) => ({ key, label: STATUS_LABELS[key] });
+
+// Mean score of the last answers (1 = all right), or null while the word has none
+function getRecentScore(word) {
+    const answers = (word.reviewHistory || []).slice(-STATUS_WINDOW);
+    if (answers.length === 0) return null;
+    return answers.reduce((sum, answer) => sum + (ANSWER_SCORE[answer.difficulty] ?? 0), 0) / answers.length;
+}
+
+// Status from the recent score: struggling words show as Difficult
+function getWordStatus(word) {
+    const score = getRecentScore(word);
+    if (score === null) return status('new');
+    if (score < 0.5) return status('difficult');
+    if (score < 0.8) return status('learning');
+    return status('mastered');
+}
 
 function createSpacedRepetition(context) {
     const ctx = context || {};
@@ -49,32 +75,12 @@ function createSpacedRepetition(context) {
         const now = new Date();
         debugLog('🔍 Checking words for review at:', now.toISOString());
         
-        const wordsForReview = vocabulary.filter(word => {
-            if (!word.nextReview) {
-                debugLog('✅ New word ready:', word.original);
-                return true;
-            }
-            
-            const reviewDate = new Date(word.nextReview);
-            const isReady = reviewDate <= now;
-            
-            debugLog(`${isReady ? '✅' : '⏰'} ${word.original}: review ${reviewDate.toISOString()} vs now ${now.toISOString()}`);
-            
-            return isReady;
-        });
-        
+        const wordsForReview = vocabulary.filter(word => isDue(word, now));
         debugLog(`📚 Found ${wordsForReview.length} words ready for review out of ${vocabulary.length} total`);
         return wordsForReview;
     }
 
-    function calculateLearningProgress(easeFactor) {
-        if (easeFactor <= MIN_EASE) return 0;
-        if (easeFactor >= MAX_EASE) return 100;
-        
-        return Math.round(((easeFactor - MIN_EASE) / (MAX_EASE - MIN_EASE)) * 100);
-    }
-
-    return { getPreviousInterval, calculateNextReview, getWordsForReview, calculateLearningProgress };
+    return { getPreviousInterval, calculateNextReview, getWordsForReview, isDue, getRecentScore, getWordStatus };
 }
 
 function createDefaultSpacedRepetition() {
@@ -90,4 +96,5 @@ const defaultSR = createDefaultSpacedRepetition();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = defaultSR;
     module.exports.createSpacedRepetition = createSpacedRepetition;
+    module.exports.STATUS_LABELS = STATUS_LABELS;
 }

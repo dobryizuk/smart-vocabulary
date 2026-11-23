@@ -6,10 +6,7 @@ beforeEach(() => {
   global.DataManager = {
     vocabulary: []
   };
-  global.SpacedRepetition = {
-    calculateLearningProgress: (easeFactor) => Math.round(((easeFactor - 1.3) / (3.5 - 1.3)) * 100)
-  };
-  
+
   // Mock DOM elements
   document.body.innerHTML = '<div id="learningContent"></div>';
 });
@@ -206,22 +203,22 @@ describe('Writing exercise hint', () => {
   it('reveals one more letter per press, up to three', () => {
     startExercise('Devolve');
     expect(hint()).toBe('');
-    expect(hintBtn().textContent).toBe('💡 Hint');
+    expect(hintBtn().textContent).toBe('Hint');
     expect(hintBtn().className).toBe('btn btn--secondary');
 
     LS.showHintForReverse();
-    expect(hint()).toBe('💡 D…');
-    expect(hintBtn().textContent).toBe('💡 Hint (2 left)');
+    expect(hint()).toBe('D…');
+    expect(hintBtn().textContent).toBe('Hint (2 left)');
 
     LS.showHintForReverse();
-    expect(hint()).toBe('💡 De…');
+    expect(hint()).toBe('De…');
 
     LS.showHintForReverse();
-    expect(hint()).toBe('💡 Dev…');
+    expect(hint()).toBe('Dev…');
     expect(hintBtn().disabled).toBe(true);
 
     LS.showHintForReverse();
-    expect(hint()).toBe('💡 Dev…');
+    expect(hint()).toBe('Dev…');
   });
 
   it('starts from zero hints for the next word', () => {
@@ -231,7 +228,7 @@ describe('Writing exercise hint', () => {
 
     expect(hint()).toBe('');
     LS.showHintForReverse();
-    expect(hint()).toBe('💡 F…');
+    expect(hint()).toBe('F…');
   });
 
   it('never reveals the whole answer of a short word', () => {
@@ -239,7 +236,7 @@ describe('Writing exercise hint', () => {
     LS.showHintForReverse();
     LS.showHintForReverse();
 
-    expect(hint()).toBe('💡 g…');
+    expect(hint()).toBe('g…');
     expect(hintBtn().disabled).toBe(true);
   });
 
@@ -314,27 +311,57 @@ describe('Session resume and restart', () => {
     });
     window.SV.AppState.learningSession = [];
     window.SV.AppState.currentLearningWord = null;
+    window.SV.Today = { showSession: vi.fn(), showOverview: vi.fn() };
   });
 
   it('limits a new session to the configured size', () => {
-    LS.prepareLearningSession();
+    LS.startLearning();
     expect(window.SV.AppState.learningSession).toHaveLength(10);
+    expect(window.SV.Today.showSession).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the same session and current word when the tab is reopened', () => {
-    LS.prepareLearningSession();
+  it('keeps the same session and current word when the Today tab is reopened', () => {
+    LS.startLearning();
     const session = window.SV.AppState.learningSession;
     const current = window.SV.AppState.currentLearningWord;
+    window.SV.Today.showSession.mockClear();
 
     LS.prepareLearningSession();
 
     expect(window.SV.AppState.learningSession).toBe(session);
     expect(window.SV.AppState.currentLearningWord).toBe(current);
+    expect(window.SV.Today.showSession).toHaveBeenCalledTimes(1);
+    expect(window.SV.Today.showOverview).not.toHaveBeenCalled();
     expect(document.getElementById('learningContent').textContent).toContain(current.original);
   });
 
-  it('leaves the session empty after it ends and builds a fresh batch next time', () => {
+  it('shows the overview when the Today tab opens without a running session', () => {
     LS.prepareLearningSession();
+
+    expect(window.SV.Today.showOverview).toHaveBeenCalledTimes(1);
+    expect(window.SV.AppState.learningSession).toEqual([]);
+  });
+
+  it('returns to the overview instead of starting when no word is due', () => {
+    window.SV.DataManager.vocabulary.forEach(word => { word.nextReview = '2999-01-01T00:00:00.000Z'; });
+
+    LS.startLearning();
+
+    expect(window.SV.Today.showOverview).toHaveBeenCalledTimes(1);
+    expect(window.SV.Today.showSession).not.toHaveBeenCalled();
+    expect(window.SV.AppState.learningSession).toEqual([]);
+  });
+
+  it('offers a way back to Today when a session ends', () => {
+    LS.startLearning();
+    LS.endLearningSession();
+
+    const back = document.querySelector('[data-action="show-tab"][data-arg="today"]');
+    expect(back.textContent).toContain('Back to Today');
+  });
+
+  it('leaves the session empty after it ends and builds a fresh batch next time', () => {
+    LS.startLearning();
     LS.endLearningSession();
 
     expect(document.getElementById('learningContent').textContent).toContain('Session Complete');
@@ -424,7 +451,7 @@ describe('Session resume and restart', () => {
   it('stamps updatedAt on every answer and saves', () => {
     vi.useFakeTimers({ now: new Date('2026-11-22T10:00:00.000Z') });
     try {
-      LS.prepareLearningSession();
+      LS.startLearning();
       const answered = window.SV.AppState.currentLearningWord;
 
       LS.markDifficulty('easy');

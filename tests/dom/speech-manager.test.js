@@ -10,8 +10,8 @@ describe('SpeechManager', () => {
     global.window = global;
     global.document = window.document;
     document.body.innerHTML = `
-      <button id="speechToggle"></button>
-      <button id="autoPlayToggle"></button>
+      <button id="speechToggle" role="switch" aria-checked="true"></button>
+      <button id="autoPlayToggle" role="switch" aria-checked="true"></button>
     `;
 
     // speech synthesis mock
@@ -47,7 +47,7 @@ describe('SpeechManager', () => {
     // default enabled = true, toggle -> false
     const state = mgr.toggleSpeech();
     expect(state).toBe(false);
-    expect(document.getElementById('speechToggle').textContent).toMatch(/Off/);
+    expect(document.getElementById('speechToggle').getAttribute('aria-checked')).toBe('false');
     expect(storageMock.setItem).toHaveBeenCalled();
   });
 
@@ -55,7 +55,7 @@ describe('SpeechManager', () => {
     const mgr = createSpeechManager({ document, storage: storageMock, speech: speechMock });
     const state = mgr.toggleAutoPlay();
     expect(state).toBe(false);
-    expect(document.getElementById('autoPlayToggle').textContent).toMatch(/Off/);
+    expect(document.getElementById('autoPlayToggle').getAttribute('aria-checked')).toBe('false');
     expect(storageMock.setItem).toHaveBeenCalled();
   });
 

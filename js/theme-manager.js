@@ -28,9 +28,6 @@ class ThemeManager {
         
         // Listen for system theme changes
         this.setupSystemThemeListener();
-        
-        // Do not create theme switcher here. It will be created centrally
-        // by app-init when the stats tab is shown.
     }
 
     loadThemePreference() {
@@ -132,98 +129,14 @@ class ThemeManager {
         this.saveThemePreference();
         this.applyTheme();
         
-        // Update UI
-        this.updateThemeSwitcherUI();
+        this.updateThemeControl();
     }
 
-    toggleTheme() {
-        // Toggle strictly between light and dark based on current effective theme
-        const nextTheme = this.getEffectiveTheme() === 'light' ? 'dark' : 'light';
-        this.setTheme(nextTheme);
-    }
-
-    createThemeSwitcher() {
-        // Create theme switcher in statistics settings section
-        const dataManagement = this.doc ? this.doc.getElementById('dataManagement') : null;
-        if (!dataManagement) return;
-
-        // Check if theme switcher already exists
-        if (document.getElementById('theme-switcher')) return;
-
-        const themeSwitcher = this.doc ? this.doc.createElement('button') : null;
-        themeSwitcher.id = 'theme-switcher';
-        themeSwitcher.className = 'btn btn--secondary';
-        themeSwitcher.setAttribute('aria-label', 'Toggle theme');
-        themeSwitcher.innerHTML = this.getThemeIcon() + ' ' + this.getThemeText();
-        
-        themeSwitcher.addEventListener('click', () => {
-            this.toggleTheme();
+    updateThemeControl() {
+        if (!this.doc) return;
+        this.doc.querySelectorAll('[data-action="set-theme"]').forEach(option => {
+            option.setAttribute('aria-pressed', String(option.getAttribute('data-arg') === this.currentTheme));
         });
-
-        // Add theme switcher to data management section
-        const themeSection = this.doc ? this.doc.createElement('div') : null;
-        themeSection.className = 'theme-section';
-        
-        // Create the HTML structure
-        themeSection.innerHTML = `
-            <h4 style="margin-bottom: 8px; font-size: 1.1em;">Appearance</h4>
-            <div style="text-align: center;" id="theme-switcher-container">
-            </div>
-            <p style="margin: 8px 0 0 0; font-size: 0.75em; color: var(--color-text-secondary);">Choose your preferred theme</p>
-        `;
-
-        // Insert theme section before data management
-        dataManagement.parentNode.insertBefore(themeSection, dataManagement);
-        
-        // Add the button with event listener to the container
-        const container = themeSection.querySelector('#theme-switcher-container');
-        container.appendChild(themeSwitcher);
-
-        this.updateThemeSwitcherUI();
-    }
-
-    getThemeIcon() {
-        const effectiveTheme = this.getEffectiveTheme();
-        const isSystem = this.currentTheme === 'system';
-        
-        if (isSystem) {
-            return '🌓'; // System theme icon
-        } else if (effectiveTheme === 'dark') {
-            return '🌙'; // Dark theme icon
-        } else {
-            return '☀️'; // Light theme icon
-        }
-    }
-
-    getThemeText() {
-        const effectiveTheme = this.getEffectiveTheme();
-        const isSystem = this.currentTheme === 'system';
-        
-        if (isSystem) {
-            return `System (${effectiveTheme})`;
-        } else {
-            return effectiveTheme.charAt(0).toUpperCase() + effectiveTheme.slice(1);
-        }
-    }
-
-    updateThemeSwitcherUI() {
-        const themeSwitcher = this.doc ? this.doc.getElementById('theme-switcher') : null;
-        if (themeSwitcher) {
-            themeSwitcher.innerHTML = this.getThemeIcon() + ' ' + this.getThemeText();
-            
-            // Update tooltip
-            const effectiveTheme = this.getEffectiveTheme();
-            const isSystem = this.currentTheme === 'system';
-            
-            let tooltip = '';
-            if (isSystem) {
-                tooltip = `System theme (${effectiveTheme})`;
-            } else {
-                tooltip = `${effectiveTheme.charAt(0).toUpperCase() + effectiveTheme.slice(1)} theme`;
-            }
-            
-            themeSwitcher.setAttribute('title', tooltip);
-        }
     }
 
     // Public API methods

@@ -24,8 +24,7 @@ describe('Word Detail Sections', () => {
       expect(definitionBlock).toBeTruthy();
       
       const definitionHeader = container.querySelector('.detail-title');
-      expect(getTextContent(definitionHeader)).toContain('Definition');
-      expect(getTextContent(definitionHeader)).toContain('📖');
+      expect(getTextContent(definitionHeader)).toBe('Definition');
       
       const definitionContent = container.querySelector('.detail-text');
       expect(getTextContent(definitionContent)).toContain('A test definition for the word');
@@ -115,8 +114,7 @@ describe('Word Detail Sections', () => {
       expect(examplesBlock).toBeTruthy();
       
       const examplesHeader = examplesBlock.querySelector('.detail-title');
-      expect(getTextContent(examplesHeader)).toContain('Examples');
-      expect(getTextContent(examplesHeader)).toContain('💡');
+      expect(getTextContent(examplesHeader)).toBe('Examples');
       
       const examplesContent = examplesBlock.querySelector('.detail-text');
       const contentText = getTextContent(examplesContent);

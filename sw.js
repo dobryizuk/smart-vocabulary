@@ -11,6 +11,8 @@ const urlsToCache = [
   BASE_PATH + 'css/components.css',
   BASE_PATH + 'css/forms.css',
   BASE_PATH + 'css/learning.css',
+  BASE_PATH + 'css/stats.css',
+  BASE_PATH + 'css/today.css',
   BASE_PATH + 'manifest.json',
   BASE_PATH + 'icon-192.png',
   BASE_PATH + 'icon-512.png'

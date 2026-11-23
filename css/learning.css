@@ -3,7 +3,7 @@
    ============================================================================ */
 
 /* Screen layout: progress header on top, exercise below */
-#learningContent {
+#learningContent:not([hidden]) {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -84,11 +84,6 @@
     box-shadow: var(--shadow-sm);
 }
 
-.word-card.word-card--learning:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
-}
-
 .word-card--learning .word-card__top {
     flex-direction: column;
     align-items: center;
@@ -135,18 +130,30 @@
     border-radius: var(--radius-pill);
 }
 
+.status-badge--learning {
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+}
+
+.status-badge--difficult {
+    color: var(--ui-warn-text);
+    background: var(--ui-warn-soft);
+}
+
+.status-badge--mastered {
+    color: var(--ui-success);
+    background: var(--ui-surface-muted);
+}
+
 .word-card--learning .action-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 64px;
     height: 64px;
     margin: 14px 0 0;
-    padding: 0;
-    color: var(--ui-accent-text);
-    background: var(--ui-accent-soft);
-    border: none;
-    border-radius: 50%;
+}
+
+.word-card--learning .action-btn svg {
+    width: 28px;
+    height: 28px;
 }
 
 /* Prompt card of the build and writing exercises */
@@ -200,14 +207,6 @@
     border-radius: var(--ui-radius-control);
 }
 
-#learningContent .detail-title {
-    margin-bottom: 6px;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    color: var(--ui-text-muted);
-}
-
 #learningContent .detail-text {
     font-size: 1rem;
     line-height: 1.5;
@@ -218,17 +217,6 @@
     font-weight: 600;
     line-height: 1.25;
     color: var(--ui-accent-text);
-}
-
-#learningContent .synonym-chip {
-    margin: 2px 6px 2px 0;
-    padding: 6px 12px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--ui-accent-text);
-    background: var(--ui-accent-soft);
-    border: none;
-    border-radius: var(--radius-pill);
 }
 
 /* Rating buttons end the revealed answer and stay reachable while it scrolls */
@@ -276,14 +264,19 @@
     gap: 10px;
 }
 
-#learningContent .btn {
+#learningContent .btn,
+#todayView .btn,
+#add-tab .btn {
     min-height: 56px;
     color: var(--ui-on-accent);
     background: var(--ui-accent);
     border-radius: var(--ui-radius-control);
 }
 
-#learningContent .btn--secondary {
+#learningContent .btn--secondary,
+#todayView .btn--secondary,
+#add-tab .btn--secondary,
+#add-tab .btn--warning {
     color: var(--color-text);
     background: var(--ui-surface);
     border: 1px solid var(--ui-border);
@@ -323,6 +316,18 @@
 .typing-feedback:empty {
     display: none;
 }
+
+.typing-feedback--success,
+.typing-feedback--warn,
+.typing-feedback--danger,
+.typing-feedback--muted {
+    font-weight: 600;
+}
+
+.typing-feedback--success { color: var(--ui-success); }
+.typing-feedback--warn { color: var(--ui-warn-text); }
+.typing-feedback--danger { color: var(--ui-danger); }
+.typing-feedback--muted { color: var(--ui-text-muted); font-weight: 400; }
 
 .typing-hint {
     margin: 0 0 16px;

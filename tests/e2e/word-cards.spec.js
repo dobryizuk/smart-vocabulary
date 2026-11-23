@@ -16,6 +16,7 @@ test.describe('Word Cards Tests', () => {
 
   test('should toggle word card expand/collapse functionality', async ({ page }) => {
     // First add a word with details to test toggle
+    await page.getByTestId('add-tab-btn').click();
     await page.getByTestId('original-word-input').fill('expandable');
     await page.getByTestId('toggle-fields-btn').click();
     await page.getByRole('textbox', { name: /translation/i }).fill('раскрываемый');

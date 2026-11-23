@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { renderSyncPanel } = require('../../js/sync-panel.js');
+const { renderSyncPanel, syncStatusText } = require('../../js/sync-panel.js');
 
 const TYPED_SECRET = 'typed secret';
 const SIGNED_OUT = { state: 'signed-out', email: null, lastSyncedAt: null, error: null };
@@ -20,11 +20,25 @@ describe('Cloud backup panel', () => {
     it('offers a sign-in form that the password manager recognises', () => {
         renderSyncPanel(container, SIGNED_OUT, sync);
 
-        expect(container.textContent).toContain('Cloud backup');
+        expect(container.textContent).toContain('Sign in to cloud backup');
         expect(byTestId('sync-email').getAttribute('autocomplete')).toBe('username');
         expect(byTestId('sync-password').getAttribute('autocomplete')).toBe('current-password');
         expect(byTestId('sync-password').type).toBe('password');
         expect(byTestId('sync-error').textContent).toBe('');
+    });
+
+    it('reveals and hides the typed password', () => {
+        renderSyncPanel(container, SIGNED_OUT, sync);
+        const reveal = byTestId('sync-password-toggle');
+
+        reveal.click();
+        expect(byTestId('sync-password').type).toBe('text');
+        expect(reveal.getAttribute('aria-pressed')).toBe('true');
+        expect(reveal.getAttribute('aria-label')).toBe('Hide password');
+
+        reveal.click();
+        expect(byTestId('sync-password').type).toBe('password');
+        expect(reveal.getAttribute('aria-label')).toBe('Show password');
     });
 
     it('signs in with the typed email and password', async () => {
@@ -73,6 +87,20 @@ describe('Cloud backup panel', () => {
         expect(byTestId('sync-status').textContent).toContain('<img');
     });
 
+    it('syncs on demand and blocks the button while a sync runs', () => {
+        sync.sync = vi.fn(async () => undefined);
+        renderSyncPanel(container, signedIn(), sync);
+        expect(byTestId('sync-now-btn').disabled).toBe(false);
+
+        byTestId('sync-now-btn').click();
+        expect(sync.sync).toHaveBeenCalledTimes(1);
+
+        renderSyncPanel(container, signedIn({ state: 'syncing' }), sync);
+        expect(byTestId('sync-now-btn').disabled).toBe(true);
+        renderSyncPanel(container, signedIn(), sync);
+        expect(byTestId('sync-now-btn').disabled).toBe(false);
+    });
+
     it('signs out from the button and returns to the form', () => {
         renderSyncPanel(container, signedIn(), sync);
 
@@ -83,3 +111,10 @@ describe('Cloud backup panel', () => {
         expect(byTestId('sync-sign-in-form')).not.toBeNull();
     });
 });
+
+describe('syncStatusText', () => {
+    it('tells that nobody is signed in', () => {
+        expect(syncStatusText(SIGNED_OUT)).toBe('Not signed in');
+    });
+});
+

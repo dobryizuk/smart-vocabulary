@@ -14,6 +14,7 @@
     editingWordId: null,
     reverseHintCount: 0,
     buildState: null,
+    wordListFilter: 'all',
   };
 
   const AppState = global.SV.AppState || { ...initialState };

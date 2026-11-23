@@ -2,55 +2,96 @@
    COMPONENT STYLES - Common components for both themes
    ============================================================================ */
 
-/* Word Cards */
+/* Word list screen */
+.word-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.word-list-header h3,
+#add-tab h3,
+#progressView h3,
+#todayView h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+}
+
+.word-list-header__count {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+}
+
+.word-filters {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.word-filters:empty {
+    display: none;
+}
+
+.word-filter {
+    flex: none;
+    min-height: 44px;
+    padding: 0 13px;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    cursor: pointer;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--radius-pill);
+}
+
+.word-filter--active {
+    font-weight: 600;
+    color: var(--color-bg);
+    background: var(--color-text);
+    border-color: var(--color-text);
+}
+
+.word-group__title {
+    margin: 0 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-text-muted);
+}
+
+.word-group__rows {
+    overflow: hidden;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
+}
+
+.word-group__rows > .word-card:last-child {
+    border-bottom: none;
+}
+
+/* Word cards: a list row; the whole top part toggles the details */
 .word-card {
-    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
-    border-radius: var(--radius-lg);
-    padding: 16px 18px;
-    margin-bottom: 12px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border);
-    transition: var(--transition-normal);
     position: relative;
     overflow: hidden;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--ui-border);
 }
 
 .word-card__toggle {
     position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%) scaleX(1.8);
-    width: 24px;
-    height: 24px;
-    background: none;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: var(--color-text-secondary);
-    transition: transform var(--transition-normal);
+    inset: 0;
+    z-index: 1;
     cursor: pointer;
-    z-index: 15;
-    outline: none;
     -webkit-tap-highlight-color: transparent;
-}
-
-.word-card__toggle:focus,
-.word-card__toggle:active,
-.word-card__toggle:hover {
-    background: none;
-    color: var(--color-text-secondary);
-    outline: none;
-}
-
-.word-card--expanded .word-card__toggle {
-    transform: translateX(-50%) rotate(180deg) scaleX(1.8);
-}
-
-.word-card:not(.word-card--expandable):hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
 }
 
 .word-card__expandable-content {
@@ -69,19 +110,17 @@
 
 /* Typography */
 .word-card__original {
-    font-size: 1.4em;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 600;
     color: var(--color-text);
-    line-height: 1.2;
-    margin-bottom: 8px;
-    letter-spacing: -0.01em;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
 }
 
 .word-card__translation {
-    font-size: 1.0em;
-    color: var(--color-text-secondary);
     margin-top: 2px;
-    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--ui-text-muted);
 }
 
 .word-card__phonetic {
@@ -102,139 +141,96 @@
 .word-card--expandable .word-card__phonetic { display: none; }
 .word-card--expandable.word-card--expanded .word-card__phonetic { display: inline-block; }
 
-/* Header row of a card: text on the left, actions on the right */
+/* Header row of a card: text, status and actions; expanded actions take a row of their own */
 .word-card__top {
+    position: relative;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
 }
 
 .word-card__header {
     flex: 1;
+    min-width: 0;
+}
+
+.word-card__side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.word-card__review {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ui-text-muted);
+}
+
+.word-card--expanded .word-card__actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
 }
 
 /* Action Buttons */
 .word-card__actions {
-    z-index: 10;
+    z-index: 2;
     position: relative;
+    display: flex;
+    gap: 8px;
 }
 
 .action-btn {
-    z-index: 11;
-    position: relative;
-    background: var(--color-surface-elevated);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 0.8em;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 1.125rem;
+    color: var(--ui-accent-text);
     cursor: pointer;
-    transition: var(--transition-fast);
-    margin: 2px;
-}
-
-.action-btn:active {
-    background: var(--color-surface-elevated);
-    color: var(--color-text-secondary);
-}
-
-.action-btn--primary {
-    background: var(--color-accent-blue);
-    color: white;
-    border-color: var(--color-accent-blue);
-}
-
-/* Touch screens keep :hover after a tap, so hover styles apply only to real pointers */
-@media (hover: hover) {
-    .action-btn:hover {
-        background: var(--color-surface-elevated);
-        color: var(--color-text-secondary);
-    }
-
-    .action-btn--primary:hover {
-        background: var(--color-accent-blue);
-        opacity: 0.9;
-    }
-}
-
-.action-btn--danger {
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition-normal);
-    background: var(--color-accent-red);
-    color: white;
-    border-color: var(--color-accent-red);
-}
-
-.word-card--expanded .action-btn--danger {
-    opacity: 1;
-    visibility: visible;
+    background: var(--ui-accent-soft);
+    border: none;
+    border-radius: 50%;
 }
 
 .action-btn--warning {
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition-normal);
-    background: var(--color-accent-orange);
-    color: white;
-    border-color: var(--color-accent-orange);
+    background: var(--ui-surface-muted);
 }
 
-.word-card--expanded .action-btn--warning {
-    opacity: 1;
-    visibility: visible;
+.action-btn--danger {
+    color: var(--ui-danger);
+    background: var(--ui-warn-soft);
+}
+
+.action-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Edit and delete appear when a list card is expanded */
+.word-card--expandable:not(.word-card--expanded) .action-btn--warning,
+.word-card--expandable:not(.word-card--expanded) .action-btn--danger {
+    display: none;
 }
 
 /* Detail Blocks */
 .detail-block {
-    border-radius: var(--radius-md);
     margin: 8px 0;
     padding: 12px 14px;
-}
-
-/* purgecss ignore */
-.detail-block--definition {
-    background: linear-gradient(135deg, rgba(10, 132, 255, 0.12) 0%, rgba(10, 132, 255, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-blue);
-    border: 1px solid rgba(10, 132, 255, 0.25);
-}
-
-/* purgecss ignore */
-.detail-block--synonyms {
-    background: linear-gradient(135deg, rgba(48, 209, 88, 0.12) 0%, rgba(48, 209, 88, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-green);
-    border: 1px solid rgba(48, 209, 88, 0.25);
-}
-
-/* purgecss ignore */
-.detail-block--examples {
-    background: linear-gradient(135deg, rgba(255, 159, 10, 0.12) 0%, rgba(255, 159, 10, 0.06) 100%);
-    border-left: 4px solid var(--color-accent-orange);
-    border: 1px solid rgba(255, 159, 10, 0.25);
+    background: var(--ui-surface-muted);
+    border-radius: var(--ui-radius-tile);
 }
 
 .detail-title {
-    font-size: 0.7em;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     margin-bottom: 6px;
-}
-
-/* purgecss ignore */
-.detail-block--definition .detail-title {
-    color: var(--color-accent-blue);
-}
-
-/* purgecss ignore */
-.detail-block--synonyms .detail-title {
-    color: var(--color-accent-green);
-}
-
-/* purgecss ignore */
-.detail-block--examples .detail-title {
-    color: var(--color-accent-orange);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ui-text-muted);
 }
 
 .detail-text {
@@ -246,54 +242,13 @@
 /* Synonym Chips */
 .synonym-chip {
     display: inline-block;
-    background: var(--color-accent-green);
-    color: white;
+    margin: 2px 6px 2px 0;
     padding: 6px 12px;
-    border-radius: 16px;
-    font-size: 0.85em;
-    font-weight: 600;
-    margin: 2px 4px 2px 0;
-    border: 1px solid var(--color-accent-green);
-    transition: var(--transition-fast);
-}
-
-.synonym-chip:hover,
-.synonym-chip:active {
-    background: var(--color-accent-green);
-    opacity: 1;
-    transform: none;
-}
-
-/* Progress Component */
-.progress-component {
-    margin: 12px 0 4px 0;
-}
-
-.progress-component__header {
-    margin-bottom: 1px;
-}
-
-.progress-component__bar {
-    height: 6px;
-    background: var(--color-surface-elevated);
-    border-radius: 3px;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-}
-
-.progress-component__fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-progress) 0%, var(--color-accent-blue) 100%);
-    border-radius: 3px;
-    transition: width var(--transition-slow);
-    box-shadow: 0 0 8px rgba(10, 132, 255, 0.3);
-}
-
-.progress-component__percentage {
-    font-size: 0.75em;
-    color: var(--color-text-secondary);
-    margin-top: 4px;
-    font-weight: 600;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ui-accent-text);
+    background: var(--ui-accent-soft);
+    border-radius: var(--radius-pill);
 }
 
 /* Metadata Chips */
@@ -316,35 +271,47 @@
     font-weight: 500;
 }
 
-/* Message System */
+/* Message System: a toast on the surface, the colour of its dot tells the kind */
 .app-message {
+    --toast-tone: var(--ui-accent);
+
     position: fixed;
-    top: 20px;
+    top: max(20px, env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    padding: 12px 24px;
-    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: max-content;
+    max-width: calc(100vw - 40px);
+    padding: 14px 20px;
+    font-size: 0.9375rem;
     font-weight: 500;
+    line-height: 1.35;
+    color: var(--color-text);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
     box-shadow: var(--shadow-md);
     animation: slideInFromTop 0.3s ease-out;
-    max-width: 90vw;
-    text-align: center;
+}
+
+.app-message::before {
+    content: "";
+    flex: none;
+    width: 10px;
+    height: 10px;
+    background: var(--toast-tone);
+    border-radius: 50%;
 }
 
 .app-message--success {
-    background: var(--color-accent-green);
-    color: white;
+    --toast-tone: var(--ui-success);
 }
 
 .app-message--error {
-    background: var(--color-accent-red);
-    color: white;
-}
-
-.app-message--info {
-    background: var(--color-accent-blue);
-    color: white;
+    --toast-tone: var(--ui-danger);
 }
 
 @keyframes slideInFromTop {
@@ -400,89 +367,59 @@
     box-shadow: 0 0 8px rgba(10, 132, 255, 0.5);
 }
 
-/* Word List Header */
-.word-list-header {
-    padding: 20px;
-    padding-bottom: 10px;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
+/* Delete confirmation */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
 }
 
-.word-list-header h3 {
-    margin: 0;
-    font-size: 1.2em;
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-/* Statistics */
-.stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-top: 14px;
-}
-
-.stat-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 16px 12px;
+.confirm-dialog {
+    max-width: 300px;
+    margin: 20px;
+    padding: 24px;
     text-align: center;
-    box-shadow: var(--shadow-sm);
-    transition: var(--transition-fast);
     color: var(--color-text);
+    background: var(--ui-surface);
+    border-radius: var(--ui-radius-card);
+    box-shadow: var(--shadow-lg);
 }
 
-.stat-card:hover,
-.stat-card:active {
-    transform: none;
-    box-shadow: var(--shadow-sm);
+.confirm-dialog__title {
+    margin: 0 0 16px;
+    color: var(--ui-danger);
 }
 
-.stat-value {
-    display: block;
-    font-size: 1.6em;
-    font-weight: 800;
+.confirm-dialog__text {
+    margin: 0 0 20px;
+}
+
+.confirm-dialog__note {
+    color: var(--ui-text-muted);
+}
+
+.confirm-dialog__actions {
+    display: flex;
+    gap: 12px;
+}
+
+.confirm-dialog__btn {
+    flex: 1;
+    min-height: 44px;
+    padding: 12px;
     color: var(--color-text);
-    margin-bottom: 6px;
-    line-height: 1;
+    cursor: pointer;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-control);
 }
 
-.stat-label {
-    font-size: 0.9em;
-    color: var(--color-text-secondary);
-    font-weight: 500;
-    line-height: 1.2;
-}
-
-/* Statistics card variants */
-.stat-card--success {
-    background: linear-gradient(135deg, var(--color-accent-green) 0%, rgba(48, 209, 88, 0.8) 100%);
-    border-color: var(--color-accent-green);
-}
-
-.stat-card--success .stat-value,
-.stat-card--success .stat-label {
-    color: white;
-}
-
-.stat-card--warning {
-    background: linear-gradient(135deg, var(--color-accent-orange) 0%, rgba(255, 159, 10, 0.8) 100%);
-    border-color: var(--color-accent-orange);
-}
-
-.stat-card--warning .stat-value,
-.stat-card--warning .stat-label {
-    color: white;
-}
-
-.stat-card--danger {
-    background: linear-gradient(135deg, var(--color-accent-red) 0%, rgba(255, 69, 58, 0.8) 100%);
-    border-color: var(--color-accent-red);
-}
-
-.stat-card--danger .stat-value,
-.stat-card--danger .stat-label {
-    color: white;
+.confirm-dialog__btn--danger {
+    color: var(--ui-on-accent);
+    background: var(--ui-danger);
+    border-color: transparent;
 }

@@ -4,6 +4,10 @@
 
 const { downloadFile } = require('./file-download.js');
 const { renderSyncPanel } = require('./sync-panel.js');
+const { renderSettingsHtml, updateSessionSizeControl } = require('./settings-view.js');
+const { icon } = require('./icons.js');
+const sessionSettings = require('./session-settings.js');
+const { stepSessionSize } = sessionSettings;
 
 ;(function bootstrap(global) {
     // Create namespaced container
@@ -35,10 +39,11 @@ const { renderSyncPanel } = require('./sync-panel.js');
     attach('Statistics', () => require('./statistics.js'));
     attach('SpacedRepetition', () => require('./spaced-repetition.js'));
     attach('SessionSettings', () => require('./session-settings.js'));
+    attach('Today', () => require('./today-view.js'));
     attach('LearningSession', () => require('./learning-session.js'));
     attach('DictionaryService', () => require('./dictionary-service.js'));
     attach('AppMain', () => require('./app-main.js'));
-    attach('Sync', () => require('./sync.js').createDefaultSync({ onStatus: updateSyncPanel, onChange: refreshAfterSync }));
+    attach('Sync', () => require('./sync.js').createDefaultSync({ onStatus: onSyncStatus, onChange: refreshAfterSync }));
     // Ensure AppState is initialized and available on SV
     attach('AppState', () => {
         require('./app-state.js');
@@ -81,8 +86,8 @@ function initializeComponents() {
     const formButtons = document.getElementById('formButtons');
     if (formButtons) {
         formButtons.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
-            window.SV?.UIComponents?.createButton?.('📚 Lookup', 'lookup-in-dictionary', 'primary', false, '', '', '', 'dictionary-lookup-btn') +
-            window.SV?.UIComponents?.createButton?.('➕ More Fields', 'toggle-additional-fields', 'secondary', false, 'toggleFieldsBtn', '', '', 'toggle-fields-btn'),
+            window.SV?.UIComponents?.createButton?.('Lookup', 'lookup-in-dictionary', 'primary', false, '', '', '', 'dictionary-lookup-btn') +
+            window.SV?.UIComponents?.createButton?.('More Fields', 'toggle-additional-fields', 'secondary', false, 'toggleFieldsBtn', '', '', 'toggle-fields-btn'),
             'row',
             'flex-start',
             'center',
@@ -95,102 +100,36 @@ function initializeComponents() {
     const saveButtons = document.getElementById('saveButtons');
     if (saveButtons) {
         saveButtons.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
-            window.SV?.UIComponents?.createButton?.('💾 Save Word', 'add-word', 'primary', false, '', '', '', 'save-word-btn') +
-            window.SV?.UIComponents?.createButton?.('🗑️ Clear', 'clear-form', 'secondary'),
-            'row',
+            window.SV?.UIComponents?.createButton?.('Save word', 'add-word', 'primary', false, '', '', '', 'save-word-btn') +
+            window.SV?.UIComponents?.createButton?.('Clear', 'clear-form', 'secondary'),
+            'column',
             'flex-start',
-            'center',
+            'stretch',
             '8px'
         ) || '';
     }
     
-    // Initialize audio controls
-    const audioControls = document.getElementById('audioControls');
-    if (audioControls) {
-        audioControls.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
-            window.SV?.UIComponents?.createButton?.('🔊 Sound On', 'toggle-speech', 'success', false, 'speechToggle', 'padding: 8px 12px; font-size: 0.85em;') +
-            window.SV?.UIComponents?.createButton?.('🎵 Auto Play On', 'toggle-autoplay', 'success', false, 'autoPlayToggle', 'padding: 8px 12px; font-size: 0.85em;'),
-            'row',
-            'center',
-            'center',
-            '8px',
-            'margin-bottom: 8px;'
-        ) || '';
-    }
-    
-    // Initialize session size setting
-    const sessionSizeControl = document.getElementById('sessionSizeControl');
-    if (sessionSizeControl) {
-        const settings = window.SV?.SessionSettings;
-        const current = settings?.getSessionSize?.();
-        const options = [10, 15, 20].map(n => `<option value="${n}"${n === current ? ' selected' : ''}>${n}</option>`).join('');
-        sessionSizeControl.innerHTML = `
-            <label for="sessionSizeSelect">Words per session</label>
-            <select id="sessionSizeSelect" class="form-control" data-testid="session-size-select" style="width: auto;">${options}</select>
-        `;
-        document.getElementById('sessionSizeSelect').addEventListener('change', (e) => {
-            settings?.setSessionSize?.(e.target.value);
-        });
-    }
+    document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon, 24); });
+    initializeSettings();
+}
 
-    // Initialize audio settings text
-    const audioSettingsText = document.getElementById('audioSettingsText');
-    if (audioSettingsText) {
-        audioSettingsText.innerHTML = window.SV?.UIComponents?.createSmallText?.('Audio pronunciation settings') || '';
-    }
-    
-    // Initialize data management
-    const dataManagement = document.getElementById('dataManagement');
-    if (dataManagement) {
-        const snapshotDate = window.SV?.VocabularyStore?.getSnapshotDate?.();
-        const undoButton = snapshotDate
-            ? window.SV?.UIComponents?.createButton?.(`Undo last restore (${snapshotDate})`, 'undo-restore', 'warning', false, '', 'padding: 8px 16px; font-size: 0.85em;', '', 'undo-restore-btn')
-            : '';
-        const exportButton = window.SV?.UIComponents?.createButton?.('Backup', 'backup', 'success', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em;', '', 'backup-btn');
-        const importButton = window.SV?.UIComponents?.createButton?.('Restore', 'restore', 'primary', false, '', 'flex: 1; padding: 8px 12px; font-size: 0.85em; background: #17a2b8;', '', 'restore-btn');
-        
-        const importExportButtons = window.SV?.UIComponents?.createFlexContainer?.(
-            exportButton + importButton,
-            'row',
-            'space-between',
-            'center',
-            '6px'
-        ) || '';
-        
-        const buttonsContainer = window.SV?.UIComponents?.createFlexContainer?.(
-            importExportButtons + undoButton,
-            'column',
-            'flex-start',
-            'stretch',
-            '6px',
-            'margin-bottom: 8px;'
-        ) || '';
-        
-        const infoText = window.SV?.UIComponents?.createSmallText?.(
-            'Words are stored locally on device.',
-            '#666',
-            '0.75em',
-            'margin: 0;'
-        ) || '';
-        
-        dataManagement.innerHTML = `
-            <div style="
-                background: var(--color-surface);
-                padding: 12px;
-                border-radius: 8px;
-                text-align: center;
-                margin-bottom: 16px;
-                border: 1px solid var(--color-border);
-            ">
-                <h4 style="margin-bottom: 8px; font-size: 1.1em;">Data Management</h4>
-                ${buttonsContainer}
-                ${infoText}
-            </div>
-            <div id="cloudBackup"></div>
-            ${createDiagnosticsHtml()}
-        `;
-        updateSyncPanel();
-    }
+function initializeSettings() {
+    const settingsView = document.getElementById('settingsView');
+    if (!settingsView) return;
+    const sessionSize = sessionSettings.getSessionSize();
+    settingsView.innerHTML = renderSettingsHtml({
+        sessionSize,
+        theme: window.SV?.themeManager?.getCurrentTheme?.() ?? 'system',
+        snapshotDate: window.SV?.VocabularyStore?.getSnapshotDate?.()
+    });
+    updateSessionSizeControl(settingsView, sessionSize);
+    updateSyncPanel();
+}
+
+function changeSessionSize(delta) {
+    const size = stepSessionSize(sessionSettings.getSessionSize(), delta);
+    sessionSettings.setSessionSize(size);
+    updateSessionSizeControl(document.getElementById('settingsView'), size);
 }
 
 function updateSyncPanel() {
@@ -199,52 +138,24 @@ function updateSyncPanel() {
     if (container && sync) renderSyncPanel(container, sync.getStatus(), sync);
 }
 
+function onSyncStatus() {
+    updateSyncPanel();
+    window.SV?.Statistics?.updateStats?.();
+}
+
 // Words changed by a sync: refresh what shows them; a running learning session picks them up as it goes
 function refreshAfterSync() {
+    window.SV?.Today?.update?.();
     window.SV?.AppMain?.renderWordList?.();
     window.SV?.Statistics?.updateStats?.();
 }
 
-function createDiagnosticsHtml() {
-    const UI = window.SV?.UIComponents;
-    const buttonStyle = 'flex: 1; padding: 8px 12px; font-size: 0.85em;';
-    const buttons = UI?.createFlexContainer?.(
-        UI.createButton('📝 Logging Off', 'toggle-logging', 'secondary', false, 'logToggle', buttonStyle, '', 'log-toggle-btn') +
-        UI.createButton('💾 Save Logs', 'save-logs', 'primary', false, '', buttonStyle, '', 'save-logs-btn'),
-        'row',
-        'space-between',
-        'center',
-        '6px',
-        'margin-bottom: 8px;'
-    ) || '';
-    const infoText = UI?.createSmallText?.(
-        'Turn logging on, reproduce the problem, then save logs to a file.',
-        '#666',
-        '0.75em',
-        'margin: 0;'
-    ) || '';
-    return `
-        <div style="
-            background: var(--color-surface);
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 16px;
-            border: 1px solid var(--color-border);
-        ">
-            <h4 style="margin-bottom: 8px; font-size: 1.1em;">Diagnostics</h4>
-            ${buttons}
-            ${infoText}
-        </div>
-    `;
+function setSwitch(id, isOn) {
+    document.getElementById(id)?.setAttribute('aria-checked', String(Boolean(isOn)));
 }
 
 function updateLogToggleButton() {
-    const btn = document.getElementById('logToggle');
-    if (!btn) return;
-    const enabled = window.SV?.LogRecorder?.enabled;
-    btn.textContent = enabled ? '📝 Logging On' : '📝 Logging Off';
-    btn.className = enabled ? 'btn btn--success' : 'btn btn--secondary';
+    setSwitch('logToggle', window.SV?.LogRecorder?.enabled);
 }
 
 function toggleLogging() {
@@ -314,8 +225,26 @@ function wireEventHandlers() {
                 case 'delete-word':
                     window.SV?.AppMain?.deleteWord?.(arg);
                     break;
+                case 'set-word-filter':
+                    window.SV?.AppMain?.setWordListFilter?.(arg);
+                    break;
+                case 'show-words':
+                    window.SV?.AppMain?.showWords?.(arg);
+                    break;
                 case 'speak-word':
                     window.SV?.SpeechManager?.speakWord?.(arg);
+                    break;
+                case 'open-settings':
+                    window.SV?.AppMain?.showStatsView?.('settings');
+                    break;
+                case 'close-settings':
+                    window.SV?.AppMain?.showStatsView?.('progress');
+                    break;
+                case 'session-size-step':
+                    changeSessionSize(Number(arg));
+                    break;
+                case 'set-theme':
+                    window.SV?.themeManager?.setTheme?.(arg);
                     break;
                 case 'undo-restore':
                     window.SV?.ImportExport?.restoreSnapshot?.();
@@ -400,14 +329,14 @@ function wireEventHandlers() {
     bind(autoPlayToggle, () => window.SV?.SpeechManager?.toggleAutoPlay?.());
 
     // Tabs
+    const todayTabBtn = document.querySelector('[data-testid="today-tab-btn"]');
+    bind(todayTabBtn, () => window.SV?.AppMain?.showTab?.('today'));
+    const listTabBtn = document.querySelector('[data-testid="list-tab-btn"]');
+    bind(listTabBtn, () => window.SV?.AppMain?.showTab?.('list'));
     const addTabBtn = document.querySelector('[data-testid="add-tab-btn"]');
     bind(addTabBtn, () => window.SV?.AppMain?.showTab?.('add'));
-    const listTabBtn = document.querySelector('[data-testid="list-tab-btn"]');
-    bind(listTabBtn, async () => await window.SV?.AppMain?.showTab?.('list'));
-    const learnTabBtn = document.querySelector('[data-testid="learn-tab-btn"]');
-    bind(learnTabBtn, async () => await window.SV?.AppMain?.showTab?.('learn'));
     const statsTabBtn = document.querySelector('[data-testid="stats-tab-btn"]');
-    bind(statsTabBtn, async () => await window.SV?.AppMain?.showTab?.('stats'));
+    bind(statsTabBtn, () => window.SV?.AppMain?.showTab?.('stats'));
 
     // Difficulty buttons delegation
     const learningContent = document.getElementById('learningContent');
@@ -430,6 +359,7 @@ function loadUserDataAndStats() {
         window.SV?.debugLog?.('📚 Loading word database...');
         window.SV?.DataManager?.initializeVocabulary?.();
         window.SV?.Statistics?.updateStats?.();
+        window.SV?.Today?.showOverview?.();
         window.SV?.debugLog?.('✅ App initialization complete!');
     } catch (error) {
         console.error('❌ App initialization failed:', error);
@@ -441,16 +371,8 @@ function loadUserDataAndStats() {
 function updateSpeechToggleButtons() {
     const speechSettings = window.SV?.SpeechManager?.speechSettings;
     if (!speechSettings) return;
-    const speechBtn = document.getElementById('speechToggle');
-    if (speechBtn) {
-        speechBtn.textContent = speechSettings.enabled ? '🔊 Sound On' : '🔇 Sound Off';
-        speechBtn.className = speechSettings.enabled ? 'btn btn--success' : 'btn btn--secondary';
-    }
-    const autoPlayBtn = document.getElementById('autoPlayToggle');
-    if (autoPlayBtn) {
-        autoPlayBtn.textContent = speechSettings.autoPlay ? '🎵 Auto Play On' : '🔇 Auto Play Off';
-        autoPlayBtn.className = speechSettings.autoPlay ? 'btn btn--success' : 'btn btn--secondary';
-    }
+    setSwitch('speechToggle', speechSettings.enabled);
+    setSwitch('autoPlayToggle', speechSettings.autoPlay);
 }
 
 function setupEnterKeyBindings() {

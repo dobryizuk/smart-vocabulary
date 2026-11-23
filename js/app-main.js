@@ -4,6 +4,8 @@
 
 // Global state is provided by AppState (see js/app-state.js)
 
+const WordList = require('./word-list.js');
+
 // ============================================================================
 // UI MANAGEMENT FUNCTIONS
 // ============================================================================
@@ -29,11 +31,21 @@ function showTab(tabName) {
             renderWordList();
         }
     } else if (tabName === 'stats') {
+        showStatsView('progress');
         window.SV?.Statistics?.updateStats?.();
-        window.SV?.themeManager?.createThemeSwitcher?.();
-    } else if (tabName === 'learn') {
+    } else if (tabName === 'today') {
         window.SV?.LearningSession?.prepareLearningSession?.();
     }
+}
+
+// The Stats tab holds two views: Progress and, behind it, Settings
+function showStatsView(view) {
+    const progressView = document.getElementById('progressView');
+    const settingsView = document.getElementById('settingsView');
+    if (progressView) progressView.hidden = view !== 'progress';
+    if (settingsView) settingsView.hidden = view !== 'settings';
+    const statsTab = document.getElementById('stats-tab');
+    if (statsTab) statsTab.scrollTop = 0;
 }
 
 // Dictionary lookup: directly fill form fields without preview
@@ -200,12 +212,12 @@ function toggleAdditionalFields() {
     
     if (additionalFields.style.display === 'none' || !additionalFields.style.display) {
         additionalFields.style.display = 'block';
-        toggleBtn.innerHTML = '➖ Hide Fields';
+        toggleBtn.innerHTML = 'Hide Fields';
         toggleBtn.classList.remove('btn--secondary');
         toggleBtn.classList.add('btn--warning');
     } else {
         additionalFields.style.display = 'none';
-        toggleBtn.innerHTML = '➕ More Fields';
+        toggleBtn.innerHTML = 'More Fields';
         toggleBtn.classList.remove('btn--warning');  
         toggleBtn.classList.add('btn--secondary');
     }
@@ -214,6 +226,7 @@ function toggleAdditionalFields() {
 function renderWordList() {
     const wordList = document.getElementById('wordList');
     const wordCount = document.getElementById('wordCount');
+    const wordFilters = document.getElementById('wordFilters');
     
     const vocabulary = window.SV?.DataManager?.vocabulary || [];
     wordCount.textContent = vocabulary.length;
@@ -224,52 +237,29 @@ function renderWordList() {
             'No words yet!',
             'Add your first word in the "Add Words" tab'
         ) || '';
+        wordFilters.innerHTML = '';
         wordList.innerHTML = emptyStateHtml;
         return;
     }
 
-    const sortedWords = [...vocabulary].sort((a, b) => {
-        const aDate = new Date(a.createdAt);
-        const bDate = new Date(b.createdAt);
-        return bDate - aDate;
-    });
+    const now = new Date();
+    const activeFilter = window.SV.AppState.wordListFilter;
+    wordFilters.innerHTML = WordList.renderFilters(vocabulary, activeFilter, now);
 
-    wordList.innerHTML = sortedWords.map(word => {
-        // Define actions for this word (delete first, speak second - so speak is always in corner)
-        const actions = [
-            {
-                type: 'warning',
-                icon: '✏️',
-                action: 'edit-word',
-                arg: word.id,
-                title: 'Edit word'
-            },
-            {
-                type: 'danger',
-                icon: '🗑️',
-                action: 'delete-word',
-                arg: word.id,
-                title: 'Delete word'
-            },
-            {
-                type: 'primary',
-                icon: '🔊',
-                action: 'speak-word',
-                arg: word.original,
-                title: 'Pronounce word'
-            }
-        ];
-        
-        // Metadata is computed within UI components if needed
+    const visibleWords = WordList.filterWords(vocabulary, activeFilter, now);
+    wordList.innerHTML = visibleWords.length > 0
+        ? WordList.renderGroups(visibleWords, now)
+        : window.SV?.UIComponents?.createEmptyState?.('Nothing here', 'No words match this filter') || '';
+}
 
-        // Use unified word card component with expandable functionality
-        const UI2 = window.SV?.UIComponents;
-        const cardHtml = UI2?.createWordCard?.(word, 'compact', actions, true, true) || '';
-        
-        // All metadata and sections are now included in the expandable card
-        return cardHtml;
+function setWordListFilter(filterKey) {
+    window.SV.AppState.wordListFilter = filterKey;
+    renderWordList();
+}
 
-    }).join('');
+function showWords(filterKey) {
+    window.SV.AppState.wordListFilter = filterKey;
+    showTab('list');
 }
 
 // Prefill Add form for editing and navigate to Add tab
@@ -370,11 +360,14 @@ function showMessage(text, type = 'info') {
 // Export for both CommonJS and browser
 const AppMainExports = {
     showTab,
+    showStatsView,
     lookupInDictionary,
     addWord,
     clearForm,
     toggleAdditionalFields,
     renderWordList,
+    setWordListFilter,
+    showWords,
     showMessage,
     editWord,
     deleteWord
