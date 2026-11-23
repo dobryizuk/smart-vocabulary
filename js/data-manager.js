@@ -12,6 +12,7 @@ function createDataManager(context) {
     const store = ctx.store || defaultVocabularyStore;
     const debugLog = ctx.debugLog || (() => undefined);
     const appMain = ctx.appMain || {};
+    const onSaved = ctx.onSaved || (() => undefined);
 
     let vocabulary = [];
     let loadFailed = false;
@@ -29,23 +30,39 @@ function createDataManager(context) {
         }
     }
 
-    function save() {
+    function persist(write) {
         if (loadFailed) {
             appMain.showMessage?.(LOAD_ERROR, 'error');
             return;
         }
         try {
-            store.save(vocabulary);
+            write();
             debugLog('💾 Vocabulary saved:', vocabulary.length, 'words');
         } catch (error) {
             console.error('❌ Failed to save vocabulary:', error.message);
             appMain.showMessage?.(SAVE_ERROR, 'error');
+            return;
         }
+        onSaved();
+    }
+
+    function save() {
+        persist(() => store.save(vocabulary));
+    }
+
+    function deleteWord(id) {
+        vocabulary = vocabulary.filter(word => word.id !== id);
+        persist(() => {
+            store.recordDeletion(id);
+            store.save(vocabulary);
+        });
     }
 
     return {
         initializeVocabulary,
         save,
+        deleteWord,
+        get loadFailed() { return loadFailed; },
         get vocabulary() { return vocabulary; },
         set vocabulary(value) { vocabulary = value; }
     };
@@ -56,7 +73,8 @@ function createDefaultDataManager() {
     return createDataManager({
         store: defaultVocabularyStore,
         debugLog: (...args) => g.SV?.debugLog?.(...args),
-        appMain: { showMessage: (...args) => g.SV?.AppMain?.showMessage?.(...args) }
+        appMain: { showMessage: (...args) => g.SV?.AppMain?.showMessage?.(...args) },
+        onSaved: () => g.SV?.Sync?.schedulePush?.()
     });
 }
 

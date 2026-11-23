@@ -130,7 +130,8 @@ async function addWord() {
             definition,
             phonetic,
             examples,
-            synonyms
+            synonyms,
+            updatedAt: new Date().toISOString()
         };
 
         const DM = window.SV?.DataManager;
@@ -154,6 +155,7 @@ async function addWord() {
     const synonyms = synonymsText ? synonymsText.split(',').map(s => s.trim()).filter(s => s) : [];
     const examples = examplesText ? examplesText.split('\n').map(e => e.trim()).filter(e => e) : [];
 
+    const createdAt = new Date().toISOString();
     const newWord = {
         id: `custom_${Date.now()}`,
         original,
@@ -162,7 +164,8 @@ async function addWord() {
         phonetic,
         examples,
         synonyms,
-        createdAt: new Date().toISOString(),
+        createdAt,
+        updatedAt: createdAt,
         repetition: 0,
         easeFactor: 1.3,
         nextReview: null,
@@ -324,8 +327,7 @@ function deleteWord(id) {
             // User confirmed deletion
             window.SV?.debugLog?.('🗑️ User confirmed deletion');
             
-            dm.vocabulary = dm.vocabulary.filter(word => word.id !== id);
-            dm.save();
+            dm.deleteWord(id);
 
             // Update UI
             window.SV?.AppMain?.renderWordList?.();

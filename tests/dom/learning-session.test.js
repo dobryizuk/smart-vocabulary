@@ -424,4 +424,20 @@ describe('Session resume and restart', () => {
     expect(next.sessionExerciseTypes).toEqual([]);
     expect(LS.determineExerciseType(next)).toBe('reverse');
   });
+
+  it('stamps updatedAt on every answer and saves', () => {
+    vi.useFakeTimers({ now: new Date('2026-11-22T10:00:00.000Z') });
+    try {
+      LS.prepareLearningSession();
+      const answered = window.SV.AppState.currentLearningWord;
+
+      LS.markDifficulty('easy');
+
+      expect(answered.updatedAt).toBe('2026-11-22T10:00:00.000Z');
+      expect(answered.reviewHistory.at(-1).date).toBe(answered.updatedAt);
+      expect(window.SV.DataManager.save).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

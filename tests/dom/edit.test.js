@@ -88,6 +88,7 @@ describe('Edit flow (DOM)', () => {
       const updated = window.SV.DataManager.vocabulary.find(w => w.id === 'custom_1');
       expect(updated.translation).toBe('исправлять');
       expect(updated.definition).toBe('to correct');
+      expect(Date.parse(updated.updatedAt)).toBeGreaterThan(Date.now() - 60000);
       expect(window.SV.AppState.editingWordId).toBe(null);
       expect(window.SV.DataManager.save).toHaveBeenCalled();
     })();

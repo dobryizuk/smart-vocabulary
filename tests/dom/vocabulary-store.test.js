@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createMemoryStorage } from './test-helpers.js';
 
-const { createVocabularyStore, WORD_FIELDS } = require('../../js/vocabulary-store.js');
+const { createVocabularyStore, WORD_FIELDS, findInvalidWordField } = require('../../js/vocabulary-store.js');
 const fixture = require('../test-vocabulary.json');
 
 const NOW = new Date('2030-01-02T03:04:05.000Z');
@@ -143,7 +143,7 @@ describe('VocabularyStore with the `vocabulary` key', () => {
 
     it('writes only the word fields of the backup file, leaving session fields in memory', () => {
         const storage = createMemoryStorage();
-        const saved = { ...first, createdAt: '2025-07-24T10:00:00.000Z' };
+        const saved = { ...first, createdAt: '2025-07-24T10:00:00.000Z', updatedAt: '2025-07-25T10:00:00.000Z' };
         const inMemory = {
             ...saved,
             sessionExerciseTypes: ['regular', 'reverse'],
@@ -168,9 +168,11 @@ describe('VocabularyStore with the `vocabulary` key', () => {
     });
 });
 
+const stamped = (words, at = NOW) => words.map(word => ({ ...word, updatedAt: at.toISOString() }));
+
 describe('VocabularyStore snapshot', () => {
-    it('saves the raw `vocabulary` string and restores it exactly', () => {
-        const raw = JSON.stringify({ schemaVersion: 1, words: expectedWords });
+    it('restores the snapshot words stamped now and records deletions for words missing from it', () => {
+        const raw = JSON.stringify({ schemaVersion: 1, words: expectedStored });
         const storage = createMemoryStorage({ vocabulary: raw });
         const store = createVocabularyStore({ storage, now: () => NOW });
         expect(store.getSnapshotDate()).toBeNull();
@@ -179,56 +181,130 @@ describe('VocabularyStore snapshot', () => {
         expect(JSON.parse(storage.data.snapshotBeforeImport)).toEqual({ savedAt: NOW.toISOString(), vocabulary: raw });
         expect(store.getSnapshotDate()).toBe('2030-01-02');
 
-        store.save([]);
-        store.restoreSnapshot();
+        const restoring = createVocabularyStore({ storage, now: () => LATER });
+        restoring.save([{ ...expectedStored[0], repetition: 9 }, { id: 'imported' }]);
+        restoring.restoreSnapshot();
 
-        expect(storage.data.vocabulary).toBe(raw);
+        expect(restoring.load()).toEqual(stamped(expectedStored, LATER));
+        expect(restoring.loadDeletions()).toEqual({ imported: LATER.toISOString() });
         expect(storage.data.snapshotBeforeImport).toBeUndefined();
-        expect(store.getSnapshotDate()).toBeNull();
+        expect(restoring.getSnapshotDate()).toBeNull();
     });
 
-    it('restore removes `vocabulary` when there was none before the snapshot', () => {
+    it('restore to a device that had no words leaves none and records deletions for all', () => {
         const storage = createMemoryStorage();
         const store = createVocabularyStore({ storage, now: () => NOW });
         store.saveSnapshot();
-        store.save(expectedWords);
+        store.save(expectedStored);
 
         store.restoreSnapshot();
 
-        expect(storage.data).toEqual({});
+        expect(store.load()).toEqual([]);
+        expect(store.loadDeletions()).toEqual(Object.fromEntries(expectedStored.map(w => [w.id, NOW.toISOString()])));
+        expect(storage.data.snapshotBeforeImport).toBeUndefined();
     });
 
-    it('restores an old-shape snapshot: writes both old keys, removes `vocabulary`, next load migrates them', () => {
-        const rawWords = JSON.stringify(oldWords);
-        const rawProgress = JSON.stringify(oldProgress);
+    it('restores an old-shape snapshot by migrating its two keys, leaving the old keys as they are', () => {
         const storage = createMemoryStorage({
             allVocabulary: '[]',
             userProgress: '{}',
             vocabulary: JSON.stringify({ schemaVersion: 1, words: [] }),
-            snapshotBeforeImport: JSON.stringify({ savedAt: '2026-11-20T10:00:00.000Z', allVocabulary: rawWords, userProgress: rawProgress })
+            snapshotBeforeImport: JSON.stringify({ savedAt: '2026-11-20T10:00:00.000Z', allVocabulary: JSON.stringify(oldWords), userProgress: JSON.stringify(oldProgress) })
         });
         const store = createVocabularyStore({ storage, now: () => NOW });
         expect(store.getSnapshotDate()).toBe('2026-11-20');
 
         store.restoreSnapshot();
 
-        expect(storage.data).toEqual({ allVocabulary: rawWords, userProgress: rawProgress });
-        expect(store.load()).toEqual(expectedWords);
-        expect(JSON.parse(storage.data.vocabulary)).toEqual({ schemaVersion: 1, words: expectedStored });
+        expect(JSON.parse(storage.data.vocabulary)).toEqual({ schemaVersion: 1, words: stamped(expectedStored) });
+        expect(storage.data.allVocabulary).toBe('[]');
+        expect(storage.data.userProgress).toBe('{}');
+        expect(storage.data.snapshotBeforeImport).toBeUndefined();
     });
 
-    it('restores an old-shape snapshot whose progress key was empty by removing it', () => {
+    it('restores an old-shape snapshot whose progress key was empty', () => {
         const storage = createMemoryStorage({
-            userProgress: '{}',
-            snapshotBeforeImport: JSON.stringify({ savedAt: '2026-11-20T10:00:00.000Z', allVocabulary: '[]', userProgress: null })
+            snapshotBeforeImport: JSON.stringify({ savedAt: '2026-11-20T10:00:00.000Z', allVocabulary: JSON.stringify([oldWords[2]]), userProgress: null })
         });
-        createVocabularyStore({ storage, now: () => NOW }).restoreSnapshot();
-        expect(storage.data).toEqual({ allVocabulary: '[]' });
+        const store = createVocabularyStore({ storage, now: () => NOW });
+        store.restoreSnapshot();
+        expect(store.load()).toEqual(stamped([expectedWords[2]]));
+    });
+
+    it('keeps everything when the snapshot is unreadable', () => {
+        const storage = createMemoryStorage({
+            vocabulary: 'kept',
+            snapshotBeforeImport: JSON.stringify({ savedAt: '2026-11-20T10:00:00.000Z', vocabulary: '{broken' })
+        });
+        const before = { ...storage.data };
+        expect(() => createVocabularyStore({ storage, now: () => NOW }).restoreSnapshot()).toThrow();
+        expect(storage.data).toEqual(before);
     });
 
     it('restore does nothing without a snapshot', () => {
         const storage = createMemoryStorage({ vocabulary: 'kept' });
         createVocabularyStore({ storage, now: () => NOW }).restoreSnapshot();
         expect(storage.data).toEqual({ vocabulary: 'kept' });
+    });
+});
+
+describe('VocabularyStore replace all and deletions', () => {
+    it('replaceAll stamps every word now, records deletions for missing ids and returns the stamped words', () => {
+        const storage = createMemoryStorage();
+        const store = createVocabularyStore({ storage, now: () => NOW });
+        store.save([expectedStored[0], expectedStored[1]]);
+
+        const result = createVocabularyStore({ storage, now: () => LATER }).replaceAll([expectedStored[1], expectedStored[2]]);
+
+        expect(result).toEqual(stamped([expectedStored[1], expectedStored[2]], LATER));
+        expect(store.load()).toEqual(result);
+        expect(store.loadDeletions()).toEqual({ [expectedStored[0].id]: LATER.toISOString() });
+    });
+
+    it('replaceAll keeps earlier deletions and drops those of words that come back', () => {
+        const storage = createMemoryStorage();
+        const store = createVocabularyStore({ storage, now: () => NOW });
+        store.recordDeletion('gone');
+        store.recordDeletion(expectedStored[0].id);
+        createVocabularyStore({ storage, now: () => LATER }).replaceAll([expectedStored[0]]);
+        expect(store.loadDeletions()).toEqual({ gone: NOW.toISOString() });
+    });
+
+    it('replaceAll writes deletions before the words, so a failed write never loses a deletion', () => {
+        const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words: [expectedStored[0]] }) });
+        const write = storage.setItem.getMockImplementation();
+        storage.setItem.mockImplementation((key, value) => {
+            if (key === 'vocabulary') throw new Error('QuotaExceededError');
+            write(key, value);
+        });
+        const store = createVocabularyStore({ storage, now: () => NOW });
+
+        expect(() => store.replaceAll([])).toThrow('QuotaExceededError');
+        expect(store.loadDeletions()).toEqual({ [expectedStored[0].id]: NOW.toISOString() });
+        expect(store.load()).toEqual([expectedStored[0]]);
+    });
+
+    it('recordDeletion adds one deletion per id with the time of deletion', () => {
+        const storage = createMemoryStorage();
+        createVocabularyStore({ storage, now: () => NOW }).recordDeletion('a');
+        const store = createVocabularyStore({ storage, now: () => LATER });
+        store.recordDeletion('b');
+        expect(store.loadDeletions()).toEqual({ a: NOW.toISOString(), b: LATER.toISOString() });
+    });
+
+    it('treats missing or unreadable deletions as none', () => {
+        expect(createVocabularyStore({ storage: createMemoryStorage(), now: () => NOW }).loadDeletions()).toEqual({});
+        const broken = createMemoryStorage({ deletedWords: '{broken' });
+        expect(createVocabularyStore({ storage: broken, now: () => NOW }).loadDeletions()).toEqual({});
+    });
+});
+
+describe('findInvalidWordField', () => {
+    it('accepts a complete word and names the first missing or invalid field', () => {
+        expect(findInvalidWordField(first)).toBeUndefined();
+        expect(findInvalidWordField({ ...first, translation: '' })).toBe('translation');
+        expect(findInvalidWordField({ ...first, reviewHistory: undefined })).toBe('reviewHistory');
+        expect(findInvalidWordField({ id: 'spike-1', original: 'hello', translation: 'привет' })).toBe('easeFactor');
+        expect(findInvalidWordField(null)).toBe('id');
     });
 });

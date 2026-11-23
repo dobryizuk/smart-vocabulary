@@ -13,7 +13,7 @@
     "test:e2e": "npm run build && playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "npx playwright show-report",
-    "build": "node -e \"require('esbuild').build({ entryPoints: ['js/app-init.js'], bundle: true, outfile: 'dist/app.bundle.js', format: 'iife', globalName: 'SVApp', target: ['es2019'], sourcemap: true })\"",
+    "build": "node -e \"require('esbuild').build({ entryPoints: ['js/app-init.js'], bundle: true, outfile: 'dist/app.bundle.js', format: 'iife', globalName: 'SVApp', target: ['es2019'], minify: true, sourcemap: true })\"",
     "serve": "python3 -m http.server 3000",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:js": "eslint js/**/*.js tests/**/*.js --fix",
@@ -49,5 +49,8 @@
     "stylelint-config-recommended": "^17.0.0",
     "stylelint-config-standard": "^39.0.0",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0"
   }
 }

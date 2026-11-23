@@ -66,6 +66,10 @@ describe('Add word flow - success toast', () => {
     const message = document.querySelector('.app-message');
     expect(message).toBeTruthy();
     expect(message.textContent).toContain('Word added successfully');
+
+    const [added] = window.SV.DataManager.vocabulary;
+    expect(added.updatedAt).toBe(added.createdAt);
+    expect(Date.parse(added.updatedAt)).toBeGreaterThan(Date.now() - 60000);
   });
 });
 

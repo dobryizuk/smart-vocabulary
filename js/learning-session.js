@@ -249,10 +249,10 @@ function markDifficulty(difficulty) {
     );
 
     if (reviewData) {
-        // Update word data
-        Object.assign(word, reviewData);
+        const answeredAt = new Date().toISOString();
+        Object.assign(word, reviewData, { updatedAt: answeredAt });
         word.reviewHistory.push({
-            date: new Date().toISOString(),
+            date: answeredAt,
             difficulty,
             exerciseType: word.currentExerciseType || 'regular'
         });

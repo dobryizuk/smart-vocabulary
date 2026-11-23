@@ -3,6 +3,7 @@
 // ============================================================================
 
 const { downloadFile } = require('./file-download.js');
+const { renderSyncPanel } = require('./sync-panel.js');
 
 ;(function bootstrap(global) {
     // Create namespaced container
@@ -37,6 +38,7 @@ const { downloadFile } = require('./file-download.js');
     attach('LearningSession', () => require('./learning-session.js'));
     attach('DictionaryService', () => require('./dictionary-service.js'));
     attach('AppMain', () => require('./app-main.js'));
+    attach('Sync', () => require('./sync.js').createDefaultSync({ onStatus: updateSyncPanel, onChange: refreshAfterSync }));
     // Ensure AppState is initialized and available on SV
     attach('AppState', () => {
         require('./app-state.js');
@@ -184,9 +186,23 @@ function initializeComponents() {
                 ${buttonsContainer}
                 ${infoText}
             </div>
+            <div id="cloudBackup"></div>
             ${createDiagnosticsHtml()}
         `;
+        updateSyncPanel();
     }
+}
+
+function updateSyncPanel() {
+    const container = document.getElementById('cloudBackup');
+    const sync = window.SV?.Sync;
+    if (container && sync) renderSyncPanel(container, sync.getStatus(), sync);
+}
+
+// Words changed by a sync: refresh what shows them; a running learning session picks them up as it goes
+function refreshAfterSync() {
+    window.SV?.AppMain?.renderWordList?.();
+    window.SV?.Statistics?.updateStats?.();
 }
 
 function createDiagnosticsHtml() {
@@ -463,6 +479,7 @@ function bootApp() {
     wireEventHandlers();
     window.SV?.SpeechManager?.initializeSpeech?.();
     loadUserDataAndStats();
+    window.SV?.Sync?.start?.();
     updateSpeechToggleButtons();
     updateLogToggleButton();
     setupEnterKeyBindings();

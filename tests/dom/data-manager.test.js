@@ -77,5 +77,6 @@ describe('AppMain.deleteWord', () => {
         const remainingIds = [words[0].id, words[2].id];
         expect(dm.vocabulary.map(w => w.id)).toEqual(remainingIds);
         expect(store.load().map(w => w.id)).toEqual(remainingIds);
+        expect(store.loadDeletions()).toEqual({ [words[1].id]: NOW.toISOString() });
     });
 });

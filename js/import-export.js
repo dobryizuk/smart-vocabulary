@@ -4,7 +4,7 @@
 
 const { downloadFile } = require('./file-download.js');
 const defaultVocabularyStore = require('./vocabulary-store.js');
-const { pickWordFields } = defaultVocabularyStore;
+const { pickWordFields, findInvalidWordField } = defaultVocabularyStore;
 
 function createImportExport(context) {
     const ctx = context || {};
@@ -62,24 +62,8 @@ function createImportExport(context) {
         const importedVocabulary = dataToImport.vocabulary;
         
         importedVocabulary.forEach((word, index) => {
-            if (!word.id || typeof word.id !== 'string') {
-                throw new Error(`Word ${index + 1}: Missing or invalid id`);
-            }
-            if (!word.original || typeof word.original !== 'string') {
-                throw new Error(`Word ${index + 1}: Missing or invalid original field`);
-            }
-            if (!word.translation || typeof word.translation !== 'string') {
-                throw new Error(`Word ${index + 1}: Missing or invalid translation field`);
-            }
-            if (typeof word.easeFactor !== 'number') {
-                throw new Error(`Word ${index + 1}: Missing or invalid easeFactor`);
-            }
-            if (typeof word.repetition !== 'number') {
-                throw new Error(`Word ${index + 1}: Missing or invalid repetition`);
-            }
-            if (!Array.isArray(word.reviewHistory)) {
-                throw new Error(`Word ${index + 1}: Missing or invalid reviewHistory`);
-            }
+            const field = findInvalidWordField(word);
+            if (field) throw new Error(`Word ${index + 1}: Missing or invalid ${field}`);
         });
         
         return {
@@ -96,7 +80,13 @@ function createImportExport(context) {
         if (!snapshotDate) return;
         const question = `Go back to your data from before the restore on ${snapshotDate}? Progress made since then will be lost.`;
         if (!confirmAction(question)) return;
-        store.restoreSnapshot();
+        try {
+            store.restoreSnapshot();
+        } catch (error) {
+            console.error('❌ Undo restore failed:', error);
+            appMain.showMessage?.(`Undo failed. ${error.message}`, 'error');
+            return;
+        }
         reload();
     }
 
@@ -108,8 +98,7 @@ function createImportExport(context) {
             if (!confirmAction(question)) return;
 
             store.saveSnapshot();
-            store.save(processedData.vocabulary);
-            setVocabulary(processedData.vocabulary);
+            setVocabulary(store.replaceAll(processedData.vocabulary));
 
             appMain.renderWordList?.();
             stats.updateStats?.();
