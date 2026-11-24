@@ -86,27 +86,18 @@ function initializeComponents() {
     const formButtons = document.getElementById('formButtons');
     if (formButtons) {
         formButtons.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
-            window.SV?.UIComponents?.createButton?.('Lookup', 'lookup-in-dictionary', 'primary', false, '', '', '', 'dictionary-lookup-btn') +
-            window.SV?.UIComponents?.createButton?.('More Fields', 'toggle-additional-fields', 'secondary', false, 'toggleFieldsBtn', '', '', 'toggle-fields-btn'),
+            window.SV?.UIComponents?.createButton?.('Lookup', 'lookup-in-dictionary', 'primary', false, '', '', '', 'dictionary-lookup-btn'),
             'row',
             'flex-start',
             'center',
-            '8px',
-            'flex-wrap: wrap;'
+            '8px'
         ) || '';
     }
     
     // Initialize save buttons
     const saveButtons = document.getElementById('saveButtons');
     if (saveButtons) {
-        saveButtons.innerHTML = window.SV?.UIComponents?.createFlexContainer?.(
-            window.SV?.UIComponents?.createButton?.('Save word', 'add-word', 'primary', false, '', '', '', 'save-word-btn') +
-            window.SV?.UIComponents?.createButton?.('Clear', 'clear-form', 'secondary'),
-            'column',
-            'flex-start',
-            'stretch',
-            '8px'
-        ) || '';
+        saveButtons.innerHTML = window.SV?.UIComponents?.createButton?.('Save word', 'add-word', 'primary', false, '', '', '', 'save-word-btn') || '';
     }
     
     document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon, 24); });
@@ -234,6 +225,12 @@ function wireEventHandlers() {
                 case 'speak-word':
                     window.SV?.SpeechManager?.speakWord?.(arg);
                     break;
+                case 'speak-original-word':
+                    window.SV?.AppMain?.speakOriginalWord?.();
+                    break;
+                case 'clear-form':
+                    window.SV?.AppMain?.resetForm?.();
+                    break;
                 case 'open-settings':
                     window.SV?.AppMain?.showStatsView?.('settings');
                     break;
@@ -272,6 +269,9 @@ function wireEventHandlers() {
                 case 'show-hint-reverse':
                     window.SV?.LearningSession?.showHintForReverse?.();
                     break;
+                case 'check-reverse':
+                    window.SV?.LearningSession?.checkReverseTranslation?.();
+                    break;
                 case 'show-answer-reverse':
                     window.SV?.LearningSession?.showAnswerForReverse?.();
                     break;
@@ -291,26 +291,21 @@ function wireEventHandlers() {
                     break;
             }
         });
+        container.addEventListener('input', (e) => {
+            if (e.target.closest?.('#add-tab')) window.SV?.AppMain?.updateFormControls?.();
+        });
+        // Enter in a field presses the button the field names in data-enter-button
+        container.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' || e.isComposing) return;
+            const buttonId = e.target.getAttribute?.('data-enter-button');
+            if (buttonId) document.getElementById(buttonId)?.click();
+        });
         markBound(container);
     }
 
     // Lookup button
     const lookupBtn = document.querySelector('[data-testid="dictionary-lookup-btn"]');
     bind(lookupBtn, () => window.SV?.AppMain?.lookupInDictionary?.());
-
-    // Toggle additional fields
-    const toggleBtn = document.getElementById('toggleFieldsBtn') || document.querySelector('[data-testid="toggle-fields-btn"]');
-    if (toggleBtn && !isBound(toggleBtn)) {
-        try { toggleBtn.removeAttribute('onclick'); toggleBtn.onclick = null; } catch (err) { window.SV?.debugLog?.('cleanup inline handler failed:', err); }
-        toggleBtn.addEventListener('click', () => {
-            window.SV?.AppMain?.toggleAdditionalFields?.();
-            const additionalFields = document.getElementById('additionalFields');
-            if (additionalFields) {
-                additionalFields.style.display = 'block';
-            }
-        });
-        markBound(toggleBtn);
-    }
 
     // Save word
     const saveBtn = document.querySelector('[data-testid="save-word-btn"]');

@@ -3,10 +3,7 @@ const { test, expect } = require('@playwright/test');
 async function addWord(page, original, translation) {
   await page.getByTestId('add-tab-btn').click();
   await page.getByTestId('original-word-input').fill(original);
-  await page.waitForSelector('[data-testid="toggle-fields-btn"]', { timeout: 5000 });
-  const translationInput = page.getByRole('textbox', { name: /translation/i });
-  if (!(await translationInput.isVisible())) await page.getByTestId('toggle-fields-btn').click();
-  await translationInput.fill(translation);
+  await page.getByRole('textbox', { name: /translation/i }).fill(translation);
   await page.getByTestId('save-word-btn').click();
 }
 

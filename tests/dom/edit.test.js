@@ -14,8 +14,6 @@ describe('Edit flow (DOM)', () => {
       <div id="add-tab" class="tab-content active"></div>
       <div id="list-tab" class="tab-content"></div>
       <input id="originalWord" />
-      <div id="additionalFields" style="display:none;"></div>
-      <button id="toggleFieldsBtn"></button>
       <input id="translation" />
       <textarea id="wordDefinition"></textarea>
       <input id="wordPhonetic" />

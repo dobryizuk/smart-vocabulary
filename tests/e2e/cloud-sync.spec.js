@@ -24,7 +24,6 @@ async function expectServerBlocked(page, requests) {
 async function addWord(page, original, translation) {
     await page.getByTestId('add-tab-btn').click();
     await page.getByTestId('original-word-input').fill(original);
-    await page.getByTestId('toggle-fields-btn').click();
     await page.getByRole('textbox', { name: /translation/i }).fill(translation);
     await page.getByTestId('save-word-btn').click();
     await expect(page.locator('text=Word added successfully')).toBeVisible();

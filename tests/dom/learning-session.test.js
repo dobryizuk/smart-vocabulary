@@ -247,10 +247,10 @@ describe('Writing exercise hint', () => {
     expect(hint()).toBe('');
   });
 
-  it('hides the hint button once the answer is shown', () => {
+  it('hides the hint, check and show answer buttons once the answer is shown', () => {
     startExercise('Devolve');
     LS.showAnswerForReverse();
-    expect(hintBtn().style.display).toBe('none');
+    expect(document.getElementById('reverseActions').style.display).toBe('none');
   });
 
   it('counts letters, not spaces, in phrases', () => {
@@ -259,6 +259,105 @@ describe('Writing exercise hint', () => {
     expect(LS.getMaxHints('a lot')).toBe(3);
     expect(LS.getMaxHints('ox')).toBe(1);
     expect(LS.getMaxHints('')).toBe(0);
+  });
+});
+
+describe('Writing exercise verdict', () => {
+  it('is Correct only for an exact match, ignoring case and punctuation', () => {
+    expect(LS.getTypingVerdict('hello', 'hello')).toEqual({ tone: 'success', text: 'Correct!' });
+    expect(LS.getTypingVerdict('  Hello! ', 'hello')).toEqual({ tone: 'success', text: 'Correct!' });
+  });
+
+  it('warns from 90% accuracy', () => {
+    expect(LS.calculateTypingAccuracy('abcdefghi', 'abcdefghij').accuracy).toBe(90);
+    expect(LS.getTypingVerdict('abcdefghi', 'abcdefghij')).toEqual({ tone: 'warn', text: 'Almost \u2014 check the spelling' });
+  });
+
+  it('fails below 90% accuracy', () => {
+    expect(LS.calculateTypingAccuracy('abcdefghijklmnop', 'abcdefghijklmnopqr').accuracy).toBe(89);
+    expect(LS.getTypingVerdict('abcdefghijklmnop', 'abcdefghijklmnopqr')).toEqual({ tone: 'danger', text: 'Not quite' });
+    expect(LS.getTypingVerdict('xyz', 'hello').tone).toBe('danger');
+  });
+
+  it('does not call a long near miss exact when its accuracy rounds to 100', () => {
+    const answer = 'a'.repeat(300);
+    expect(LS.calculateTypingAccuracy(`${answer}b`, answer).accuracy).toBe(100);
+    expect(LS.getTypingVerdict(`${answer}b`, answer).tone).toBe('warn');
+  });
+});
+
+describe('Writing exercise check', () => {
+  const start = (original) => {
+    const word = { id: 'w1', original, translation: 'перевод', repetition: 2, easeFactor: 2.5, reviewHistory: [] };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    window.SV.AppState.sessionTotal = 1;
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    LS.showReverseTranslationCard();
+  };
+  const input = () => document.getElementById('reverseTranslationInput');
+  const feedback = () => document.getElementById('typingFeedback');
+  const answerShown = () => document.querySelector('.difficulty-buttons') !== null;
+
+  it('renders Hint and Check side by side with Show Answer below and no inline handlers', () => {
+    start('hello');
+    const actions = document.getElementById('reverseActions');
+    expect([...actions.children].map((button) => button.textContent)).toEqual(['Hint', 'Check', 'Show Answer']);
+    expect(document.getElementById('checkReverseButton').dataset.action).toBe('check-reverse');
+    expect(document.querySelector('#learningContent [onclick], #learningContent [oninput], #learningContent [onkeypress]')).toBeNull();
+    expect(input().dataset.enterButton).toBe('checkReverseButton');
+  });
+
+  it('shows Correct! with a success border, then the answer and rating buttons', () => {
+    start('hello');
+    input().value = 'Hello';
+    LS.checkReverseTranslation();
+
+    expect(feedback().textContent).toBe('Correct!');
+    expect(feedback().querySelector('.typing-feedback--success')).not.toBeNull();
+    expect(input().classList.contains('typing-input--success')).toBe(true);
+    expect(input().disabled).toBe(true);
+    expect(answerShown()).toBe(true);
+    expect(document.getElementById('reverseActions').style.display).toBe('none');
+  });
+
+  it('shows the warn verdict for a near miss', () => {
+    start('abcdefghij');
+    input().value = 'abcdefghi';
+    LS.checkReverseTranslation();
+
+    expect(feedback().textContent).toBe('Almost \u2014 check the spelling');
+    expect(input().classList.contains('typing-input--warn')).toBe(true);
+  });
+
+  it('shows Not quite with a danger border for a wrong answer and still reveals the answer', () => {
+    start('hello');
+    input().value = 'world';
+    LS.checkReverseTranslation();
+
+    expect(feedback().textContent).toBe('Not quite');
+    expect(input().classList.contains('typing-input--danger')).toBe(true);
+    expect(answerShown()).toBe(true);
+  });
+
+  it('does nothing for an empty answer', () => {
+    start('hello');
+    input().value = '   ';
+    LS.checkReverseTranslation();
+
+    expect(feedback().textContent).toBe('');
+    expect(answerShown()).toBe(false);
+    expect(input().disabled).toBe(false);
+  });
+
+  it('reveals the answer without a verdict when Show Answer is used', () => {
+    start('hello');
+    input().value = 'hello';
+    LS.showAnswerForReverse();
+
+    expect(feedback().textContent).toBe('');
+    expect(input().className).not.toMatch(/typing-input--/);
+    expect(answerShown()).toBe(true);
   });
 });
 

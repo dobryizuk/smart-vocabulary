@@ -48,6 +48,49 @@ function showStatsView(view) {
     if (statsTab) statsTab.scrollTop = 0;
 }
 
+const FORM_FIELD_IDS = ['originalWord', 'translation', 'wordDefinition', 'wordPhonetic', 'wordSynonyms', 'wordExamples'];
+const HIGHLIGHT_CLASS = 'word-card--new';
+
+function setFormValues(values = {}) {
+    FORM_FIELD_IDS.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.value = values[id] ?? '';
+    });
+    updateFormControls();
+}
+
+// The clear button shows while any field has content, the speaker while there is a word to pronounce
+function updateFormControls() {
+    const hasContent = FORM_FIELD_IDS.some(id => document.getElementById(id)?.value.trim());
+    const hasWord = Boolean(document.getElementById('originalWord')?.value.trim());
+    const clearButton = document.querySelector('[data-testid="clear-form-btn"]');
+    const speakButton = document.querySelector('[data-testid="speak-original-btn"]');
+    if (clearButton) clearButton.hidden = !hasContent;
+    if (speakButton) speakButton.hidden = !hasWord;
+}
+
+function setLookupPending(pending) {
+    const lookupButton = document.querySelector('[data-testid="dictionary-lookup-btn"]');
+    if (lookupButton) {
+        if (pending) lookupButton.dataset.idleHtml = lookupButton.innerHTML;
+        lookupButton.innerHTML = pending ? '<span class="spinner" aria-hidden="true"></span>Looking up…' : lookupButton.dataset.idleHtml;
+        lookupButton.disabled = pending;
+        lookupButton.setAttribute('aria-busy', String(pending));
+    }
+    FORM_FIELD_IDS.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.readOnly = pending;
+    });
+    ['clear-form-btn', 'save-word-btn'].forEach(testId => {
+        const button = document.querySelector(`[data-testid="${testId}"]`);
+        if (button) button.disabled = pending;
+    });
+}
+
+function joinExamples(examples) {
+    return examples.map(example => typeof example === 'string' ? example : (example.text || String(example))).join('\n');
+}
+
 // Dictionary lookup: directly fill form fields without preview
 async function lookupInDictionary() {
     const originalWord = document.getElementById('originalWord').value.trim();
@@ -56,48 +99,26 @@ async function lookupInDictionary() {
         return;
     }
 
+    // Clear the other fields first to prevent mixing data from different words
+    setFormValues({ originalWord });
+    setLookupPending(true);
     try {
-        // First, clear all fields to prevent mixing data from different words
-        clearFormFields();
-        
         const data = await window.SV?.DictionaryService?.lookupWithTranslation(originalWord);
-        
-        // Ensure additional fields are visible
-        const additionalFields = document.getElementById('additionalFields');
-        if (additionalFields && (additionalFields.style.display === 'none' || !additionalFields.style.display)) {
-            toggleAdditionalFields();
-        }
-
-        // Fill form fields from dictionary data
-        document.getElementById('translation').value = data.translation || '';
-        document.getElementById('wordDefinition').value = data.definition || '';
-        document.getElementById('wordPhonetic').value = data.phonetic || '';
-
-        if (Array.isArray(data.synonyms) && data.synonyms.length > 0) {
-            document.getElementById('wordSynonyms').value = data.synonyms.join(', ');
-        }
-        if (Array.isArray(data.examples) && data.examples.length > 0) {
-            const exampleTexts = data.examples.map(example =>
-                typeof example === 'string' ? example : (example.text || String(example))
-            );
-            document.getElementById('wordExamples').value = exampleTexts.join('\n');
-        }
-
-        // Optional toast
+        setFormValues({
+            originalWord,
+            translation: data.translation,
+            wordDefinition: data.definition,
+            wordPhonetic: data.phonetic,
+            wordSynonyms: Array.isArray(data.synonyms) ? data.synonyms.join(', ') : '',
+            wordExamples: Array.isArray(data.examples) ? joinExamples(data.examples) : ''
+        });
         showMessage('Dictionary data inserted. Review and Save.', 'info');
     } catch (error) {
         console.error('Dictionary lookup failed:', error);
         showMessage(`Dictionary lookup failed: ${error.message}`, 'error');
+    } finally {
+        setLookupPending(false);
     }
-}
-
-// Helper function to clear only form fields (not the original word)
-function clearFormFields() {
-    document.getElementById('translation').value = '';
-    document.getElementById('wordDefinition').value = '';
-    document.getElementById('wordPhonetic').value = '';
-    document.getElementById('wordSynonyms').value = '';
-    document.getElementById('wordExamples').value = '';
 }
 
 async function addWord() {
@@ -184,43 +205,45 @@ async function addWord() {
         reviewHistory: []
     };
 
-    // Add to vocabulary array
-    if (window.SV?.DataManager) {
-        window.SV.DataManager.vocabulary.push(newWord);
-        window.SV?.debugLog?.('✅ Word added successfully! Total words:', window.SV.DataManager.vocabulary.length);
-        window.SV.DataManager.save();
+    const DM = window.SV.DataManager;
+    DM.vocabulary.push(newWord);
+    window.SV?.debugLog?.('✅ Word added successfully! Total words:', DM.vocabulary.length);
+    if (DM.save() === false) {
+        DM.vocabulary.pop();
+        return;
     }
-    
+
     clearForm();
     showMessage('Word added successfully', 'success');
-    
-    // Nothing to reset for dictionary preview anymore
+    showNewWord(newWord.id);
 }
 
 function clearForm() {
-    document.getElementById('originalWord').value = '';
-    document.getElementById('translation').value = '';
-    document.getElementById('wordDefinition').value = '';
-    document.getElementById('wordPhonetic').value = '';
-    document.getElementById('wordSynonyms').value = '';
-    document.getElementById('wordExamples').value = '';
+    setFormValues();
 }
 
-function toggleAdditionalFields() {
-    const additionalFields = document.getElementById('additionalFields');
-    const toggleBtn = document.getElementById('toggleFieldsBtn');
-    
-    if (additionalFields.style.display === 'none' || !additionalFields.style.display) {
-        additionalFields.style.display = 'block';
-        toggleBtn.innerHTML = 'Hide Fields';
-        toggleBtn.classList.remove('btn--secondary');
-        toggleBtn.classList.add('btn--warning');
-    } else {
-        additionalFields.style.display = 'none';
-        toggleBtn.innerHTML = 'More Fields';
-        toggleBtn.classList.remove('btn--warning');  
-        toggleBtn.classList.add('btn--secondary');
-    }
+// The clear button: empties every field, leaves edit mode and returns to the word field
+function resetForm() {
+    window.SV.AppState.editingWordId = null;
+    clearForm();
+    document.getElementById('originalWord')?.focus();
+}
+
+function speakOriginalWord() {
+    const word = document.getElementById('originalWord')?.value.trim();
+    if (word) window.SV?.SpeechManager?.speakWord?.(word);
+}
+
+// Words screen with everything listed, scrolled to the top, and the new word marked until its highlight fades
+function showNewWord(id) {
+    window.SV.AppState.wordListFilter = 'all';
+    showTab('list');
+    const listTab = document.getElementById('list-tab');
+    if (listTab) listTab.scrollTop = 0;
+    const card = document.getElementById(`word-card-${id}`);
+    if (!card) return;
+    card.classList.add(HIGHLIGHT_CLASS);
+    card.addEventListener('animationend', () => card.classList.remove(HIGHLIGHT_CLASS), { once: true });
 }
 
 function renderWordList() {
@@ -275,19 +298,14 @@ function editWord(id) {
 
     showTab('add');
 
-    // Ensure additional fields are visible
-    const additionalFields = document.getElementById('additionalFields');
-    if (additionalFields && (additionalFields.style.display === 'none' || !additionalFields.style.display)) {
-        toggleAdditionalFields();
-    }
-
-    // Prefill form fields
-    document.getElementById('originalWord').value = word.original || '';
-    document.getElementById('translation').value = word.translation || '';
-    document.getElementById('wordDefinition').value = word.definition || '';
-    document.getElementById('wordPhonetic').value = word.phonetic || '';
-    document.getElementById('wordSynonyms').value = Array.isArray(word.synonyms) ? word.synonyms.join(', ') : (word.synonyms || '');
-    document.getElementById('wordExamples').value = Array.isArray(word.examples) ? word.examples.join('\n') : (word.examples || '');
+    setFormValues({
+        originalWord: word.original,
+        translation: word.translation,
+        wordDefinition: word.definition,
+        wordPhonetic: word.phonetic,
+        wordSynonyms: Array.isArray(word.synonyms) ? word.synonyms.join(', ') : word.synonyms,
+        wordExamples: Array.isArray(word.examples) ? word.examples.join('\n') : word.examples
+    });
 
     showMessage('Edit mode: update fields and click Save', 'info');
 }
@@ -364,7 +382,10 @@ const AppMainExports = {
     lookupInDictionary,
     addWord,
     clearForm,
-    toggleAdditionalFields,
+    resetForm,
+    updateFormControls,
+    speakOriginalWord,
+    showNewWord,
     renderWordList,
     setWordListFilter,
     showWords,

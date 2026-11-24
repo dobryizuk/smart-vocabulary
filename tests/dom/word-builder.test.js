@@ -35,11 +35,58 @@ describe('Word builder tiles', () => {
 
   it('shows fixed characters pre-filled and highlights the next empty slot', () => {
     const state = place(WordBuilder.createBuildState('a-b'), 'a');
-    expect(WordBuilder.getSlotView(state)).toEqual([
-      { char: 'a', fixed: false, active: false },
-      { char: '-', fixed: true, active: false },
-      { char: '', fixed: false, active: true }
-    ]);
+    expect(WordBuilder.getSlotView(state)).toEqual([[
+      { char: 'a', fixed: false, active: false, right: true },
+      { char: '-', fixed: true, active: false, right: null },
+      { char: '', fixed: false, active: true, right: null }
+    ]]);
+  });
+
+  it('groups the slots of a phrase by word and leaves the gaps out', () => {
+    const state = WordBuilder.createBuildState('let me  out');
+    const words = WordBuilder.getSlotView(state);
+    expect(words.map((word) => word.length)).toEqual([3, 2, 3]);
+    expect(words.flat().some(({ char }) => /\s/.test(char))).toBe(false);
+    expect(WordBuilder.getBuiltText(place(state, 'l', 'e', 't', 'm', 'e', 'o', 'u', 't'))).toBe('let me  out');
+  });
+
+  it('keeps a hyphen and an apostrophe inside their word', () => {
+    const state = WordBuilder.createBuildState("rock-n'roll now");
+    const words = WordBuilder.getSlotView(state);
+    expect(words.map((word) => word.map(({ char }) => char || '_').join(''))).toEqual(["____-_'____", '___']);
+    expect(words[0].filter(({ fixed }) => fixed).map(({ char }) => char)).toEqual(['-', "'"]);
+  });
+});
+
+describe('Word builder letter checking', () => {
+  const rights = (state) => WordBuilder.getSlotView(state).flat().map(({ right }) => right);
+
+  it('marks a placed letter right or wrong against its position, ignoring case', () => {
+    const state = place(WordBuilder.createBuildState('Cat'), 'c', 't');
+    expect(WordBuilder.isLetterRight(state, 0)).toBe(true);
+    expect(WordBuilder.isLetterRight(state, 1)).toBe(false);
+    expect(rights(state)).toEqual([true, false, null]);
+  });
+
+  it('is not right for a letter that is not placed yet', () => {
+    const state = WordBuilder.createBuildState('cat');
+    expect(WordBuilder.isLetterRight(state, 0)).toBe(false);
+    expect(WordBuilder.isLetterRight(state, 5)).toBe(false);
+  });
+
+  it('matches letters by position and skips hyphens and apostrophes', () => {
+    const state = place(WordBuilder.createBuildState("it's a-b"), 'i', 't', 'a');
+    expect(rights(state)).toEqual([true, true, null, false, null, null, null]);
+  });
+
+  it('clears the mark of a wrong letter once it is undone', () => {
+    let state = place(WordBuilder.createBuildState('let me'), 'l', 'm');
+    expect(rights(state)).toEqual([true, false, null, null, null]);
+    state = WordBuilder.undoLetter(state);
+    expect(rights(state)).toEqual([true, null, null, null, null]);
+    expect(WordBuilder.remainingCount(state, 'm')).toBe(1);
+    state = place(state, 'e', 't');
+    expect(rights(state)).toEqual([true, true, true, null, null]);
   });
 });
 

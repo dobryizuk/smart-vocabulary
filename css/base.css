@@ -8,6 +8,12 @@
     box-sizing: border-box;
 }
 
+/* Screens start below the status bar, where the system draws its own fade over scrolled content */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --screen-top: calc(var(--safe-top) + 28px);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
         Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;

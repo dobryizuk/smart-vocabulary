@@ -17,6 +17,7 @@ const PATHS = {
     words: '<path d="M4 6h16M4 12h16M4 18h10"></path>',
     add: '<circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path>',
     progress: '<path d="M5 20v-7M12 20V5M19 20v-11"></path>',
+    close: '<path d="M6 6l12 12M18 6 6 18"></path>',
     arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"></path>',
     speaker: '<path d="M11 5 6 9H3v6h3l5 4z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"></path>',
     pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path>',

@@ -33,7 +33,7 @@ function createDataManager(context) {
     function persist(write) {
         if (loadFailed) {
             appMain.showMessage?.(LOAD_ERROR, 'error');
-            return;
+            return false;
         }
         try {
             write();
@@ -41,13 +41,14 @@ function createDataManager(context) {
         } catch (error) {
             console.error('❌ Failed to save vocabulary:', error.message);
             appMain.showMessage?.(SAVE_ERROR, 'error');
-            return;
+            return false;
         }
         onSaved();
+        return true;
     }
 
     function save() {
-        persist(() => store.save(vocabulary));
+        return persist(() => store.save(vocabulary));
     }
 
     function deleteWord(id) {

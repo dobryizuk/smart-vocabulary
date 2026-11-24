@@ -19,9 +19,6 @@ test.describe('Word Management Tests', () => {
     // Fill in word form
     await page.getByTestId('original-word-input').fill('beautiful');
     
-    // Expand additional fields
-    await page.getByTestId('toggle-fields-btn').click();
-    
     // Fill translation (required)
     await page.getByRole('textbox', { name: /translation/i }).fill('красивый');
     
@@ -51,7 +48,6 @@ test.describe('Word Management Tests', () => {
   test('should edit an existing word successfully', async ({ page }) => {
     // Add initial word
     await page.getByTestId('original-word-input').fill('pencil');
-    await page.getByTestId('toggle-fields-btn').click();
     await page.getByRole('textbox', { name: /translation/i }).fill('карандаш');
     await page.getByTestId('save-word-btn').click();
     await expect(page.locator('text=Word added successfully')).toBeVisible();
@@ -95,7 +91,6 @@ test.describe('Word Management Tests', () => {
 
   test('should validate required fields', async ({ page }) => {
     // Try to save without filling required fields
-    await page.getByTestId('toggle-fields-btn').click();
     await page.getByTestId('save-word-btn').click();
     
     // Should show validation error

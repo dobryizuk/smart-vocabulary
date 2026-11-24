@@ -23,7 +23,7 @@ describe('DataManager', () => {
         expect(dm.vocabulary).toEqual(words);
 
         dm.vocabulary[0].repetition = 9;
-        dm.save();
+        expect(dm.save()).toBe(true);
         expect(store.load()[0].repetition).toBe(9);
     });
 
@@ -37,7 +37,7 @@ describe('DataManager', () => {
         expect(appMain.showMessage).toHaveBeenCalledWith(expect.stringContaining('Could not load your saved words'), 'error');
 
         dm.vocabulary.push(words[0]);
-        dm.save();
+        expect(dm.save()).toBe(false);
 
         expect(storage.data.vocabulary).toBe('{broken');
         expect(storage.setItem).not.toHaveBeenCalled();
@@ -50,7 +50,7 @@ describe('DataManager', () => {
         dm.initializeVocabulary();
         dm.vocabulary = words;
 
-        dm.save();
+        expect(dm.save()).toBe(false);
 
         expect(appMain.showMessage).toHaveBeenLastCalledWith(
             'Could not save your words: device storage may be full. Make a backup now.', 'error'

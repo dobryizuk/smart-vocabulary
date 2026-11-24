@@ -565,25 +565,22 @@ function createButton(text, action, type = 'primary', disabled = false, id = '',
  * @param {string} options.inputId - ID for the input element
  * @param {string} options.label - Label text
  * @param {string} options.placeholder - Placeholder text
- * @param {string} options.onKeyPress - onkeypress handler string
- * @param {string} options.onInput - oninput handler string
+ * @param {string} options.enterButtonId - ID of the button that Enter in the input presses
  * @returns {string} HTML string for labeled input
  */
 function createLabeledTextInput({
     inputId,
     label,
     placeholder = '',
-    onKeyPress = '',
-    onInput = ''
+    enterButtonId = ''
 }) {
-    const keypressAttr = onKeyPress ? ` onkeypress="${onKeyPress}"` : '';
-    const inputAttr = onInput ? ` oninput="${onInput}"` : '';
+    const enterAttr = enterButtonId ? ` data-enter-button="${enterButtonId}"` : '';
     return `
         <div class="learning-input-block">
             <label for="${inputId}">${label}</label>
             <input type="text" id="${inputId}" class="form-control" placeholder="${placeholder}"
-                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus${keypressAttr}${inputAttr}>
-            <div id="typingFeedback" class="typing-feedback"></div>
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus${enterAttr}>
+            <div id="typingFeedback" class="typing-feedback" role="status"></div>
         </div>
     `;
 }

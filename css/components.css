@@ -216,6 +216,17 @@
     display: none;
 }
 
+/* A word just added: the row starts tinted and fades back */
+.word-card--new {
+    animation: word-highlight 2s ease-out;
+}
+
+@keyframes word-highlight {
+    from {
+        background-color: var(--ui-accent-soft);
+    }
+}
+
 /* Detail Blocks */
 .detail-block {
     margin: 8px 0;

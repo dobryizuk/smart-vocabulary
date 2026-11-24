@@ -5,7 +5,7 @@
 // AppState is provided by js/app-state.js and attached globally
 
 const WordBuilder = require('./word-builder.js');
-const { escapeHtml } = require('./ui-components.js');
+const { escapeHtml, createButton } = require('./ui-components.js');
 
 // ============================================================================
 // LEARNING SESSION FUNCTIONS  
@@ -409,8 +409,7 @@ function showReverseTranslationCard() {
         inputId: 'reverseTranslationInput',
         label: 'Your answer',
         placeholder: 'Enter original word or phrase...',
-        onKeyPress: 'handleReverseInputKeyPress(event)',
-        onInput: 'validateReverseInput()'
+        enterButtonId: 'checkReverseButton'
     }) || '';
 
     const hasHints = getMaxHints(word.original.trim()) > 0;
@@ -420,10 +419,11 @@ function showReverseTranslationCard() {
         ${inputBlock}
         <div id="reverseHint" class="typing-hint" aria-live="polite"></div>
 
-        ${window.SV?.UIComponents?.createButtonGroup?.([
-            { text: hintButtonText(0, 0), action: 'show-hint-reverse', type: 'secondary', id: 'hintReverseButton', disabled: !hasHints },
-            { text: 'Show Answer', action: 'show-answer-reverse', type: 'primary', id: 'showAnswerReverseButton' }
-        ]) || ''}
+        <div id="reverseActions" class="typing-actions">
+            ${createButton(hintButtonText(0, 0), 'show-hint-reverse', 'secondary', !hasHints, 'hintReverseButton')}
+            ${createButton('Check', 'check-reverse', 'primary', false, 'checkReverseButton', '', '', 'reverse-check')}
+            ${createButton('Show Answer', 'show-answer-reverse', 'secondary', false, 'showAnswerReverseButton', '', 'typing-actions__give-up')}
+        </div>
     `;
     
     // Render session progress in dedicated container
@@ -447,60 +447,28 @@ function showReverseTranslationCard() {
     trackTimeout(id);
 }
 
-function handleReverseInputKeyPress(event) {
-    if (event.key === 'Enter') {
-        showAnswerForReverse();
-    }
-}
+const TYPING_VERDICTS = {
+    exact: { tone: 'success', text: 'Correct!' },
+    close: { tone: 'warn', text: 'Almost — check the spelling' },
+    wrong: { tone: 'danger', text: 'Not quite' }
+};
 
-function validateReverseInput() {
-    const input = document.getElementById('reverseTranslationInput');
-    const feedback = document.getElementById('typingFeedback');
-    if (!input || !feedback) return;
-    const userInput = input.value.trim();
-    if (userInput.length > 0) {
-        const accuracy = calculateTypingAccuracy(userInput, window.SV.AppState.currentLearningWord.original);
-        if (accuracy.accuracy === 100) {
-            feedback.innerHTML = '<span class="typing-feedback--success">Perfect match!</span>';
-        } else if (accuracy.accuracy >= 90) {
-            feedback.innerHTML = '<span class="typing-feedback--warn">Close enough!</span>';
-        } else {
-            feedback.innerHTML = '<span class="typing-feedback--muted">Keep typing...</span>';
-        }
-    } else {
-        feedback.innerHTML = '';
-    }
+const CLOSE_ACCURACY = 90;
+
+function getTypingVerdict(userInput, correctAnswer) {
+    const { accuracy, difficulty } = calculateTypingAccuracy(userInput, correctAnswer);
+    if (difficulty === 'perfect') return TYPING_VERDICTS.exact;
+    return accuracy >= CLOSE_ACCURACY ? TYPING_VERDICTS.close : TYPING_VERDICTS.wrong;
 }
 
 function checkReverseTranslation() {
     const input = document.getElementById('reverseTranslationInput');
-    if (!input) return;
-    
-    const userInput = input.value.trim();
-    const correctAnswer = window.SV.AppState.currentLearningWord.original;
-    
-    const result = calculateTypingAccuracy(userInput, correctAnswer);
-    
-    // Show result feedback
     const feedback = document.getElementById('typingFeedback');
-    if (result.accuracy === 100) {
-        feedback.innerHTML = `<span class="typing-feedback--success">Perfect! "${correctAnswer}"</span>`;
-    } else if (result.accuracy >= 90) {
-        feedback.innerHTML = `<span class="typing-feedback--success">Correct! "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
-    } else if (result.accuracy >= 70) {
-        feedback.innerHTML = `<span class="typing-feedback--warn">Close: "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
-    } else {
-        feedback.innerHTML = `<span class="typing-feedback--danger">Answer: "${correctAnswer}" (${result.accuracy}% accuracy)</span>`;
-    }
-    
-    // Store the result for automatic difficulty marking
-    window.SV.AppState.currentLearningWord.reverseTranslationResult = result;
-    
-    // Hide input and check button
-    input.disabled = true;
-    document.getElementById('checkAnswerButton').style.display = 'none';
-    
-    // Reveal answer blocks (details + metadata) and difficulty buttons
+    if (!input || !feedback || input.disabled || !input.value.trim()) return;
+
+    const { tone, text } = getTypingVerdict(input.value, window.SV.AppState.currentLearningWord.original);
+    input.classList.add(`typing-input--${tone}`);
+    feedback.innerHTML = `<span class="typing-feedback--${tone}">${text}</span>`;
     showAnswerForReverse();
 }
 
@@ -514,10 +482,6 @@ function showDifficultyButtonsForReverse() {
 }
 
 function showAnswerForReverse() {
-    const feedback = document.getElementById('typingFeedback');
-    // Clear the lightweight "Answer" hint to avoid duplication with the full "Correct answer" block
-    if (feedback) feedback.innerHTML = '';
-
     const UI5 = window.SV?.UIComponents;
     const specificHtml = UI5?.createPrimaryAnswerBlock?.('Correct answer', window.SV.AppState.currentLearningWord.original) || '';
     const layoutHtml = UI5?.createAnswerLayout?.({
@@ -532,10 +496,8 @@ function showAnswerForReverse() {
 
     const input = document.getElementById('reverseTranslationInput');
     if (input) input.disabled = true;
-    const showBtn = document.getElementById('showAnswerReverseButton');
-    if (showBtn) showBtn.style.display = 'none';
-    const hintBtn = document.getElementById('hintReverseButton');
-    if (hintBtn) hintBtn.style.display = 'none';
+    const actions = document.getElementById('reverseActions');
+    if (actions) actions.style.display = 'none';
     window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
 }
 
@@ -555,15 +517,18 @@ function renderExerciseCard({ extraClass = '', chip, title, definition }) {
     `;
 }
 
-const BUILD_RESULT_CLASS = { true: 'build-slots--correct', false: 'build-slots--wrong' };
+const SLOT_RESULT_CLASS = { true: 'build-slot--right', false: 'build-slot--wrong' };
+
+function renderBuildSlot({ char, fixed, active, right }) {
+    const classes = ['build-slot', fixed && 'build-slot--fixed', active && 'build-slot--active', SLOT_RESULT_CLASS[right]].filter(Boolean).join(' ');
+    return `<span class="${classes}">${escapeHtml(char)}</span>`;
+}
 
 function renderBuildSlots(state) {
-    const slotsHtml = WordBuilder.getSlotView(state).map(({ char, fixed, active }) => {
-        const classes = ['build-slot', fixed && 'build-slot--fixed', active && 'build-slot--active'].filter(Boolean).join(' ');
-        return `<span class="${classes}">${escapeHtml(char)}</span>`;
-    }).join('');
-    const resultClass = BUILD_RESULT_CLASS[state.correct] ?? '';
-    return `<div class="build-slots ${resultClass}" data-testid="build-slots" aria-label="Your answer: ${escapeHtml(WordBuilder.getBuiltText(state))}">${slotsHtml}</div>`;
+    const wordsHtml = WordBuilder.getSlotView(state).map((word) => (
+        `<span class="build-word" style="--letters: ${word.length};">${word.map(renderBuildSlot).join('')}</span>`
+    )).join('');
+    return `<div class="build-slots" data-testid="build-slots" aria-label="Your answer: ${escapeHtml(WordBuilder.getBuiltText(state))}">${wordsHtml}</div>`;
 }
 
 function renderBuildTiles(state) {
@@ -677,9 +642,8 @@ const LearningSessionExports = {
     placeBuildLetter,
     undoBuildLetter,
     checkBuildAnswer,
-    handleReverseInputKeyPress,
-    validateReverseInput,
     checkReverseTranslation,
+    getTypingVerdict,
     showAnswerForReverse,
     showHintForReverse,
     getHintPrefix,

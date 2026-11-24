@@ -18,7 +18,6 @@ test.describe('Word Cards Tests', () => {
     // First add a word with details to test toggle
     await page.getByTestId('add-tab-btn').click();
     await page.getByTestId('original-word-input').fill('expandable');
-    await page.getByTestId('toggle-fields-btn').click();
     await page.getByRole('textbox', { name: /translation/i }).fill('раскрываемый');
     await page.getByRole('textbox', { name: /definition/i }).fill('Able to be expanded or extended');
     await page.getByRole('textbox', { name: /synonyms/i }).fill('extensible, expandible');

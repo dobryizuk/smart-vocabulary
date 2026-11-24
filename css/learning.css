@@ -11,7 +11,7 @@
     flex: 1;
     width: 100%;
     max-width: 100%;
-    padding: 12px 20px;
+    padding: var(--screen-top) 20px 12px;
     background: var(--color-bg);
 }
 
@@ -319,15 +319,34 @@
 
 .typing-feedback--success,
 .typing-feedback--warn,
-.typing-feedback--danger,
-.typing-feedback--muted {
+.typing-feedback--danger {
     font-weight: 600;
 }
 
 .typing-feedback--success { color: var(--ui-success); }
 .typing-feedback--warn { color: var(--ui-warn-text); }
 .typing-feedback--danger { color: var(--ui-danger); }
-.typing-feedback--muted { color: var(--ui-text-muted); font-weight: 400; }
+
+.learning-input-block .form-control.typing-input--success,
+.learning-input-block .form-control.typing-input--warn,
+.learning-input-block .form-control.typing-input--danger {
+    box-shadow: none;
+}
+
+.learning-input-block .form-control.typing-input--success { border-color: var(--ui-success); }
+.learning-input-block .form-control.typing-input--warn { border-color: var(--ui-warn-text); }
+.learning-input-block .form-control.typing-input--danger { border-color: var(--ui-danger); }
+
+/* Hint and Check side by side, Show Answer below as the way to give up */
+.typing-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.typing-actions__give-up {
+    grid-column: 1 / -1;
+}
 
 .typing-hint {
     margin: 0 0 16px;
@@ -421,11 +440,21 @@
 /* (Responsive/animations/accessibility variants removed per simplification request) */
 /* Build exercise: assemble the word from letter tiles */
 .build-slots {
+    container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 5px;
+    gap: 14px 28px;
     margin: 22px 0;
+}
+
+/* A word never wraps inside; a long word shrinks its slots to the width of the row */
+.build-word {
+    --slot-gap: 5px;
+    --slot-width: min(28px, calc((100cqw - (var(--letters) - 1) * var(--slot-gap)) / var(--letters)));
+
+    display: flex;
+    gap: var(--slot-gap);
 }
 
 .build-slot {
@@ -433,9 +462,9 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    width: 28px;
+    width: var(--slot-width);
     height: 40px;
-    font-size: 1.4rem;
+    font-size: min(1.4rem, calc(var(--slot-width) * 0.85));
     font-weight: 600;
     color: var(--color-text);
     border-bottom: 2px solid var(--ui-border-muted);
@@ -451,11 +480,13 @@
     border-radius: 6px 6px 0 0;
 }
 
-.build-slots--correct .build-slot {
+.build-slot--right {
+    color: var(--ui-success);
     border-bottom-color: var(--ui-success);
 }
 
-.build-slots--wrong .build-slot {
+.build-slot--wrong {
+    color: var(--ui-danger);
     border-bottom-color: var(--ui-danger);
 }
 

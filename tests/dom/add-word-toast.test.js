@@ -9,7 +9,7 @@ function mountAddTab() {
           <input type="text" class="form-control" id="originalWord" data-testid="original-word-input">
           <div id="formButtons"></div>
         </div>
-        <div id="additionalFields" style="display: block;">
+        <div>
           <div class="form-group">
             <label for="translation">Translation:</label>
             <input type="text" class="form-control" id="translation">

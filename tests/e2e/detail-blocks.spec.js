@@ -17,9 +17,6 @@ test('detail blocks should have a visible background', async ({ page }) => {
   // Add a word with definition, synonyms and examples
   await page.getByTestId('add-tab-btn').click();
   await page.getByTestId('original-word-input').fill('flair');
-  // Ensure form buttons are initialized
-  await page.waitForSelector('[data-testid="toggle-fields-btn"]', { timeout: 5000 });
-  await page.getByTestId('toggle-fields-btn').click();
   await page.getByRole('textbox', { name: /translation/i }).fill('талант');
   await page.getByRole('textbox', { name: /definition/i }).fill('A natural or innate talent or aptitude.');
   await page.getByRole('textbox', { name: /synonyms/i }).fill('elan, elegance, grace, panache, style');

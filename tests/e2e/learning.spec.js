@@ -35,8 +35,6 @@ test.describe('Learning Tests', () => {
     // First add a word
     await page.getByTestId('add-tab-btn').click();
     await page.getByTestId('original-word-input').fill('hello');
-    await page.waitForSelector('[data-testid="toggle-fields-btn"]', { timeout: 5000 });
-    await page.getByTestId('toggle-fields-btn').click();
     await page.getByRole('textbox', { name: /translation/i }).fill('привет');
     await page.getByTestId('save-word-btn').click();
     

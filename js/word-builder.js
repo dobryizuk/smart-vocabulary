@@ -41,19 +41,48 @@ function undoLetter(state) {
     return { ...state, entered: state.entered.slice(0, -1) };
 }
 
-// One entry per character of the answer; `active` marks the next slot to fill
-function getSlotView(state) {
+function expectedLetters(state) {
+    return state.slots.filter(({ fixed }) => !fixed).map(({ char }) => char.toLowerCase());
+}
+
+// Whether the letter placed at `index` is the letter the answer has there
+function isLetterRight(state, index) {
+    return index < state.entered.length && state.entered[index] === expectedLetters(state)[index];
+}
+
+// One entry per character of the answer; `active` marks the next slot to fill,
+// `right` tells whether a placed letter fits its slot (null for empty and fixed slots)
+function getCharView(state) {
     let built = 0;
     return state.slots.map(({ char, fixed }) => {
-        if (fixed) return { char, fixed, active: false };
-        const slot = { char: state.entered[built] ?? '', fixed, active: built === state.entered.length };
+        if (fixed) return { char, fixed, active: false, right: null };
+        const placed = built < state.entered.length;
+        const slot = {
+            char: placed ? state.entered[built] : '',
+            fixed,
+            active: built === state.entered.length,
+            right: placed ? isLetterRight(state, built) : null
+        };
         built++;
         return slot;
     });
 }
 
+// The slots of each word of the answer; the gaps between words are not slots
+function getSlotView(state) {
+    const words = [[]];
+    getCharView(state).forEach((slot, index) => {
+        if (/\s/.test(state.slots[index].char)) {
+            if (words.at(-1).length > 0) words.push([]);
+            return;
+        }
+        words.at(-1).push(slot);
+    });
+    return words.filter((word) => word.length > 0);
+}
+
 function getBuiltText(state) {
-    return getSlotView(state).map(({ char }) => char).join('');
+    return getCharView(state).map(({ char }) => char).join('');
 }
 
 function isCorrect(state, original) {
@@ -71,6 +100,7 @@ module.exports = {
     isComplete,
     placeLetter,
     undoLetter,
+    isLetterRight,
     getSlotView,
     getBuiltText,
     isCorrect,
