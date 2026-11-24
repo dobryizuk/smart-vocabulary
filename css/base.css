@@ -6,6 +6,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    touch-action: manipulation; /* no double-tap zoom; pinch-zoom stays */
 }
 
 /* Screens start below the status bar, where the system draws its own fade over scrolled content */

@@ -37,6 +37,21 @@
     gap: 14px;
 }
 
+.session-progress__close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    color: var(--ui-text-muted);
+    cursor: pointer;
+    background: var(--ui-surface-muted);
+    border: none;
+    border-radius: 50%;
+}
+
 .session-progress__track {
     flex: 1;
     height: 8px;
@@ -212,6 +227,17 @@
     line-height: 1.5;
 }
 
+#learningContent .detail-block--translation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+#learningContent .detail-block__body {
+    min-width: 0;
+}
+
 #learningContent .detail-block--translation .detail-text {
     font-size: 1.5rem;
     font-weight: 600;
@@ -219,9 +245,18 @@
     color: var(--ui-accent-text);
 }
 
+#learningContent {
+    --rating-bar-height: 112px;
+}
+
+#learningContent .card-translation {
+    scroll-margin-bottom: calc(var(--rating-bar-height) + 8px);
+}
+
 /* Rating buttons end the revealed answer and stay reachable while it scrolls */
 .difficulty-buttons {
     display: grid;
+    min-height: var(--rating-bar-height);
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin: 0;
@@ -304,6 +339,7 @@
     background: var(--ui-surface);
     border: 2px solid var(--ui-border);
     border-radius: var(--ui-radius-control);
+    transition: background-color 0.3s ease;
 }
 
 .learning-input-block .form-control:focus {
@@ -313,29 +349,43 @@
     outline: none;
 }
 
-.typing-feedback:empty {
-    display: none;
-}
-
-.typing-feedback--success,
-.typing-feedback--warn,
-.typing-feedback--danger {
-    font-weight: 600;
-}
-
-.typing-feedback--success { color: var(--ui-success); }
-.typing-feedback--warn { color: var(--ui-warn-text); }
-.typing-feedback--danger { color: var(--ui-danger); }
-
 .learning-input-block .form-control.typing-input--success,
 .learning-input-block .form-control.typing-input--warn,
 .learning-input-block .form-control.typing-input--danger {
+    color: var(--color-text);
     box-shadow: none;
+    opacity: 1;
+    -webkit-text-fill-color: currentcolor;
 }
 
-.learning-input-block .form-control.typing-input--success { border-color: var(--ui-success); }
-.learning-input-block .form-control.typing-input--warn { border-color: var(--ui-warn-text); }
-.learning-input-block .form-control.typing-input--danger { border-color: var(--ui-danger); }
+.learning-input-block .form-control.typing-input--success { background: var(--ui-success-soft); }
+.learning-input-block .form-control.typing-input--warn { background: var(--ui-warn-soft); }
+.learning-input-block .form-control.typing-input--danger { background: var(--ui-danger-soft); }
+
+/* The typed answer under a missed field: wrong characters struck out, missing ones put in */
+.typing-diff {
+    padding: 0 4px;
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    overflow-wrap: anywhere;
+}
+
+.typing-diff:empty {
+    display: none;
+}
+
+.typing-diff__wrong {
+    color: var(--ui-danger);
+    text-decoration: line-through;
+}
+
+.typing-diff__missing {
+    color: var(--ui-success);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
 
 /* Hint and Check side by side, Show Answer below as the way to give up */
 .typing-actions {
@@ -346,19 +396,6 @@
 
 .typing-actions__give-up {
     grid-column: 1 / -1;
-}
-
-.typing-hint {
-    margin: 0 0 16px;
-    text-align: center;
-    font-size: 1.2em;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: var(--ui-accent-text);
-}
-
-.typing-hint:empty {
-    display: none;
 }
 
 /* Learning Session States */

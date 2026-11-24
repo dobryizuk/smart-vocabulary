@@ -47,6 +47,22 @@ test.describe('Today', () => {
     await expect(page.getByTestId('tricky-word')).toHaveText([/shaky.*0% right/s]);
   });
 
+  test('the close button leaves a session at once, keeping the answered cards', async ({ page }) => {
+    await seed(page, seedVocabulary());
+    await expect(page.getByTestId('today-due')).toHaveText('2 words');
+
+    await page.getByTestId('start-session-btn').click();
+    await page.getByRole('button', { name: 'Show Answer' }).click();
+    await page.locator('.difficulty-btn[data-difficulty="easy"]').click();
+    await expect(page.getByTestId('session-progress')).toContainText('2 / 2');
+
+    await page.getByRole('button', { name: 'End session' }).click();
+
+    await expect(page.getByTestId('today-view')).toBeVisible();
+    await expect(page.getByText('Session Complete!')).toHaveCount(0);
+    await expect(page.getByTestId('today-due')).toHaveText('1 word');
+  });
+
   test('a session started from Today ends back on Today with the numbers changed', async ({ page }) => {
     await seed(page, seedVocabulary());
     await expect(page.getByTestId('today-due')).toHaveText('2 words');

@@ -183,16 +183,33 @@ function showLearningCard() {
     }
 }
 
+// What a prompt or an answer says about the word: its translation, or its definition when that is preferred and exists
+function getWordPrompt(word, showDefinition) {
+    if (showDefinition && word.definition) {
+        return { label: 'Definition', main: word.definition, detail: '' };
+    }
+    return { label: 'Translation', main: word.translation, detail: word.definition };
+}
+
+function currentWordPrompt() {
+    const showDefinition = window.SV?.SessionSettings?.getShowDefinition?.() ?? false;
+    return getWordPrompt(window.SV.AppState.currentLearningWord, showDefinition);
+}
+
+// Keeps the revealed answer above the sticky rating bar
+function scrollAnswerIntoView() {
+    document.querySelector('#learningContent .card-translation')?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+}
+
 async function showTranslation() {
     const card = document.getElementById('cardTranslation');
 
-    // Build specific block for direct translation: compact translation header
     const UI2 = window.SV?.UIComponents;
-    const specificHtml = UI2?.createTranslationBlock?.(window.SV.AppState.currentLearningWord) || '';
+    const { label, main, detail } = currentWordPrompt();
     const layoutHtml = UI2?.createAnswerLayout?.({
-        specificHtml,
+        specificHtml: UI2.createPrimaryAnswerBlock(label, escapeHtml(main)),
         word: window.SV.AppState.currentLearningWord,
-        variant: 'learning'
+        showDefinition: Boolean(detail)
     }) || '';
 
     card.innerHTML = layoutHtml;
@@ -203,6 +220,7 @@ async function showTranslation() {
 
     window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
     renderSessionProgressBottom();
+    scrollAnswerIntoView();
 }
 
 function markDifficulty(difficulty) {
@@ -237,11 +255,18 @@ function markDifficulty(difficulty) {
     showLearningCard();
 }
 
-function endLearningSession() {
+function resetSessionState() {
     // Clear any pending timers to avoid stale callbacks after session ends
     clearLearningSessionTimeouts();
+    window.SV.AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
+    window.SV.AppState.learningSession = [];
+    window.SV.AppState.sessionTotal = 0;
+    window.SV.AppState.currentLearningWord = null;
+}
+
+function endLearningSession() {
     const learningContent = document.getElementById('learningContent');
-    
+
     const accuracy = window.SV.AppState.sessionStats.total > 0 ? Math.round((window.SV.AppState.sessionStats.correct / window.SV.AppState.sessionStats.total) * 100) : 0;
     const message = `Great work! You reviewed ${window.SV.AppState.sessionStats.total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${window.SV.AppState.sessionStats.streak}`;
     
@@ -256,10 +281,15 @@ function endLearningSession() {
     ) || '';
     
     learningContent.innerHTML = emptyStateHtml;
-    window.SV.AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
-    window.SV.AppState.learningSession = [];
-    window.SV.AppState.sessionTotal = 0;
-    window.SV.AppState.currentLearningWord = null;
+    resetSessionState();
+}
+
+// The close button: answers are saved per card, so leaving needs no confirmation
+function stopLearningSession() {
+    resetSessionState();
+    const learningContent = document.getElementById('learningContent');
+    if (learningContent) learningContent.innerHTML = '';
+    window.SV?.Today?.showOverview?.();
 }
 
 // ============================================================================
@@ -313,32 +343,94 @@ function calculateTypingAccuracy(userInput, correctAnswer) {
     return { accuracy, difficulty: 'hard' };
 }
 
-function levenshteinDistance(str1, str2) {
-    const matrix = [];
-    
-    for (let i = 0; i <= str2.length; i++) {
-        matrix[i] = [i];
+// distances[i][j]: edits that turn the first i items of `from` into the first j items of `to`
+function editDistanceTable(from, to, same) {
+    const distances = Array.from({ length: from.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= to.length; j++) {
+        distances[0][j] = j;
     }
-    
-    for (let j = 0; j <= str1.length; j++) {
-        matrix[0][j] = j;
-    }
-    
-    for (let i = 1; i <= str2.length; i++) {
-        for (let j = 1; j <= str1.length; j++) {
-            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-                matrix[i][j] = matrix[i - 1][j - 1];
-            } else {
-                matrix[i][j] = Math.min(
-                    matrix[i - 1][j - 1] + 1,
-                    matrix[i][j - 1] + 1,
-                    matrix[i - 1][j] + 1
-                );
-            }
+
+    for (let i = 1; i <= from.length; i++) {
+        for (let j = 1; j <= to.length; j++) {
+            const substitution = same(from[i - 1], to[j - 1]) ? 0 : 1;
+            distances[i][j] = Math.min(
+                distances[i - 1][j - 1] + substitution,
+                distances[i][j - 1] + 1,
+                distances[i - 1][j] + 1
+            );
         }
     }
-    
-    return matrix[str2.length][str1.length];
+    return distances;
+}
+
+const sameChar = (a, b) => a === b;
+
+function levenshteinDistance(str1, str2) {
+    return editDistanceTable(str1, str2, sameChar)[str1.length][str2.length];
+}
+
+// Edit operations that turn `from` into `to`, walking back through the distance table
+function editOperations(from, to, same) {
+    const distances = editDistanceTable(from, to, same);
+    const operations = [];
+    let i = from.length;
+    let j = to.length;
+    while (i > 0 || j > 0) {
+        const here = distances[i][j];
+        if (i > 0 && j > 0 && same(from[i - 1], to[j - 1]) && here === distances[i - 1][j - 1]) {
+            operations.push({ type: 'equal', text: from[i - 1] });
+            i--;
+            j--;
+        } else if (i > 0 && j > 0 && here === distances[i - 1][j - 1] + 1) {
+            operations.push({ type: 'missing', text: to[j - 1] }, { type: 'wrong', text: from[i - 1] });
+            i--;
+            j--;
+        } else if (i > 0 && here === distances[i - 1][j] + 1) {
+            operations.push({ type: 'wrong', text: from[i - 1] });
+            i--;
+        } else {
+            operations.push({ type: 'missing', text: to[j - 1] });
+            j--;
+        }
+    }
+    return operations.reverse();
+}
+
+// Consecutive operations of one type become one segment; inside a changed run the wrong text comes before the missing one
+function groupOperations(operations) {
+    const segments = [];
+    const push = (type, text) => {
+        if (!text) return;
+        const last = segments[segments.length - 1];
+        if (last?.type === type) last.text += text;
+        else segments.push({ type, text });
+    };
+    let run = [];
+    const flushRun = () => {
+        for (const type of ['wrong', 'missing']) {
+            push(type, run.filter((operation) => operation.type === type).map((operation) => operation.text).join(''));
+        }
+        run = [];
+    };
+    for (const operation of operations) {
+        if (operation.type === 'equal') {
+            flushRun();
+            push('equal', operation.text);
+        } else {
+            run.push(operation);
+        }
+    }
+    flushRun();
+    return segments;
+}
+
+// The typed answer against the correct one, ignoring case and the ends:
+// equal characters, wrong or extra typed characters, and the characters that are missing
+function diffAnswer(input, answer) {
+    const typed = Array.from(input.trim());
+    const expected = Array.from(answer.trim());
+    const sameIgnoringCase = (a, b) => a.toLowerCase() === b.toLowerCase();
+    return groupOperations(editOperations(typed, expected, sameIgnoringCase));
 }
 
 const MAX_HINT_LETTERS = 3;
@@ -369,21 +461,22 @@ function hintButtonText(remaining, used) {
 
 function showHintForReverse() {
     const word = window.SV.AppState.currentLearningWord;
-    const hintEl = document.getElementById('reverseHint');
-    if (!word || !hintEl) return;
+    const input = document.getElementById('reverseTranslationInput');
+    if (!word || !input) return;
 
     const answer = word.original.trim();
     const maxHints = getMaxHints(answer);
     const used = Math.min(window.SV.AppState.reverseHintCount + 1, maxHints);
     window.SV.AppState.reverseHintCount = used;
-    hintEl.textContent = used > 0 ? `${getHintPrefix(answer, used)}…` : '';
+    input.value = getHintPrefix(answer, used);
 
     const hintBtn = document.getElementById('hintReverseButton');
     if (hintBtn) {
         hintBtn.textContent = hintButtonText(maxHints - used, used);
         hintBtn.disabled = used >= maxHints;
     }
-    document.getElementById('reverseTranslationInput')?.focus?.();
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
 }
 
 function showReverseTranslationCard() {
@@ -399,10 +492,11 @@ function showReverseTranslationCard() {
     const { mainEl, progressEl } = ensureLearningLayout();
 
     const word = window.SV.AppState.currentLearningWord;
+    const { main, detail } = currentWordPrompt();
     const cardHtml = renderExerciseCard({
         chip: /\s/.test(word.original.trim()) ? 'phrase' : 'word',
-        title: word.translation,
-        definition: word.definition
+        title: main,
+        definition: detail
     });
 
     const inputBlock = window.SV?.UIComponents?.createLabeledTextInput?.({
@@ -417,7 +511,6 @@ function showReverseTranslationCard() {
         <p class="learning-prompt">Write it in English</p>
         ${cardHtml}
         ${inputBlock}
-        <div id="reverseHint" class="typing-hint" aria-live="polite"></div>
 
         <div id="reverseActions" class="typing-actions">
             ${createButton(hintButtonText(0, 0), 'show-hint-reverse', 'secondary', !hasHints, 'hintReverseButton')}
@@ -461,14 +554,26 @@ function getTypingVerdict(userInput, correctAnswer) {
     return accuracy >= CLOSE_ACCURACY ? TYPING_VERDICTS.close : TYPING_VERDICTS.wrong;
 }
 
+function renderAnswerDiff(segments) {
+    return segments.map(({ type, text }) => {
+        const safeText = escapeHtml(text);
+        if (type === 'wrong') return `<del class="typing-diff__wrong">${safeText}</del>`;
+        if (type === 'missing') return `<ins class="typing-diff__missing">${safeText}</ins>`;
+        return safeText;
+    }).join('');
+}
+
 function checkReverseTranslation() {
     const input = document.getElementById('reverseTranslationInput');
     const feedback = document.getElementById('typingFeedback');
-    if (!input || !feedback || input.disabled || !input.value.trim()) return;
+    const diff = document.getElementById('typingDiff');
+    if (!input || !feedback || !diff || input.disabled || !input.value.trim()) return;
 
-    const { tone, text } = getTypingVerdict(input.value, window.SV.AppState.currentLearningWord.original);
+    const answer = window.SV.AppState.currentLearningWord.original;
+    const { tone, text } = getTypingVerdict(input.value, answer);
     input.classList.add(`typing-input--${tone}`);
-    feedback.innerHTML = `<span class="typing-feedback--${tone}">${text}</span>`;
+    feedback.textContent = text;
+    if (tone !== TYPING_VERDICTS.exact.tone) diff.innerHTML = renderAnswerDiff(diffAnswer(input.value, answer));
     showAnswerForReverse();
 }
 
@@ -483,7 +588,7 @@ function showDifficultyButtonsForReverse() {
 
 function showAnswerForReverse() {
     const UI5 = window.SV?.UIComponents;
-    const specificHtml = UI5?.createPrimaryAnswerBlock?.('Correct answer', window.SV.AppState.currentLearningWord.original) || '';
+    const specificHtml = UI5?.createPrimaryAnswerBlock?.('Correct answer', window.SV.AppState.currentLearningWord.original, [UI5.createSpeakAction(window.SV.AppState.currentLearningWord.original)]) || '';
     const layoutHtml = UI5?.createAnswerLayout?.({
         specificHtml,
         word: window.SV.AppState.currentLearningWord,
@@ -499,6 +604,7 @@ function showAnswerForReverse() {
     const actions = document.getElementById('reverseActions');
     if (actions) actions.style.display = 'none';
     window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
+    scrollAnswerIntoView();
 }
 
 // ============================================================================
@@ -576,14 +682,15 @@ function showBuildCard() {
     AppState.buildState = WordBuilder.createBuildState(word.original, secureShuffle);
     const letters = WordBuilder.countLettersToBuild(AppState.buildState);
 
+    const { main, detail } = currentWordPrompt();
     const { mainEl, progressEl } = ensureLearningLayout(true);
     mainEl.innerHTML = `
         <p class="learning-prompt">Build the word</p>
         ${renderExerciseCard({
             extraClass: 'build-card',
             chip: `${letters} ${letters === 1 ? 'letter' : 'letters'}`,
-            title: word.translation,
-            definition: word.definition
+            title: main,
+            definition: detail
         })}
         <div id="buildArea"></div>
     `;
@@ -636,6 +743,7 @@ const LearningSessionExports = {
     showTranslation,
     markDifficulty,
     endLearningSession,
+    stopLearningSession,
     selectSessionBatch,
     determineExerciseType,
     showBuildCard,
@@ -651,7 +759,9 @@ const LearningSessionExports = {
     showDifficultyButtonsForReverse,
     normalizeText,
     calculateTypingAccuracy,
-    levenshteinDistance
+    levenshteinDistance,
+    diffAnswer,
+    getWordPrompt
 };
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -114,7 +114,14 @@ function initializeSettings() {
         snapshotDate: window.SV?.VocabularyStore?.getSnapshotDate?.()
     });
     updateSessionSizeControl(settingsView, sessionSize);
+    setSwitch('showDefinitionToggle', sessionSettings.getShowDefinition());
     updateSyncPanel();
+}
+
+function toggleShowDefinition() {
+    const show = !sessionSettings.getShowDefinition();
+    sessionSettings.setShowDefinition(show);
+    setSwitch('showDefinitionToggle', show);
 }
 
 function changeSessionSize(delta) {
@@ -240,6 +247,9 @@ function wireEventHandlers() {
                 case 'session-size-step':
                     changeSessionSize(Number(arg));
                     break;
+                case 'toggle-show-definition':
+                    toggleShowDefinition();
+                    break;
                 case 'set-theme':
                     window.SV?.themeManager?.setTheme?.(arg);
                     break;
@@ -262,6 +272,9 @@ function wireEventHandlers() {
                     break;
                 case 'start-learning':
                     window.SV?.LearningSession?.startLearning?.();
+                    break;
+                case 'stop-session':
+                    window.SV?.LearningSession?.stopLearningSession?.();
                     break;
                 case 'show-translation':
                     window.SV?.LearningSession?.showTranslation?.();

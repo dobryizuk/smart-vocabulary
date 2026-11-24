@@ -46,6 +46,8 @@
     --ui-track: #E3E6EB;
     --ui-warn-soft: #FDEDE4;
     --ui-warn-text: #9A3412;
+    --ui-success-soft: #DDF3E6;
+    --ui-danger-soft: #FDE3E6;
     
     /* Progress indicator */
     --color-progress: #0D6EFD;
@@ -116,6 +118,8 @@
     --ui-track: #262932;
     --ui-warn-soft: #3A2A22;
     --ui-warn-text: #F6A97F;
+    --ui-success-soft: #1B3A28;
+    --ui-danger-soft: #442428;
     
     /* Progress indicator */
     --color-progress: #0A84FF;
@@ -208,6 +212,8 @@
     --ui-track: #262932;
     --ui-warn-soft: #3A2A22;
     --ui-warn-text: #F6A97F;
+    --ui-success-soft: #1B3A28;
+    --ui-danger-soft: #442428;
     
     /* Progress indicator */
     --color-progress: #0A84FF;

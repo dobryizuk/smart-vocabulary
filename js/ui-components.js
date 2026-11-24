@@ -294,14 +294,18 @@ function createAnswerLayout({ specificHtml = '', word, showDefinition = true }) 
  * Creates a primary answer block used above details (unified style)
  * @param {string} label - Title of the block (e.g., 'Translation', 'Correct answer')
  * @param {string} value - Main text value
+ * @param {Array} actions - Round action buttons shown beside the text
  * @returns {string} HTML string
  */
-function createPrimaryAnswerBlock(label, value) {
+function createPrimaryAnswerBlock(label, value, actions = []) {
     if (!value) return '';
     return `
         <div class="card-translation detail-block detail-block--translation">
-            <div class="detail-title">${label}</div>
-            <div class="detail-text">${value}</div>
+            <div class="detail-block__body">
+                <div class="detail-title">${label}</div>
+                <div class="detail-text">${value}</div>
+            </div>
+            ${buildActionsHtml(actions, false)}
         </div>
     `;
 }
@@ -504,6 +508,7 @@ function createSessionProgress(currentIndex, totalWords) {
     const percent = totalWords > 0 ? Math.round((currentIndex / totalWords) * 100) : 0;
     return `
         <div class="session-progress" data-testid="session-progress">
+            <button type="button" class="session-progress__close" data-action="stop-session" data-testid="stop-session-btn" aria-label="End session">${icon('close')}</button>
             <div class="session-progress__track" aria-hidden="true">
                 <div class="session-progress__fill" style="width: ${percent}%;"></div>
             </div>
@@ -580,7 +585,8 @@ function createLabeledTextInput({
             <label for="${inputId}">${label}</label>
             <input type="text" id="${inputId}" class="form-control" placeholder="${placeholder}"
                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus${enterAttr}>
-            <div id="typingFeedback" class="typing-feedback" role="status"></div>
+            <div id="typingFeedback" class="sr-only" role="status" aria-live="polite"></div>
+            <div id="typingDiff" class="typing-diff" aria-hidden="true"></div>
         </div>
     `;
 }

@@ -4,6 +4,7 @@
 
 const { icon } = require('./icons.js');
 const { MIN_SESSION_SIZE, MAX_SESSION_SIZE } = require('./session-settings.js');
+const { getVersionLabel } = require('./app-version.js');
 
 const THEMES = [
     { key: 'light', label: 'Light' },
@@ -45,6 +46,7 @@ function learningHtml(sessionSize) {
             </li>
             ${switchRowHtml({ label: 'Sound', id: 'speechToggle', testId: 'speech-toggle' })}
             ${switchRowHtml({ label: 'Auto play', id: 'autoPlayToggle', testId: 'autoplay-toggle' })}
+            ${switchRowHtml({ label: 'Show definition instead of translation', id: 'showDefinitionToggle', testId: 'show-definition-toggle', action: 'toggle-show-definition' })}
         </ul>
     `);
 }
@@ -93,6 +95,7 @@ function renderSettingsHtml({ sessionSize, theme, snapshotDate }) {
         ${cloudHtml()}
         ${dataHtml(snapshotDate)}
         ${diagnosticsHtml()}
+        <p class="settings-version" data-testid="app-version">${getVersionLabel()}</p>
     `;
 }
 

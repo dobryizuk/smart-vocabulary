@@ -197,7 +197,7 @@ describe('Writing exercise hint', () => {
     window.SV.AppState.learningSession = [word];
     LS.showReverseTranslationCard();
   };
-  const hint = () => document.getElementById('reverseHint').textContent;
+  const hint = () => document.getElementById('reverseTranslationInput').value;
   const hintBtn = () => document.getElementById('hintReverseButton');
 
   it('reveals one more letter per press, up to three', () => {
@@ -207,18 +207,30 @@ describe('Writing exercise hint', () => {
     expect(hintBtn().className).toBe('btn btn--secondary');
 
     LS.showHintForReverse();
-    expect(hint()).toBe('D…');
+    expect(hint()).toBe('D');
     expect(hintBtn().textContent).toBe('Hint (2 left)');
 
     LS.showHintForReverse();
-    expect(hint()).toBe('De…');
+    expect(hint()).toBe('De');
 
     LS.showHintForReverse();
-    expect(hint()).toBe('Dev…');
+    expect(hint()).toBe('Dev');
     expect(hintBtn().disabled).toBe(true);
 
     LS.showHintForReverse();
-    expect(hint()).toBe('Dev…');
+    expect(hint()).toBe('Dev');
+  });
+
+  it('replaces what was typed and puts the caret at the end', () => {
+    startExercise('Devolve');
+    const input = document.getElementById('reverseTranslationInput');
+    input.value = 'xyz';
+    LS.showHintForReverse();
+
+    expect(input.value).toBe('D');
+    expect(input.selectionStart).toBe(1);
+    expect(document.activeElement).toBe(input);
+    expect(document.getElementById('reverseHint')).toBeNull();
   });
 
   it('starts from zero hints for the next word', () => {
@@ -228,7 +240,7 @@ describe('Writing exercise hint', () => {
 
     expect(hint()).toBe('');
     LS.showHintForReverse();
-    expect(hint()).toBe('F…');
+    expect(hint()).toBe('F');
   });
 
   it('never reveals the whole answer of a short word', () => {
@@ -236,7 +248,7 @@ describe('Writing exercise hint', () => {
     LS.showHintForReverse();
     LS.showHintForReverse();
 
-    expect(hint()).toBe('g…');
+    expect(hint()).toBe('g');
     expect(hintBtn().disabled).toBe(true);
   });
 
@@ -247,10 +259,12 @@ describe('Writing exercise hint', () => {
     expect(hint()).toBe('');
   });
 
-  it('hides the hint, check and show answer buttons once the answer is shown', () => {
+  it('leaves no hint behind once the answer is shown', () => {
     startExercise('Devolve');
+    LS.showHintForReverse();
     LS.showAnswerForReverse();
     expect(document.getElementById('reverseActions').style.display).toBe('none');
+    expect(document.getElementById('reverseHint')).toBeNull();
   });
 
   it('counts letters, not spaces, in phrases', () => {
@@ -297,6 +311,7 @@ describe('Writing exercise check', () => {
   };
   const input = () => document.getElementById('reverseTranslationInput');
   const feedback = () => document.getElementById('typingFeedback');
+  const diff = () => document.getElementById('typingDiff');
   const answerShown = () => document.querySelector('.difficulty-buttons') !== null;
 
   it('renders Hint and Check side by side with Show Answer below and no inline handlers', () => {
@@ -308,36 +323,66 @@ describe('Writing exercise check', () => {
     expect(input().dataset.enterButton).toBe('checkReverseButton');
   });
 
-  it('shows Correct! with a success border, then the answer and rating buttons', () => {
+  it('tints the field for a right answer and tells screen readers, without a visible verdict', () => {
     start('hello');
     input().value = 'Hello';
     LS.checkReverseTranslation();
 
-    expect(feedback().textContent).toBe('Correct!');
-    expect(feedback().querySelector('.typing-feedback--success')).not.toBeNull();
     expect(input().classList.contains('typing-input--success')).toBe(true);
+    expect(feedback().textContent).toBe('Correct!');
+    expect(feedback().className).toBe('sr-only');
+    expect(feedback().getAttribute('aria-live')).toBe('polite');
+    expect(diff().innerHTML).toBe('');
     expect(input().disabled).toBe(true);
     expect(answerShown()).toBe(true);
     expect(document.getElementById('reverseActions').style.display).toBe('none');
   });
 
-  it('shows the warn verdict for a near miss', () => {
+  it('tints the field warn for a near miss and marks the difference', () => {
     start('abcdefghij');
     input().value = 'abcdefghi';
     LS.checkReverseTranslation();
 
     expect(feedback().textContent).toBe('Almost \u2014 check the spelling');
     expect(input().classList.contains('typing-input--warn')).toBe(true);
+    expect(diff().innerHTML).toBe('abcdefghi<ins class="typing-diff__missing">j</ins>');
   });
 
-  it('shows Not quite with a danger border for a wrong answer and still reveals the answer', () => {
+  it('tints the field danger for a wrong answer, marks it and still reveals the answer', () => {
     start('hello');
     input().value = 'world';
     LS.checkReverseTranslation();
 
     expect(feedback().textContent).toBe('Not quite');
     expect(input().classList.contains('typing-input--danger')).toBe(true);
+    expect(diff().querySelector('.typing-diff__wrong')).not.toBeNull();
     expect(answerShown()).toBe(true);
+  });
+
+  it('shows the typed answer with struck wrong letters and the missing ones inserted', () => {
+    start('inconceivable');
+    input().value = 'inconcievable';
+    LS.checkReverseTranslation();
+
+    expect(diff().innerHTML).toBe('inconc<del class="typing-diff__wrong">ie</del><ins class="typing-diff__missing">ei</ins>vable');
+  });
+
+  it('escapes what was typed in the difference', () => {
+    start('hello');
+    input().value = '<b>';
+    LS.checkReverseTranslation();
+
+    expect(diff().querySelector('b')).toBeNull();
+    expect(diff().textContent).toContain('<b>');
+  });
+
+  it('gives the correct answer a speaker button', () => {
+    start('hello');
+    input().value = 'hello';
+    LS.checkReverseTranslation();
+
+    const speak = document.querySelector('.card-translation [data-action="speak-word"]');
+    expect(speak.dataset.arg).toBe('hello');
   });
 
   it('does nothing for an empty answer', () => {
@@ -346,6 +391,7 @@ describe('Writing exercise check', () => {
     LS.checkReverseTranslation();
 
     expect(feedback().textContent).toBe('');
+    expect(diff().innerHTML).toBe('');
     expect(answerShown()).toBe(false);
     expect(input().disabled).toBe(false);
   });
@@ -356,8 +402,75 @@ describe('Writing exercise check', () => {
     LS.showAnswerForReverse();
 
     expect(feedback().textContent).toBe('');
+    expect(diff().innerHTML).toBe('');
     expect(input().className).not.toMatch(/typing-input--/);
     expect(answerShown()).toBe(true);
+  });
+});
+
+describe('Answer difference', () => {
+  const diff = (input, answer) => LS.diffAnswer(input, answer);
+
+  it('is one equal segment for an exact match, ignoring case and the ends', () => {
+    expect(diff('hello', 'hello')).toEqual([{ type: 'equal', text: 'hello' }]);
+    expect(diff('  Hello ', 'hello')).toEqual([{ type: 'equal', text: 'Hello' }]);
+  });
+
+  it('marks a substituted letter as wrong followed by the missing one', () => {
+    expect(diff('hallo', 'hello')).toEqual([
+      { type: 'equal', text: 'h' },
+      { type: 'wrong', text: 'a' },
+      { type: 'missing', text: 'e' },
+      { type: 'equal', text: 'llo' }
+    ]);
+  });
+
+  it('marks an inserted letter as extra', () => {
+    expect(diff('helllo', 'hello')).toEqual([
+      { type: 'equal', text: 'he' },
+      { type: 'wrong', text: 'l' },
+      { type: 'equal', text: 'llo' }
+    ]);
+  });
+
+  it('marks a dropped letter as missing', () => {
+    expect(diff('helo', 'hello')).toEqual([
+      { type: 'equal', text: 'he' },
+      { type: 'missing', text: 'l' },
+      { type: 'equal', text: 'lo' }
+    ]);
+  });
+
+  it('handles a transposition as one wrong run and one missing run', () => {
+    expect(diff('inconcievable', 'inconceivable')).toEqual([
+      { type: 'equal', text: 'inconc' },
+      { type: 'wrong', text: 'ie' },
+      { type: 'missing', text: 'ei' },
+      { type: 'equal', text: 'vable' }
+    ]);
+  });
+
+  it('aligns phrases with their spaces', () => {
+    expect(diff('break teh ice', 'break the ice')).toEqual([
+      { type: 'equal', text: 'break t' },
+      { type: 'wrong', text: 'eh' },
+      { type: 'missing', text: 'he' },
+      { type: 'equal', text: ' ice' }
+    ]);
+    expect(diff('breakthe ice', 'break the ice')).toEqual([
+      { type: 'equal', text: 'break' },
+      { type: 'missing', text: ' ' },
+      { type: 'equal', text: 'the ice' }
+    ]);
+  });
+
+  it('reports the whole answer as missing for an empty input', () => {
+    expect(diff('', 'hello')).toEqual([{ type: 'missing', text: 'hello' }]);
+    expect(diff('   ', 'hello')).toEqual([{ type: 'missing', text: 'hello' }]);
+  });
+
+  it('reports everything typed as wrong against an empty answer', () => {
+    expect(diff('abc', '')).toEqual([{ type: 'wrong', text: 'abc' }]);
   });
 });
 
@@ -457,6 +570,38 @@ describe('Session resume and restart', () => {
 
     const back = document.querySelector('[data-action="show-tab"][data-arg="today"]');
     expect(back.textContent).toContain('Back to Today');
+  });
+
+  it('stops on the close button: back to the overview, state cleared, no completion screen', () => {
+    LS.startLearning();
+    window.SV.Today.showOverview.mockClear();
+    window.SV.AppState.sessionStats = { correct: 2, total: 3, streak: 1 };
+    const closeButton = document.querySelector('[data-testid="session-progress"] [data-action="stop-session"]');
+    expect(closeButton.getAttribute('aria-label')).toBe('End session');
+
+    LS.stopLearningSession();
+
+    expect(window.SV.Today.showOverview).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('learningContent').textContent).not.toContain('Session Complete');
+    expect(window.SV.AppState.learningSession).toEqual([]);
+    expect(window.SV.AppState.sessionTotal).toBe(0);
+    expect(window.SV.AppState.currentLearningWord).toBeNull();
+    expect(window.SV.AppState.sessionStats).toEqual({ correct: 0, total: 0, streak: 0 });
+  });
+
+  it('cancels pending timers when stopped', () => {
+    window.SV.SpeechManager = { speechSettings: { enabled: true, autoPlay: true }, speakWord: vi.fn() };
+    const schedule = vi.spyOn(globalThis, 'setTimeout').mockReturnValue(7);
+    const clear = vi.spyOn(globalThis, 'clearTimeout').mockImplementation(() => {});
+    try {
+      LS.startLearning();
+      LS.stopLearningSession();
+      expect(clear).toHaveBeenCalledWith(7);
+    } finally {
+      schedule.mockRestore();
+      clear.mockRestore();
+      delete window.SV.SpeechManager;
+    }
   });
 
   it('leaves the session empty after it ends and builds a fresh batch next time', () => {
@@ -561,5 +706,24 @@ describe('Session resume and restart', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('Prompt text of a word', () => {
+  const withDefinition = { translation: 'привет', definition: 'A greeting.' };
+  const withoutDefinition = { translation: 'привет' };
+
+  it('uses the translation and keeps the definition as detail when the setting is off', () => {
+    expect(LS.getWordPrompt(withDefinition, false)).toEqual({ label: 'Translation', main: 'привет', detail: 'A greeting.' });
+  });
+
+  it('uses the definition alone when the setting is on', () => {
+    expect(LS.getWordPrompt(withDefinition, true)).toEqual({ label: 'Definition', main: 'A greeting.', detail: '' });
+  });
+
+  it('falls back to the translation for a word without a definition', () => {
+    expect(LS.getWordPrompt(withoutDefinition, true)).toEqual({ label: 'Translation', main: 'привет', detail: undefined });
+    expect(LS.getWordPrompt({ ...withoutDefinition, definition: '' }, true).main).toBe('привет');
+    expect(LS.getWordPrompt(withoutDefinition, false).main).toBe('привет');
   });
 });

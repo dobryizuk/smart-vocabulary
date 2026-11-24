@@ -313,6 +313,13 @@
     color: var(--ui-text-muted);
 }
 
+.settings-version {
+    margin: 0 4px;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--ui-text-muted);
+}
+
 .stepper {
     display: flex;
     align-items: center;

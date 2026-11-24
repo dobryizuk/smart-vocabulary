@@ -69,6 +69,28 @@ describe('Settings view', () => {
     expect(byTestId('session-size-inc').disabled).toBe(false);
   });
 
+  it('shows the app version at the bottom', () => {
+    const version = byTestId('app-version');
+
+    expect(version.textContent).toMatch(/^Version \d+\.\d+\.\d+ · dev$/);
+    expect(document.getElementById('settingsView').lastElementChild).toBe(version);
+  });
+
+  it('switches showing definitions on and off and keeps the choice', () => {
+    const toggle = byTestId('show-definition-toggle');
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+
+    toggle.click();
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(stored.showDefinition).toBe('true');
+
+    window.initializeComponents();
+    expect(byTestId('show-definition-toggle').getAttribute('aria-checked')).toBe('true');
+
+    byTestId('show-definition-toggle').click();
+    expect(stored.showDefinition).toBe('false');
+  });
+
   it('disables the minus button at 10', () => {
     stored.sessionSize = '11';
     window.initializeComponents();

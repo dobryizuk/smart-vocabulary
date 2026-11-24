@@ -70,3 +70,34 @@ describe('Session size stepper', () => {
     expect(stepSessionSize(19, 1)).toBe(20);
   });
 });
+
+describe('Show definition setting', () => {
+  const storageWith = (value) => ({
+    data: value === undefined ? {} : { showDefinition: value },
+    getItem(key) { return key in this.data ? this.data[key] : null; },
+    setItem(key, val) { this.data[key] = String(val); }
+  });
+
+  it('is off until it is switched on', () => {
+    expect(createSessionSettings({ storage: storageWith() }).getShowDefinition()).toBe(false);
+  });
+
+  it('keeps the chosen value in storage', () => {
+    const storage = storageWith();
+    const settings = createSessionSettings({ storage });
+
+    settings.setShowDefinition(true);
+    expect(storage.data.showDefinition).toBe('true');
+    expect(createSessionSettings({ storage }).getShowDefinition()).toBe(true);
+
+    settings.setShowDefinition(false);
+    expect(createSessionSettings({ storage }).getShowDefinition()).toBe(false);
+  });
+
+  it('treats anything but true as off and works without storage', () => {
+    expect(createSessionSettings({ storage: storageWith('yes') }).getShowDefinition()).toBe(false);
+    const settings = createSessionSettings({ storage: null });
+    settings.setShowDefinition(true);
+    expect(settings.getShowDefinition()).toBe(false);
+  });
+});
