@@ -38,15 +38,15 @@ function secureShuffle(inputArray) {
     return array;
 }
 
-// Due words with the oldest nextReview first, then new words (nextReview null)
+// A third of the slots (rounded up) goes to new words, oldest added first; the rest to
+// reviewed words, oldest nextReview first. Whichever kind runs short, the other fills in.
 function selectSessionBatch(words, size) {
-    const byPriority = (a, b) => {
-        if (!a.nextReview && !b.nextReview) return 0;
-        if (!a.nextReview) return 1;
-        if (!b.nextReview) return -1;
-        return new Date(a.nextReview) - new Date(b.nextReview);
-    };
-    return secureShuffle([...words].sort(byPriority).slice(0, size));
+    const byDate = (field) => (a, b) => new Date(a[field]) - new Date(b[field]);
+    const newWords = words.filter(w => !w.nextReview).sort(byDate('createdAt'));
+    const reviews = words.filter(w => w.nextReview).sort(byDate('nextReview'));
+    const newSlots = Math.min(newWords.length, Math.max(Math.ceil(size / 3), size - reviews.length));
+    const picked = [...newWords.slice(0, newSlots), ...reviews.slice(0, size - newSlots)];
+    return secureShuffle(picked);
 }
 
 function beginSession(candidates) {

@@ -610,34 +610,64 @@ describe('Answer difference', () => {
 });
 
 describe('Session batch selection', () => {
-  const word = (original, nextReview) => ({ original, translation: original, nextReview });
+  const review = (original, nextReview) => ({ original, nextReview, createdAt: '2025-01-01T00:00:00Z' });
+  const fresh = (original, createdAt) => ({ original, nextReview: null, createdAt });
+  const day = (n) => `2026-01-${String(n).padStart(2, '0')}T00:00:00Z`;
+  const reviews = (count) => Array.from({ length: count }, (_, i) => review(`r${i + 1}`, day(i + 1)));
+  const freshWords = (count) => Array.from({ length: count }, (_, i) => fresh(`n${i + 1}`, day(i + 1)));
   const names = (words) => words.map(w => w.original).sort();
+  const newOnes = (batch) => batch.filter(w => !w.nextReview);
 
-  it('picks at most N words, oldest nextReview first', () => {
-    const words = [
-      word('c', '2026-01-03T00:00:00Z'),
-      word('a', '2026-01-01T00:00:00Z'),
-      word('d', '2026-01-04T00:00:00Z'),
-      word('b', '2026-01-02T00:00:00Z')
-    ];
-    expect(names(LS.selectSessionBatch(words, 2))).toEqual(['a', 'b']);
+  it('gives a third of the slots (rounded up) to new words when the backlog is bigger than the session', () => {
+    const words = [...reviews(30), ...freshWords(30)];
+    expect(newOnes(LS.selectSessionBatch(words, 15))).toHaveLength(5);
+    expect(newOnes(LS.selectSessionBatch(words, 10))).toHaveLength(4);
+    expect(newOnes(LS.selectSessionBatch(words, 20))).toHaveLength(7);
   });
 
-  it('puts new words after due ones', () => {
-    const words = [word('new1', null), word('due1', '2026-01-02T00:00:00Z'), word('new2', null), word('due2', '2026-01-01T00:00:00Z')];
-    const batch = LS.selectSessionBatch(words, 3);
-    expect(batch.filter(w => w.nextReview)).toHaveLength(2);
-    expect(batch.filter(w => !w.nextReview)).toHaveLength(1);
-    expect(names(batch.filter(w => w.nextReview))).toEqual(['due1', 'due2']);
+  it('takes new words in the order they were added', () => {
+    const words = [fresh('late', day(3)), fresh('first', day(1)), fresh('mid', day(2)), ...reviews(20)];
+    const batch = LS.selectSessionBatch(words, 10);
+    expect(names(newOnes(batch))).toEqual(['first', 'late', 'mid']);
+    const many = [...freshWords(10).reverse(), ...reviews(20)];
+    expect(names(newOnes(LS.selectSessionBatch(many, 10)))).toEqual(['n1', 'n2', 'n3', 'n4']);
   });
 
-  it('returns all candidates when there are fewer than N', () => {
-    const words = [word('a', null), word('b', '2026-01-01T00:00:00Z')];
+  it('takes reviews with the oldest nextReview first', () => {
+    const words = [...reviews(20).reverse(), ...freshWords(10)];
+    const batch = LS.selectSessionBatch(words, 10);
+    expect(names(batch.filter(w => w.nextReview))).toEqual(['r1', 'r2', 'r3', 'r4', 'r5', 'r6']);
+  });
+
+  it('gives every slot to reviews when there are no new words', () => {
+    const batch = LS.selectSessionBatch(reviews(20), 10);
+    expect(names(batch)).toEqual(['r1', 'r10', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9']);
+  });
+
+  it('fills the session with new words when nothing is to review', () => {
+    const batch = LS.selectSessionBatch(freshWords(20), 10);
+    expect(names(batch)).toEqual(['n1', 'n10', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9']);
+  });
+
+  it('lets reviews fill the rest when there are fewer new words than their share', () => {
+    const batch = LS.selectSessionBatch([...freshWords(2), ...reviews(20)], 15);
+    expect(newOnes(batch)).toHaveLength(2);
+    expect(batch).toHaveLength(15);
+  });
+
+  it('lets new words fill the rest when there are fewer reviews than their share', () => {
+    const batch = LS.selectSessionBatch([...reviews(3), ...freshWords(20)], 15);
+    expect(batch.filter(w => w.nextReview)).toHaveLength(3);
+    expect(batch).toHaveLength(15);
+  });
+
+  it('returns everything when the session is larger than the pool', () => {
+    const words = [fresh('a', day(1)), review('b', day(2))];
     expect(names(LS.selectSessionBatch(words, 15))).toEqual(['a', 'b']);
   });
 
   it('does not change the input array', () => {
-    const words = [word('b', '2026-01-02T00:00:00Z'), word('a', '2026-01-01T00:00:00Z')];
+    const words = [review('b', day(2)), review('a', day(1))];
     LS.selectSessionBatch(words, 1);
     expect(words.map(w => w.original)).toEqual(['b', 'a']);
   });
