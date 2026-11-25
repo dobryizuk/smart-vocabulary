@@ -291,6 +291,12 @@
 .difficulty-btn--easy { color: var(--ui-accent-text); background: var(--ui-accent-soft); }
 .difficulty-btn--perfect { color: var(--ui-on-accent); background: var(--ui-accent); }
 
+.difficulty-btn:disabled {
+    color: var(--ui-disabled-text);
+    background: var(--ui-disabled-bg);
+    cursor: default;
+}
+
 /* Buttons and input of the exercises */
 #learningContent .btn-group {
     display: grid;

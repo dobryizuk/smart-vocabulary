@@ -130,7 +130,7 @@ test.describe('Definition instead of translation', () => {
 });
 
 test.describe('Revealed answer', () => {
-  test('stays above the rating bar after a wrong writing check', async ({ page }) => {
+  test('stays above the rating bar after a misspelled writing check', async ({ page }) => {
     await seed(page, [word('w1', 'inconceivable', 'невероятный', 'Not able to be believed.', afterBuild)], false);
     await page.getByTestId('start-session-btn').click();
     await page.locator('#reverseTranslationInput').fill('inconcievable');

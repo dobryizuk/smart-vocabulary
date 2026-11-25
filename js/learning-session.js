@@ -324,27 +324,14 @@ function normalizeText(text) {
         .replace(/\s+/g, ' '); // Normalize whitespace
 }
 
-function calculateTypingAccuracy(userInput, correctAnswer) {
-    const normalizedInput = normalizeText(userInput);
-    const normalizedAnswer = normalizeText(correctAnswer);
-    
-    if (normalizedInput === normalizedAnswer) {
-        return { accuracy: 100, difficulty: 'perfect' };
-    }
-    
-    // Calculate Levenshtein distance for similarity
-    const distance = levenshteinDistance(normalizedInput, normalizedAnswer);
-    const maxLength = Math.max(normalizedInput.length, normalizedAnswer.length);
-    const accuracy = Math.max(0, Math.round((1 - distance / maxLength) * 100));
-    
-    // Determine difficulty based on accuracy
-    if (accuracy >= 90) return { accuracy, difficulty: 'easy' };
-    if (accuracy >= 70) return { accuracy, difficulty: 'medium' };
-    return { accuracy, difficulty: 'hard' };
+// Whether the two items before i and j are the same pair in swapped order
+function isAdjacentSwap(from, to, i, j, same) {
+    return i > 1 && j > 1 && same(from[i - 1], to[j - 2]) && same(from[i - 2], to[j - 1]);
 }
 
-// distances[i][j]: edits that turn the first i items of `from` into the first j items of `to`
-function editDistanceTable(from, to, same) {
+// distances[i][j]: edits that turn the first i items of `from` into the first j items of `to`;
+// with `swaps`, exchanging two adjacent items is one edit
+function editDistanceTable(from, to, same, swaps = false) {
     const distances = Array.from({ length: from.length + 1 }, (_, i) => [i]);
     for (let j = 1; j <= to.length; j++) {
         distances[0][j] = j;
@@ -353,10 +340,12 @@ function editDistanceTable(from, to, same) {
     for (let i = 1; i <= from.length; i++) {
         for (let j = 1; j <= to.length; j++) {
             const substitution = same(from[i - 1], to[j - 1]) ? 0 : 1;
+            const swap = swaps && isAdjacentSwap(from, to, i, j, same) ? distances[i - 2][j - 2] + 1 : Infinity;
             distances[i][j] = Math.min(
                 distances[i - 1][j - 1] + substitution,
                 distances[i][j - 1] + 1,
-                distances[i - 1][j] + 1
+                distances[i - 1][j] + 1,
+                swap
             );
         }
     }
@@ -365,8 +354,9 @@ function editDistanceTable(from, to, same) {
 
 const sameChar = (a, b) => a === b;
 
-function levenshteinDistance(str1, str2) {
-    return editDistanceTable(str1, str2, sameChar)[str1.length][str2.length];
+// Typing mistakes between two strings: wrong, missing or extra letters, and swapped neighbours
+function typoDistance(typed, expected) {
+    return editDistanceTable(typed, expected, sameChar, true)[typed.length][expected.length];
 }
 
 // Edit operations that turn `from` into `to`, walking back through the distance table
@@ -540,18 +530,31 @@ function showReverseTranslationCard() {
     trackTimeout(id);
 }
 
-const TYPING_VERDICTS = {
+const VERDICT_FEEDBACK = {
     exact: { tone: 'success', text: 'Correct!' },
     close: { tone: 'warn', text: 'Almost — check the spelling' },
     wrong: { tone: 'danger', text: 'Not quite' }
 };
 
-const CLOSE_ACCURACY = 90;
+// Edits a typo may have: none in answers under 4 characters, one up to 15 characters, two from 16
+function allowedTypoEdits(answerLength) {
+    if (answerLength < 4) return 0;
+    return answerLength < 16 ? 1 : 2;
+}
 
+// 'exact' when equal after normalisation, 'close' for a typo, otherwise 'wrong'
 function getTypingVerdict(userInput, correctAnswer) {
-    const { accuracy, difficulty } = calculateTypingAccuracy(userInput, correctAnswer);
-    if (difficulty === 'perfect') return TYPING_VERDICTS.exact;
-    return accuracy >= CLOSE_ACCURACY ? TYPING_VERDICTS.close : TYPING_VERDICTS.wrong;
+    const typed = normalizeText(userInput);
+    const expected = normalizeText(correctAnswer);
+    if (typed === expected) return 'exact';
+    return typoDistance(typed, expected) <= allowedTypoEdits(expected.length) ? 'close' : 'wrong';
+}
+
+// The strongest rating a checked answer allows: Hard after a miss, Medium after a typo or a hint
+function getMaxRating(verdict, hintsUsed = 0) {
+    if (verdict === 'wrong') return 'hard';
+    if (verdict === 'close' || hintsUsed > 0) return 'medium';
+    return 'perfect';
 }
 
 function renderAnswerDiff(segments) {
@@ -570,29 +573,27 @@ function checkReverseTranslation() {
     if (!input || !feedback || !diff || input.disabled || !input.value.trim()) return;
 
     const answer = window.SV.AppState.currentLearningWord.original;
-    const { tone, text } = getTypingVerdict(input.value, answer);
+    const verdict = getTypingVerdict(input.value, answer);
+    const { tone, text } = VERDICT_FEEDBACK[verdict];
     input.classList.add(`typing-input--${tone}`);
     feedback.textContent = text;
-    if (tone !== TYPING_VERDICTS.exact.tone) diff.innerHTML = renderAnswerDiff(diffAnswer(input.value, answer));
-    showAnswerForReverse();
+    if (verdict !== 'exact') diff.innerHTML = renderAnswerDiff(diffAnswer(input.value, answer));
+    revealAnswer(getMaxRating(verdict, window.SV.AppState.reverseHintCount));
 }
 
-function showDifficultyButtonsForReverse() {
-    // Add difficulty buttons to the content using unified component
-    const difficultyButtonsHtml = window.SV?.UIComponents?.createDifficultyButtons?.() || '';
-    
-    // Add buttons after the current content
-    const learningContent = document.getElementById('learningContent');
-    learningContent.insertAdjacentHTML('beforeend', difficultyButtonsHtml);
-}
-
+// Show Answer gives the word up, which rates like a wrong answer
 function showAnswerForReverse() {
+    revealAnswer(getMaxRating('wrong'));
+}
+
+function revealAnswer(maxRating) {
     const UI5 = window.SV?.UIComponents;
     const specificHtml = UI5?.createPrimaryAnswerBlock?.('Correct answer', window.SV.AppState.currentLearningWord.original, [UI5.createSpeakAction(window.SV.AppState.currentLearningWord.original)]) || '';
     const layoutHtml = UI5?.createAnswerLayout?.({
         specificHtml,
         word: window.SV.AppState.currentLearningWord,
-        showDefinition: false
+        showDefinition: false,
+        maxRating
     }) || '';
 
     const { mainEl } = ensureLearningLayout();
@@ -715,7 +716,7 @@ function checkBuildAnswer() {
     if (!WordBuilder.isComplete(AppState.buildState)) return;
     AppState.buildState = WordBuilder.checkBuild(AppState.buildState, AppState.currentLearningWord.original);
     renderBuildArea();
-    showAnswerForReverse();
+    revealAnswer(getMaxRating(AppState.buildState.correct ? 'exact' : 'wrong'));
 }
 
 function renderSessionProgressBottom() {
@@ -752,14 +753,12 @@ const LearningSessionExports = {
     checkBuildAnswer,
     checkReverseTranslation,
     getTypingVerdict,
+    getMaxRating,
     showAnswerForReverse,
     showHintForReverse,
     getHintPrefix,
     getMaxHints,
-    showDifficultyButtonsForReverse,
     normalizeText,
-    calculateTypingAccuracy,
-    levenshteinDistance,
     diffAnswer,
     getWordPrompt
 };

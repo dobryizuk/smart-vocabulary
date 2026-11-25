@@ -279,10 +279,10 @@ function createSynonymsSection(word, isLearning = false) {
  * 2) definition (unless the exercise card above already shows it)
  * 3) examples
  * 4) synonyms
- * 5) difficulty buttons
+ * 5) difficulty buttons, the ones above maxRating disabled
  */
-function createAnswerLayout({ specificHtml = '', word, showDefinition = true }) {
-    const buttons = createDifficultyButtons();
+function createAnswerLayout({ specificHtml = '', word, showDefinition = true, maxRating }) {
+    const buttons = createDifficultyButtons(maxRating);
     // Borrow list-view styles for detail blocks in learning
     const definition = showDefinition ? createDefinitionSection(word, false) : '';
     const examples = createExamplesSection(word, false);
@@ -401,19 +401,29 @@ function createWordMetadata(word, progress) {
     return `<div class="word-metadata">${chipsHtml}</div>`;
 }
 
+// From the weakest rating to the strongest
+const RATING_BUTTONS = [
+    { rating: 'hard', label: 'Hard' },
+    { rating: 'medium', label: 'Medium' },
+    { rating: 'easy', label: 'OK' },
+    { rating: 'perfect', label: 'Easy' }
+];
+
 /**
  * Creates difficulty buttons component
- * @param {string} variant - Optional variant for styling
+ * @param {string} maxRating - Strongest rating allowed; the buttons above it are disabled
  * @returns {string} HTML string for difficulty buttons
  */
-function createDifficultyButtons() {
+function createDifficultyButtons(maxRating = 'perfect') {
+    const maxIndex = RATING_BUTTONS.findIndex(({ rating }) => rating === maxRating);
+    const buttonsHtml = RATING_BUTTONS.map(({ rating, label }, index) => {
+        const disabled = index > maxIndex ? ' disabled' : '';
+        return `<button class="difficulty-btn difficulty-btn--${rating}" data-difficulty="${rating}"${disabled}>${label}</button>`;
+    }).join('');
     return `
         <div class="difficulty-buttons">
             <p class="difficulty-buttons__prompt">How well did you know it?</p>
-            <button class="difficulty-btn difficulty-btn--hard" data-difficulty="hard">Hard</button>
-            <button class="difficulty-btn difficulty-btn--medium" data-difficulty="medium">Medium</button>
-            <button class="difficulty-btn difficulty-btn--easy" data-difficulty="easy">OK</button>
-            <button class="difficulty-btn difficulty-btn--perfect" data-difficulty="perfect">Easy</button>
+            ${buttonsHtml}
         </div>
     `;
 }

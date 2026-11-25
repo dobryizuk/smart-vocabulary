@@ -44,6 +44,7 @@ test.describe('Build exercise', () => {
     await expect(page.locator('.build-feedback--correct')).toBeVisible();
     await expect(page.locator('.card-translation')).toContainText('hello');
     await expect(page.locator('.difficulty-btn')).toHaveCount(4);
+    await expect(page.locator('.difficulty-btn:disabled')).toHaveCount(0);
 
     await page.locator('.difficulty-btn[data-difficulty="easy"]').click();
     await expect(page.getByText('Session Complete!')).toBeVisible();
@@ -69,6 +70,8 @@ test.describe('Build exercise', () => {
     await expect(page.locator('.build-slot--wrong')).toHaveCount(4);
     await expect(page.locator('.build-feedback--wrong')).toBeVisible();
     await expect(page.locator('.difficulty-btn')).toHaveCount(4);
+    await expect(page.locator('.difficulty-btn:enabled')).toHaveCount(1);
+    await expect(page.locator('.difficulty-btn[data-difficulty="hard"]')).toBeEnabled();
   });
 });
 

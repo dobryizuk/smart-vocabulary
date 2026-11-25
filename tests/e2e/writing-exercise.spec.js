@@ -8,6 +8,17 @@ const word = (id, original, translation, reviewHistory) => ({
 
 const afterBuild = [{ date: '2026-11-20T10:00:00.000Z', difficulty: 'easy', exerciseType: 'build' }];
 
+const ratings = ['hard', 'medium', 'easy', 'perfect'];
+
+async function expectEnabledRatings(page, enabled) {
+  await expect(page.locator('.difficulty-btn')).toHaveCount(ratings.length);
+  for (const rating of ratings) {
+    const button = page.locator(`.difficulty-btn[data-difficulty="${rating}"]`);
+    if (enabled.includes(rating)) await expect(button).toBeEnabled();
+    else await expect(button).toBeDisabled();
+  }
+}
+
 test.describe('Writing exercise', () => {
   test.beforeEach(async ({ page }) => {
     const words = [word('w1', 'hello', 'привет', afterBuild)];
@@ -34,19 +45,25 @@ test.describe('Writing exercise', () => {
     await expect(page.locator('#typingDiff')).toBeEmpty();
     await expect(page.locator('.card-translation')).toContainText('hello');
     await expect(page.locator('.card-translation [data-action="speak-word"]')).toBeVisible();
-    await expect(page.locator('.difficulty-btn')).toHaveCount(4);
+    await expectEnabledRatings(page, ratings);
     await expect(page.getByTestId('reverse-check')).toBeHidden();
 
     await page.locator('.difficulty-btn[data-difficulty="easy"]').click();
     await expect(page.getByText('Session Complete!')).toBeVisible();
   });
 
-  test('a wrong answer tints the field and can still be rated', async ({ page }) => {
+  test('a wrong answer tints the field and allows only Hard', async ({ page }) => {
     await page.locator('#reverseTranslationInput').fill('world');
     await page.getByTestId('reverse-check').click();
 
     await expect(page.locator('#reverseTranslationInput')).toHaveClass(/typing-input--danger/);
     await expect(page.locator('#typingFeedback')).toHaveText('Not quite');
+    await expectEnabledRatings(page, ['hard']);
+
+    await page.locator('.difficulty-btn[data-difficulty="perfect"]').click({ force: true });
+    await expect(page.locator('.difficulty-buttons')).toBeVisible();
+    const history = await page.evaluate(() => JSON.parse(localStorage.getItem('vocabulary')).words[0].reviewHistory);
+    expect(history).toHaveLength(1);
 
     await page.locator('.difficulty-btn[data-difficulty="hard"]').click();
     await expect(page.getByText('Session Complete!')).toBeVisible();
@@ -57,14 +74,15 @@ test.describe('Writing exercise', () => {
     await page.locator('#reverseTranslationInput').press('Enter');
 
     await expect(page.locator('#reverseTranslationInput')).toHaveClass(/typing-input--success/);
-    await expect(page.locator('.difficulty-btn')).toHaveCount(4);
+    await expectEnabledRatings(page, ratings);
   });
 
-  test('a misspelled answer shows the typed answer with the differences marked', async ({ page }) => {
+  test('a misspelled answer shows the differences marked and allows up to Medium', async ({ page }) => {
     await page.locator('#reverseTranslationInput').fill('hallo');
     await page.getByTestId('reverse-check').click();
 
-    await expect(page.locator('#reverseTranslationInput')).toHaveClass(/typing-input--warn|typing-input--danger/);
+    await expect(page.locator('#reverseTranslationInput')).toHaveClass(/typing-input--warn/);
+    await expectEnabledRatings(page, ['hard', 'medium']);
     await expect(page.locator('#typingDiff')).toHaveText('haello');
     await expect(page.locator('#typingDiff .typing-diff__wrong')).toHaveText('a');
     await expect(page.locator('#typingDiff .typing-diff__missing')).toHaveText('e');
@@ -95,6 +113,6 @@ test.describe('Writing exercise', () => {
     await expect(page.locator('#typingFeedback')).toBeEmpty();
     await expect(page.locator('#typingDiff')).toBeEmpty();
     await expect(page.locator('#reverseTranslationInput')).not.toHaveClass(/typing-input--/);
-    await expect(page.locator('.difficulty-btn')).toHaveCount(4);
+    await expectEnabledRatings(page, ['hard']);
   });
 });
