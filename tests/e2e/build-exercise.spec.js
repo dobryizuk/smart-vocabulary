@@ -32,10 +32,15 @@ test.describe('Build exercise', () => {
     const lTile = page.locator('.build-tile[data-arg="l"]');
     await expect(lTile.locator('.build-tile__count')).toHaveText('2');
 
-    for (const letter of 'hello') {
+    for (const letter of 'hel') {
       await page.locator(`.build-tile[data-arg="${letter}"]`).click();
     }
+    await expect(lTile.locator('.build-tile__count')).toHaveCount(0);
+    await expect(lTile).toBeEnabled();
+    await lTile.click();
     await expect(lTile).toBeDisabled();
+    await expect(lTile.locator('.build-tile__count')).toHaveCount(0);
+    await page.locator('.build-tile[data-arg="o"]').click();
     await expect(page.getByTestId('build-slots')).toHaveAttribute('aria-label', 'Your answer: hello');
     await expect(page.locator('.build-slot--right')).toHaveCount(5);
     await expect(check).toBeEnabled();

@@ -505,7 +505,6 @@ function showReverseTranslationCard() {
         <div id="reverseActions" class="typing-actions">
             ${createButton(hintButtonText(0, 0), 'show-hint-reverse', 'secondary', !hasHints, 'hintReverseButton')}
             ${createButton('Check', 'check-reverse', 'primary', false, 'checkReverseButton', '', '', 'reverse-check')}
-            ${createButton('Show Answer', 'show-answer-reverse', 'secondary', false, 'showAnswerReverseButton', '', 'typing-actions__give-up')}
         </div>
     `;
     
@@ -570,7 +569,12 @@ function checkReverseTranslation() {
     const input = document.getElementById('reverseTranslationInput');
     const feedback = document.getElementById('typingFeedback');
     const diff = document.getElementById('typingDiff');
-    if (!input || !feedback || !diff || input.disabled || !input.value.trim()) return;
+    if (!input || !feedback || !diff || input.disabled) return;
+
+    if (!input.value.trim()) {
+        revealAnswer(getMaxRating('wrong'));
+        return;
+    }
 
     const answer = window.SV.AppState.currentLearningWord.original;
     const verdict = getTypingVerdict(input.value, answer);
@@ -579,11 +583,6 @@ function checkReverseTranslation() {
     feedback.textContent = text;
     if (verdict !== 'exact') diff.innerHTML = renderAnswerDiff(diffAnswer(input.value, answer));
     revealAnswer(getMaxRating(verdict, window.SV.AppState.reverseHintCount));
-}
-
-// Show Answer gives the word up, which rates like a wrong answer
-function showAnswerForReverse() {
-    revealAnswer(getMaxRating('wrong'));
 }
 
 function revealAnswer(maxRating) {
@@ -642,7 +641,7 @@ function renderBuildTiles(state) {
     const tilesHtml = state.tiles.map(({ letter, total }) => {
         const left = WordBuilder.remainingCount(state, letter);
         const label = total > 1 ? `${letter}, ${left} left` : letter;
-        const badge = total > 1 ? `<span class="build-tile__count" aria-hidden="true">${left}</span>` : '';
+        const badge = left > 1 ? `<span class="build-tile__count" aria-hidden="true">${left}</span>` : '';
         return `<button type="button" class="build-tile" data-action="build-place" data-arg="${escapeHtml(letter)}" aria-label="${escapeHtml(label)}"${left === 0 ? ' disabled' : ''}>${escapeHtml(letter)}${badge}</button>`;
     }).join('');
     return `<div class="build-tiles">${tilesHtml}</div>`;
@@ -754,7 +753,6 @@ const LearningSessionExports = {
     checkReverseTranslation,
     getTypingVerdict,
     getMaxRating,
-    showAnswerForReverse,
     showHintForReverse,
     getHintPrefix,
     getMaxHints,

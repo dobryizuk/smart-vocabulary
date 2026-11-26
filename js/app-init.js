@@ -285,9 +285,6 @@ function wireEventHandlers() {
                 case 'check-reverse':
                     window.SV?.LearningSession?.checkReverseTranslation?.();
                     break;
-                case 'show-answer-reverse':
-                    window.SV?.LearningSession?.showAnswerForReverse?.();
-                    break;
                 case 'build-place':
                     window.SV?.LearningSession?.placeBuildLetter?.(arg);
                     break;

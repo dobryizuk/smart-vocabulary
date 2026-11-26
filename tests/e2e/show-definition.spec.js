@@ -140,10 +140,10 @@ test.describe('Revealed answer', () => {
     await expectAboveRatingBar(page);
   });
 
-  test('stays above the rating bar after Show Answer in writing', async ({ page }) => {
+  test('stays above the rating bar after giving up in writing', async ({ page }) => {
     await seed(page, [word('w1', 'inconceivable', 'невероятный', 'Not able to be believed.', afterBuild)], false);
     await page.getByTestId('start-session-btn').click();
-    await page.getByRole('button', { name: 'Show Answer' }).click();
+    await page.getByTestId('reverse-check').click();
 
     await expectAboveRatingBar(page);
   });

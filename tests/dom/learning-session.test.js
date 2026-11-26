@@ -143,14 +143,14 @@ describe('Learning Answer Screen Layout', () => {
     expect(enabledRatings()).toEqual(['hard', 'medium', 'easy', 'perfect']);
   });
 
-  it('renders correct order for reverse translation after Show Answer', () => {
+  it('renders correct order for reverse translation after an empty Check', () => {
     const word = setupWord();
     window.SV.AppState.currentLearningWord = word;
     window.SV.AppState.learningSession = [word];
 
     // Render reverse exercise and then show answer
     LS.showReverseTranslationCard();
-    LS.showAnswerForReverse();
+    LS.checkReverseTranslation();
 
     const mainEl = document.getElementById('learningMain') || document.getElementById('learningContent');
     const firstSpecific = mainEl.querySelector('.card-translation');
@@ -277,7 +277,7 @@ describe('Writing exercise hint', () => {
   it('leaves no hint behind once the answer is shown', () => {
     startExercise('Devolve');
     LS.showHintForReverse();
-    LS.showAnswerForReverse();
+    LS.checkReverseTranslation();
     expect(document.getElementById('reverseActions').style.display).toBe('none');
     expect(document.getElementById('reverseHint')).toBeNull();
   });
@@ -394,10 +394,10 @@ describe('Writing exercise check', () => {
   const diff = () => document.getElementById('typingDiff');
   const answerShown = () => document.querySelector('.difficulty-buttons') !== null;
 
-  it('renders Hint and Check side by side with Show Answer below and no inline handlers', () => {
+  it('renders only Hint and Check side by side, with no inline handlers', () => {
     start('hello');
     const actions = document.getElementById('reverseActions');
-    expect([...actions.children].map((button) => button.textContent)).toEqual(['Hint', 'Check', 'Show Answer']);
+    expect([...actions.children].map((button) => button.textContent)).toEqual(['Hint', 'Check']);
     expect(document.getElementById('checkReverseButton').dataset.action).toBe('check-reverse');
     expect(document.querySelector('#learningContent [onclick], #learningContent [oninput], #learningContent [onkeypress]')).toBeNull();
     expect(input().dataset.enterButton).toBe('checkReverseButton');
@@ -465,26 +465,9 @@ describe('Writing exercise check', () => {
     expect(speak.dataset.arg).toBe('hello');
   });
 
-  it('does nothing for an empty answer', () => {
+  it('keeps Check enabled for an empty field', () => {
     start('hello');
-    input().value = '   ';
-    LS.checkReverseTranslation();
-
-    expect(feedback().textContent).toBe('');
-    expect(diff().innerHTML).toBe('');
-    expect(answerShown()).toBe(false);
-    expect(input().disabled).toBe(false);
-  });
-
-  it('reveals the answer without a verdict when Show Answer is used', () => {
-    start('hello');
-    input().value = 'hello';
-    LS.showAnswerForReverse();
-
-    expect(feedback().textContent).toBe('');
-    expect(diff().innerHTML).toBe('');
-    expect(input().className).not.toMatch(/typing-input--/);
-    expect(answerShown()).toBe(true);
+    expect(document.getElementById('checkReverseButton').disabled).toBe(false);
   });
 
   it('allows only Hard after a wrong answer, keeping the other ratings visible but disabled', () => {
@@ -522,14 +505,6 @@ describe('Writing exercise check', () => {
 
     expect(input().classList.contains('typing-input--success')).toBe(true);
     expect(enabledRatings()).toEqual(['hard', 'medium']);
-  });
-
-  it('allows only Hard after Show Answer, even when the field holds the right answer', () => {
-    start('hello');
-    input().value = 'hello';
-    LS.showAnswerForReverse();
-
-    expect(enabledRatings()).toEqual(['hard']);
   });
 
   it('tints a 3-letter answer with one wrong letter as wrong and allows only Hard', () => {
@@ -819,6 +794,32 @@ describe('Session resume and restart', () => {
     expect(document.querySelector('.build-feedback--correct')).toBeTruthy();
     expect(document.querySelector('.card-translation').textContent).toContain('ab');
     expect(enabledRatings()).toEqual(['hard', 'medium', 'easy', 'perfect']);
+  });
+
+  it('shows the tile count badge only while 2 or more of that letter remain', () => {
+    const word = {
+      original: 'llama', translation: 't', repetition: 2, easeFactor: 2.5,
+      reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }]
+    };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    LS.showLearningCard();
+    const tile = (letter) => document.querySelector(`.build-tile[data-arg="${letter}"]`);
+    const badge = (letter) => tile(letter).querySelector('.build-tile__count');
+
+    expect(badge('l').textContent).toBe('2');
+    expect(badge('a').textContent).toBe('2');
+    expect(badge('m')).toBeNull();
+
+    LS.placeBuildLetter('l');
+    expect(badge('l')).toBeNull();
+    expect(tile('l').disabled).toBe(false);
+    expect(tile('l').getAttribute('aria-label')).toBe('l, 1 left');
+
+    LS.placeBuildLetter('l');
+    expect(badge('l')).toBeNull();
+    expect(tile('l').disabled).toBe(true);
+    expect(tile('l').getAttribute('aria-label')).toBe('l, 0 left');
   });
 
   it('allows only Hard after checking a wrongly built word', () => {

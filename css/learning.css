@@ -393,15 +393,11 @@
     text-underline-offset: 3px;
 }
 
-/* Hint and Check side by side, Show Answer below as the way to give up */
+/* Hint and Check side by side */
 .typing-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-}
-
-.typing-actions__give-up {
-    grid-column: 1 / -1;
 }
 
 /* Learning Session States */

@@ -34,7 +34,7 @@ test.describe('Writing exercise', () => {
 
   test('Check marks the right answer, reveals the answer and the session advances after rating', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Hint' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Show Answer' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Show Answer' })).toHaveCount(0);
 
     await page.locator('#reverseTranslationInput').fill('Hello');
     await page.getByTestId('reverse-check').click();
@@ -106,9 +106,8 @@ test.describe('Writing exercise', () => {
     await expect(page.locator('#reverseActions')).toBeHidden();
   });
 
-  test('Show Answer reveals the answer without a verdict', async ({ page }) => {
-    await page.locator('#reverseTranslationInput').fill('hello');
-    await page.getByRole('button', { name: 'Show Answer' }).click();
+  test('Check with an empty field gives up without a verdict', async ({ page }) => {
+    await page.getByTestId('reverse-check').click();
 
     await expect(page.locator('#typingFeedback')).toBeEmpty();
     await expect(page.locator('#typingDiff')).toBeEmpty();
