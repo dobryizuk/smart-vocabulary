@@ -78,7 +78,7 @@ describe('Settings view', () => {
   it('shows the app version at the bottom', () => {
     const version = byTestId('app-version');
 
-    expect(version.textContent).toMatch(/^Version \d+\.\d+\.\d+ · dev$/);
+    expect(version.textContent).toMatch(/^Version \d+\.dev · dev$/);
     expect(document.getElementById('settingsView').lastElementChild).toBe(version);
   });
 

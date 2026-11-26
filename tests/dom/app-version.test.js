@@ -3,19 +3,23 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 const { getVersionLabel, getCommit } = require('../../js/app-version.js');
 const { version } = require('../../package.json');
 
+const major = version.split('.')[0];
+
 describe('App version label', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('shows dev as the commit when the build did not inject one', () => {
+  it('shows dev for the build and the commit when the build did not inject them', () => {
     expect(getCommit()).toBe('dev');
-    expect(getVersionLabel()).toBe(`Version ${version} · dev`);
+    expect(getVersionLabel()).toBe(`Version ${major}.dev · dev`);
   });
 
-  it('shows the commit injected at build time', () => {
+  it('shows the build number and the commit injected at build time', () => {
     vi.stubGlobal('__APP_COMMIT__', 'a1b2c3d');
+    vi.stubGlobal('__APP_BUILD__', '48');
 
-    expect(getVersionLabel()).toBe(`Version ${version} · a1b2c3d`);
+    expect(getVersionLabel()).toBe(`Version ${major}.48 · a1b2c3d`);
   });
+
 });

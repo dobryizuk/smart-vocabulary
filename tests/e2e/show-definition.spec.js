@@ -43,7 +43,7 @@ test.describe('Settings', () => {
     await page.getByTestId('stats-tab-btn').click();
     await page.getByTestId('open-settings-btn').click();
 
-    await expect(page.getByTestId('app-version')).toHaveText(/^Version \d+\.\d+\.\d+ · \S+$/);
+    await expect(page.getByTestId('app-version')).toHaveText(/^Version \d+\.\d+ · \S+$/);
     const toggle = page.getByTestId('show-definition-toggle');
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
 

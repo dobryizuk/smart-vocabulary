@@ -5,10 +5,21 @@ const { build } = require('esbuild');
 const root = path.resolve(__dirname, '..');
 const SHORT_HASH_LENGTH = 7;
 
+const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' }).trim();
+
 function getCommit() {
     if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, SHORT_HASH_LENGTH);
     try {
-        return execFileSync('git', ['-C', root, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+        return git('rev-parse', '--short', 'HEAD');
+    } catch {
+        return 'dev';
+    }
+}
+
+// Commits on the branch: grows with every deploy, so a bigger build is a newer app
+function getBuild() {
+    try {
+        return git('rev-list', '--count', 'HEAD');
     } catch {
         return 'dev';
     }
@@ -24,5 +35,5 @@ build({
     target: ['es2019'],
     minify: true,
     sourcemap: true,
-    define: { __APP_COMMIT__: JSON.stringify(getCommit()) }
+    define: { __APP_COMMIT__: JSON.stringify(getCommit()), __APP_BUILD__: JSON.stringify(getBuild()) }
 }).catch(() => process.exit(1));
