@@ -611,13 +611,17 @@ function revealAnswer(maxRating) {
 // BUILD EXERCISE
 // ============================================================================
 
+// Longer prompts (a definition, a phrase) get a smaller title so they do not fill the screen
+const LONG_TITLE_MIN_LENGTH = 31;
+
 // Prompt card of the exercises where the word is produced from its translation
 function renderExerciseCard({ extraClass = '', chip, title, definition }) {
     const definitionHtml = definition ? `<p class="exercise-card__definition">${escapeHtml(definition)}</p>` : '';
+    const titleClass = title.length >= LONG_TITLE_MIN_LENGTH ? 'exercise-card__title exercise-card__title--long' : 'exercise-card__title';
     return `
         <section class="exercise-card ${extraClass}">
             <span class="exercise-card__chip">${escapeHtml(chip)}</span>
-            <h2 class="exercise-card__title">${escapeHtml(title)}</h2>
+            <h2 class="${titleClass}">${escapeHtml(title)}</h2>
             ${definitionHtml}
         </section>
     `;
@@ -758,7 +762,8 @@ const LearningSessionExports = {
     getMaxHints,
     normalizeText,
     diffAnswer,
-    getWordPrompt
+    getWordPrompt,
+    LONG_TITLE_MIN_LENGTH
 };
 
 if (typeof module !== 'undefined' && module.exports) {

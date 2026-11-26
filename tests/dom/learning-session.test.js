@@ -911,3 +911,30 @@ describe('Prompt text of a word', () => {
     expect(LS.getWordPrompt(withoutDefinition, false).main).toBe('привет');
   });
 });
+
+describe('Prompt title size on the writing card', () => {
+  const titleFor = (translation) => {
+    const word = { id: 'w1', original: 'hello', translation, repetition: 2, easeFactor: 2.5, reviewHistory: [] };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    window.SV.AppState.sessionTotal = 1;
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    LS.showReverseTranslationCard();
+    return document.querySelector('.exercise-card__title');
+  };
+
+  it('keeps a short title in the big style', () => {
+    expect(titleFor('привет').classList.contains('exercise-card__title--long')).toBe(false);
+  });
+
+  it('gives a long definition the smaller style', () => {
+    const definition = 'To convey or transfer to another, as title, property, or right; to part voluntarily with ownership of.';
+    expect(titleFor(definition).classList.contains('exercise-card__title--long')).toBe(true);
+  });
+
+  it('switches to the smaller style just above the length limit', () => {
+    const limit = LS.LONG_TITLE_MIN_LENGTH;
+    expect(titleFor('я'.repeat(limit - 1)).classList.contains('exercise-card__title--long')).toBe(false);
+    expect(titleFor('я'.repeat(limit)).classList.contains('exercise-card__title--long')).toBe(true);
+  });
+});
