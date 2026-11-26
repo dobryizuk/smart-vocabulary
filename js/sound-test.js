@@ -1,82 +1,124 @@
 // ============================================================================
-// SOUND TEST - temporary Settings section (card C21): each button plays "hello"
-// one specific way, so we learn which way the iPhone silent switch does not mute
+// SOUND TEST - temporary Settings section: neural text-to-speech running in the
+// browser, played through Web Audio, so we learn which engine is heard in iPhone
+// silent mode, how long it takes and how it sounds. Engine libraries load from a
+// CDN on press and never go into the app bundle; models come from Hugging Face.
 // ============================================================================
 
-const speechManager = require('./speech-manager.js');
+const TEST_PHRASE = 'take something for granted';
+const MS_PER_SECOND = 1000;
+const BYTES_PER_MB = 1024 * 1024;
 
-const TEST_WORD = 'hello';
-const SPEECH_LANG = 'en-US';
-const SAMPLE_RATE = 22050;
-const AMPLITUDE = 0.5;
-const BEEP_HZ = 440;
-const BEEP_SECONDS = 0.4;
-const SILENCE_SECONDS = 0.5;
-const RESTORE_SESSION_MS = 5000;
-const DICTIONARY_URL = `https://api.dictionaryapi.dev/api/v2/entries/en/${TEST_WORD}`;
+const KOKORO_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+const KOKORO_VOICE = 'af_heart';
+const PIPER_VOICE = 'en_US-lessac-medium';
 
-const SOUND_TESTS = [
-    { key: 'speech', label: '1. Speech (as now)' },
-    { key: 'speech-session-auto', label: '2. Speech, audio session auto' },
-    { key: 'silent-audio-speech', label: '3. Silent audio, then speech' },
-    { key: 'audio-beep', label: '4. Audio element: beep' },
-    { key: 'web-audio-beep', label: '5. Web Audio: beep' },
-    { key: 'playback-web-audio-beep', label: '6. Audio session playback + Web Audio beep' },
-    { key: 'dictionary-mp3', label: '7. Dictionary mp3' }
+async function loadKokoro(lib, onDownload) {
+    const tts = await lib.KokoroTTS.from_pretrained(KOKORO_MODEL, {
+        dtype: 'q8',
+        device: 'wasm',
+        progress_callback: (event) => {
+            if (event.status === 'progress') onDownload(event.file, event.loaded);
+        }
+    });
+    return async (text, context) => {
+        const audio = await tts.generate(text, { voice: KOKORO_VOICE });
+        const buffer = context.createBuffer(1, audio.audio.length, audio.sampling_rate);
+        buffer.getChannelData(0).set(audio.audio);
+        return buffer;
+    };
+}
+
+async function loadPiper(lib, onDownload) {
+    const session = await lib.TtsSession.create({
+        voiceId: PIPER_VOICE,
+        progress: (event) => onDownload(event.url, event.loaded)
+    });
+    return async (text, context) => {
+        const wav = await session.predict(text);
+        return context.decodeAudioData(await wav.arrayBuffer());
+    };
+}
+
+// url: pinned library build; caches/folders: Cache Storage and OPFS entries it fills with models
+const ENGINES = [
+    {
+        key: 'kokoro',
+        label: 'Kokoro 82M (q8, ~90 MB)',
+        url: 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js',
+        load: loadKokoro,
+        caches: ['transformers-cache', 'kokoro-voices'],
+        folders: []
+    },
+    {
+        key: 'piper',
+        label: 'Piper lessac medium (~60 MB)',
+        url: 'https://esm.sh/@mintplex-labs/piper-tts-web@1.0.5?deps=onnxruntime-web@1.18.0',
+        load: loadPiper,
+        caches: [],
+        folders: ['piper']
+    }
 ];
 
 function soundTestBodyHtml() {
-    const rows = SOUND_TESTS.map(({ key, label }) => `
+    const rows = ENGINES.map(({ key, label }) => `
         <li>
             <button type="button" class="settings-action" data-action="sound-test" data-arg="${key}" data-testid="sound-test-${key}">${label}</button>
             <p class="settings-note" aria-live="polite" data-sound-test-status="${key}" data-testid="sound-test-status-${key}"></p>
         </li>
     `).join('');
     return `
-        <p class="settings-note">Temporary: turn on silent mode and tell which buttons you hear.</p>
-        <ul class="settings-list">${rows}</ul>
+        <p class="settings-note">Temporary: turn on silent mode, press each engine, tell if you hear it, how long it took and how it sounds.</p>
+        <input type="text" class="form-control" aria-label="Text to speak" value="${TEST_PHRASE}" data-sound-test-text data-testid="sound-test-text">
+        <ul class="settings-list">
+            ${rows}
+            <li>
+                <button type="button" class="settings-action" data-action="sound-test-clear" data-testid="sound-test-clear">Clear downloaded models</button>
+                <p class="settings-note" aria-live="polite" data-sound-test-status="clear" data-testid="sound-test-status-clear"></p>
+            </li>
+        </ul>
     `;
-}
-
-// 16-bit mono PCM WAV of a sine tone as a data URI; frequency 0 gives silence
-function toneWavDataUri(frequency, seconds, encodeBase64) {
-    const samples = Math.round(SAMPLE_RATE * seconds);
-    const dataSize = samples * 2;
-    const view = new DataView(new ArrayBuffer(44 + dataSize));
-    const writeAscii = (offset, text) => [...text].forEach((char, i) => view.setUint8(offset + i, char.charCodeAt(0)));
-    writeAscii(0, 'RIFF');
-    view.setUint32(4, 36 + dataSize, true);
-    writeAscii(8, 'WAVE');
-    writeAscii(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, SAMPLE_RATE, true);
-    view.setUint32(28, SAMPLE_RATE * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeAscii(36, 'data');
-    view.setUint32(40, dataSize, true);
-    for (let i = 0; i < samples; i++) {
-        const sample = Math.sin(2 * Math.PI * frequency * i / SAMPLE_RATE) * AMPLITUDE * 0x7fff;
-        view.setInt16(44 + i * 2, Math.round(sample), true);
-    }
-    let binary = '';
-    new Uint8Array(view.buffer).forEach(byte => { binary += String.fromCharCode(byte); });
-    return `data:audio/wav;base64,${encodeBase64(binary)}`;
-}
-
-function firstPhoneticAudioUrl(entries) {
-    const url = (Array.isArray(entries) ? entries : [])
-        .flatMap(entry => entry?.phonetics || [])
-        .map(phonetic => phonetic?.audio)
-        .find(Boolean);
-    if (!url) return null;
-    return url.startsWith('//') ? `https:${url}` : url;
 }
 
 function errorText(error) {
     return error?.name ? `${error.name}: ${error.message}` : String(error);
+}
+
+// The phonemizer inside kokoro-js reads a ReadableStream with for await, which WebKit
+// (Safari 26.0) cannot do yet; this adds the standard async iterator where it is missing
+function addStreamIteration(StreamClass) {
+    const proto = StreamClass?.prototype;
+    if (!proto || proto[Symbol.asyncIterator]) return;
+    proto[Symbol.asyncIterator] = async function* readChunks() {
+        const reader = this.getReader();
+        try {
+            let chunk = await reader.read();
+            while (!chunk.done) {
+                yield chunk.value;
+                chunk = await reader.read();
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    };
+}
+
+const toSeconds = (ms) => (ms / MS_PER_SECOND).toFixed(1);
+const toMegabytes = (bytes) => Math.round(bytes / BYTES_PER_MB);
+
+// A status line keeps finished stages and shows the current one after them
+function createStatusLine(element) {
+    const kept = [];
+    const render = (current) => {
+        if (element) element.textContent = [...kept, current].filter(Boolean).join(' · ');
+    };
+    return {
+        show: render,
+        keep(text) {
+            kept.push(text);
+            render();
+        }
+    };
 }
 
 function createSoundTest(deps = {}) {
@@ -85,133 +127,132 @@ function createSoundTest(deps = {}) {
     const pick = (key, fallback) => (hasOwn.call(deps, key) ? deps[key] : fallback);
 
     const doc = pick('document', g.document ?? null);
-    const speech = pick('speechManager', speechManager);
-    const synth = pick('speechSynthesis', g.speechSynthesis ?? null);
-    const audioSession = pick('audioSession', g.navigator?.audioSession ?? null);
-    const createUtterance = pick('createUtterance', text => new g.SpeechSynthesisUtterance(text));
-    const createAudio = pick('createAudio', src => new g.Audio(src));
+    // The specifier is a variable, so esbuild leaves this import() as is and the library stays out of the bundle
+    const importModule = pick('importModule', url => import(url));
     const createAudioContext = pick('createAudioContext', () => new (g.AudioContext || g.webkitAudioContext)());
-    const fetchFn = pick('fetch', (...args) => g.fetch(...args));
-    const setTimer = pick('setTimeout', (fn, ms) => setTimeout(fn, ms));
-    const encodeBase64 = pick('btoa', text => g.btoa(text));
+    const cacheStorage = pick('caches', g.caches ?? null);
+    const storage = pick('storage', g.navigator?.storage ?? null);
+    const now = pick('now', () => g.performance.now());
+    const StreamClass = pick('ReadableStream', g.ReadableStream);
 
-    const sessionType = () => (audioSession ? String(audioSession.type) : 'no audioSession API');
+    const loadedEngines = new Map();
+    let audioContext = null;
 
-    function setSessionType(type) {
-        if (audioSession) audioSession.type = type;
-    }
+    const statusLine = (key) => createStatusLine(doc?.querySelector(`[data-sound-test-status="${key}"]`));
+    const textToSpeak = () => doc?.querySelector('[data-sound-test-text]')?.value.trim() || TEST_PHRASE;
 
-    function playAudio(src) {
-        return Promise.resolve(createAudio(src).play());
-    }
-
-    function speakDirect(report, onDone = () => undefined) {
-        if (!synth) throw new Error('speechSynthesis unavailable');
-        const utterance = createUtterance(TEST_WORD);
-        utterance.lang = SPEECH_LANG;
-        utterance.onstart = () => report('speaking');
-        utterance.onend = () => { onDone(); report('speech ended'); };
-        utterance.onerror = (event) => { onDone(); report(`speech error: ${event.error}`); };
-        if (synth.speaking || synth.pending) synth.cancel();
-        synth.speak(utterance);
-        report('speak() called');
-    }
-
-    function speakAsNow(report) {
-        speech.speakWord(TEST_WORD);
-        report(`speakWord called, Sound setting ${speech.speechSettings?.enabled ? 'on' : 'off'}`);
-    }
-
-    function speakWithAutoSession(report) {
-        let restored = false;
-        const restore = () => {
-            if (restored) return;
-            restored = true;
-            setSessionType('playback');
+    async function loadEngine(engine, line) {
+        line.show('loading library…');
+        addStreamIteration(StreamClass);
+        const lib = await importModule(engine.url);
+        line.show('loading model…');
+        const downloaded = new Map();
+        let loading = true;
+        const onDownload = (file, bytes) => {
+            if (!loading) return;
+            downloaded.set(file, bytes);
+            line.show(`downloading model… ${toMegabytes(totalBytes(downloaded))} MB`);
         };
-        setSessionType('auto');
-        setTimer(restore, RESTORE_SESSION_MS);
         try {
-            speakDirect(report, restore);
+            const synthesize = await engine.load(lib, onDownload);
+            return { synthesize, downloadedBytes: totalBytes(downloaded) };
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function prepareEngine(engine, line) {
+        if (loadedEngines.has(engine.key)) {
+            const { synthesize } = await loadedEngines.get(engine.key);
+            line.keep('already loaded');
+            return synthesize;
+        }
+        const started = now();
+        const loading = loadEngine(engine, line);
+        loadedEngines.set(engine.key, loading);
+        try {
+            const { synthesize, downloadedBytes } = await loading;
+            // Bytes the library reported: a download, or a read of the model it cached earlier
+            const model = downloadedBytes ? `, model ${toMegabytes(downloadedBytes)} MB` : '';
+            line.keep(`loaded in ${toSeconds(now() - started)} s${model}`);
+            return synthesize;
         } catch (error) {
-            restore();
+            loadedEngines.delete(engine.key);
             throw error;
         }
     }
 
-    function silentAudioThenSpeech(report) {
-        return playAudio(toneWavDataUri(0, SILENCE_SECONDS, encodeBase64)).then(() => {
-            report('silent audio started');
-            speakDirect(report);
-        });
+    async function speak(engine, line, context, resumed) {
+        const synthesize = await prepareEngine(engine, line);
+        line.show('generating…');
+        const started = now();
+        const buffer = await synthesize(textToSpeak(), context);
+        line.keep(`generated in ${Math.round(now() - started)} ms, ${buffer.duration.toFixed(1)} s of audio`);
+        const resumeError = await resumed;
+        if (resumeError) throw resumeError;
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(context.destination);
+        source.start();
+        line.show('playing');
     }
 
-    function audioElementBeep(report) {
-        return playAudio(toneWavDataUri(BEEP_HZ, BEEP_SECONDS, encodeBase64)).then(() => report('started'));
-    }
-
-    function webAudioBeep(report) {
-        const context = createAudioContext();
-        report('resuming audio context');
-        return Promise.resolve(context.resume()).then(() => {
-            const oscillator = context.createOscillator();
-            oscillator.frequency.value = BEEP_HZ;
-            oscillator.connect(context.destination);
-            oscillator.onended = () => context.close?.();
-            oscillator.start(context.currentTime);
-            oscillator.stop(context.currentTime + BEEP_SECONDS);
-            report(`started, context ${context.state}`);
-        });
-    }
-
-    function playbackSessionWebAudioBeep(report) {
-        setSessionType('playback');
-        return webAudioBeep(report);
-    }
-
-    async function dictionaryMp3(report) {
-        report('fetching');
-        let response;
-        try {
-            response = await fetchFn(DICTIONARY_URL);
-        } catch (error) {
-            throw new Error(`fetch failed: ${errorText(error)}`);
-        }
-        if (!response.ok) throw new Error(`fetch failed: HTTP ${response.status}`);
-        const url = firstPhoneticAudioUrl(await response.json());
-        if (!url) throw new Error('no audio in the dictionary entry');
-        await playAudio(url);
-        report(`started ${url}`);
-    }
-
-    const VARIANTS = {
-        'speech': speakAsNow,
-        'speech-session-auto': speakWithAutoSession,
-        'silent-audio-speech': silentAudioThenSpeech,
-        'audio-beep': audioElementBeep,
-        'web-audio-beep': webAudioBeep,
-        'playback-web-audio-beep': playbackSessionWebAudioBeep,
-        'dictionary-mp3': dictionaryMp3
-    };
-
-    // Called straight from the click handler: each variant starts its sound synchronously
-    // where it can, so iOS sees the user gesture
+    // Called straight from the click handler: the AudioContext is created and resumed
+    // synchronously, so iOS sees the user gesture before the long async work starts
     function run(key) {
-        const variant = VARIANTS[key];
-        if (!variant) return Promise.resolve();
-        const status = doc?.querySelector(`[data-sound-test-status="${key}"]`);
-        const report = (message) => {
-            if (status) status.textContent = `${message} · audioSession: ${sessionType()}`;
-        };
+        const engine = ENGINES.find(candidate => candidate.key === key);
+        if (!engine) return Promise.resolve();
+        const line = statusLine(key);
         try {
-            return Promise.resolve(variant(report)).catch(error => report(errorText(error)));
+            audioContext = audioContext || createAudioContext();
+            // Settles to the error, if any, so a failed resume waits for playback instead of going unhandled
+            const resumed = Promise.resolve(audioContext.resume()).then(() => null, error => error);
+            return speak(engine, line, audioContext, resumed).catch(error => line.show(errorText(error)));
         } catch (error) {
-            report(errorText(error));
+            line.show(errorText(error));
             return Promise.resolve();
         }
     }
 
-    return { run };
+    async function removeCaches() {
+        if (!cacheStorage) return 0;
+        const names = ENGINES.flatMap(engine => engine.caches);
+        const removed = await Promise.all(names.map(name => cacheStorage.delete(name)));
+        return removed.filter(Boolean).length;
+    }
+
+    async function removeFolders() {
+        if (!storage?.getDirectory) return 0;
+        const root = await storage.getDirectory();
+        const names = ENGINES.flatMap(engine => engine.folders);
+        const removed = await Promise.all(names.map(name => root.removeEntry(name, { recursive: true }).then(
+            () => true,
+            (error) => {
+                if (error?.name === 'NotFoundError') return false;
+                throw error;
+            }
+        )));
+        return removed.filter(Boolean).length;
+    }
+
+    async function clearModels() {
+        const line = statusLine('clear');
+        line.show('clearing…');
+        try {
+            line.keep(`removed ${await removeCaches()} caches`);
+            line.show(`removed ${await removeFolders()} model folders`);
+        } catch (error) {
+            line.show(errorText(error));
+        }
+    }
+
+    return { run, clearModels };
 }
 
-module.exports = { SOUND_TESTS, soundTestBodyHtml, toneWavDataUri, firstPhoneticAudioUrl, createSoundTest };
+function totalBytes(downloaded) {
+    let total = 0;
+    downloaded.forEach(bytes => { total += bytes; });
+    return total;
+}
+
+module.exports = { ENGINES, TEST_PHRASE, soundTestBodyHtml, addStreamIteration, createSoundTest };

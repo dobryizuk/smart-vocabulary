@@ -34,23 +34,20 @@ describe('Settings view', () => {
     expect(titles).toEqual(['Learning', 'Appearance', 'Cloud backup', 'Data on this device', 'Diagnostics', 'Sound test']);
   });
 
-  it('ends with the temporary Sound test section of seven buttons that run their test on click', () => {
+  it('ends with the temporary Sound test section: a text field, one button per TTS engine and a clear button', () => {
     const buttons = [...document.querySelectorAll('[data-action="sound-test"]')];
-    expect(buttons.map(button => button.textContent)).toEqual([
-      '1. Speech (as now)',
-      '2. Speech, audio session auto',
-      '3. Silent audio, then speech',
-      '4. Audio element: beep',
-      '5. Web Audio: beep',
-      '6. Audio session playback + Web Audio beep',
-      '7. Dictionary mp3'
-    ]);
+    expect(byTestId('sound-test-text').value).toBe('take something for granted');
+    expect(buttons.map(button => button.textContent)).toEqual(['Kokoro 82M (q8, ~90 MB)', 'Piper lessac medium (~60 MB)']);
 
     const run = vi.spyOn(window.SV.SoundTest, 'run').mockImplementation(() => Promise.resolve());
-    byTestId('sound-test-web-audio-beep').click();
+    const clearModels = vi.spyOn(window.SV.SoundTest, 'clearModels').mockImplementation(() => Promise.resolve());
+    byTestId('sound-test-piper').click();
+    byTestId('sound-test-clear').click();
 
-    expect(run).toHaveBeenCalledWith('web-audio-beep');
+    expect(run).toHaveBeenCalledWith('piper');
+    expect(clearModels).toHaveBeenCalledTimes(1);
     run.mockRestore();
+    clearModels.mockRestore();
   });
 
   it('keeps the ids and test ids of the data and diagnostics controls', () => {

@@ -1,411 +1,359 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const {
-  SOUND_TESTS,
-  soundTestBodyHtml,
-  toneWavDataUri,
-  firstPhoneticAudioUrl,
-  createSoundTest
-} = require('../../js/sound-test.js');
+const { ENGINES, TEST_PHRASE, soundTestBodyHtml, addStreamIteration, createSoundTest } = require('../../js/sound-test.js');
 
-const DICTIONARY_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/hello';
+const MB = 1024 * 1024;
+const urlOf = (key) => ENGINES.find(engine => engine.key === key).url;
 
-function jsonResponse(body, { ok = true, status = 200 } = {}) {
-  return { ok, status, json: () => Promise.resolve(body) };
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
 }
 
-function fetchReturning(response) {
-  return vi.fn(() => Promise.resolve(response));
-}
+const namedError = (name, message) => Object.assign(new Error(message), { name });
 
-function decodeWav(dataUri) {
-  const [prefix, base64] = dataUri.split(',');
-  const bytes = Uint8Array.from(window.atob(base64), char => char.charCodeAt(0));
-  const view = new DataView(bytes.buffer);
-  const ascii = (offset, length) => String.fromCharCode(...bytes.slice(offset, offset + length));
-  const dataSize = view.getUint32(40, true);
-  const samples = [];
-  for (let offset = 44; offset < 44 + dataSize; offset += 2) samples.push(view.getInt16(offset, true));
-  return {
-    prefix,
-    riff: ascii(0, 4),
-    wave: ascii(8, 4),
-    format: view.getUint16(20, true),
-    channels: view.getUint16(22, true),
-    sampleRate: view.getUint32(24, true),
-    bitsPerSample: view.getUint16(34, true),
-    totalSize: bytes.length,
-    samples
-  };
-}
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('Sound test', () => {
-  let audioSession;
-  let speechManager;
-  let synth;
-  let audios;
-  let playResult;
+  let clock;
   let audioContext;
-  let oscillator;
-  let fetchFn;
-  let timers;
-  let soundTest;
+  let source;
+  let channel;
+  let kokoroTts;
+  let kokoroLib;
+  let piperSession;
+  let piperProgress;
+  let piperLib;
+  let importModule;
+  let createAudioContext;
 
   const status = (key) => document.querySelector(`[data-testid="sound-test-status-${key}"]`).textContent;
+  const textField = () => document.querySelector('[data-testid="sound-test-text"]');
 
   const make = (overrides = {}) => createSoundTest({
     document,
-    speechManager,
-    speechSynthesis: synth,
-    createUtterance: text => ({ text }),
-    audioSession,
-    createAudio: vi.fn(src => {
-      const audio = { src, play: vi.fn(() => playResult()) };
-      audios.push(audio);
-      return audio;
-    }),
-    createAudioContext: () => audioContext,
-    fetch: fetchFn,
-    setTimeout: (fn, ms) => timers.push({ fn, ms }),
+    importModule,
+    createAudioContext,
+    now: () => clock,
+    caches: null,
+    storage: null,
     ...overrides
   });
 
-  const lastUtterance = () => synth.speak.mock.calls.at(-1)[0];
-
   beforeEach(() => {
     document.body.innerHTML = soundTestBodyHtml();
-    audioSession = { type: 'playback' };
-    speechManager = { speakWord: vi.fn(), speechSettings: { enabled: true } };
-    synth = { speaking: false, pending: false, speak: vi.fn(), cancel: vi.fn() };
-    audios = [];
-    playResult = () => Promise.resolve();
-    oscillator = { frequency: { value: 0 }, connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+    clock = 0;
+    source = { connect: vi.fn(), start: vi.fn() };
+    channel = new Float32Array(48000);
     audioContext = {
-      state: 'suspended',
-      currentTime: 2,
       destination: { name: 'speakers' },
-      resume: vi.fn(() => { audioContext.state = 'running'; return Promise.resolve(); }),
-      createOscillator: vi.fn(() => oscillator),
-      close: vi.fn()
+      resume: vi.fn(() => Promise.resolve()),
+      createBuffer: vi.fn((channels, length, sampleRate) => ({ duration: length / sampleRate, getChannelData: () => channel })),
+      decodeAudioData: vi.fn(() => Promise.resolve({ duration: 1.44 })),
+      createBufferSource: vi.fn(() => source)
     };
-    fetchFn = fetchReturning(jsonResponse([{ phonetics: [{ text: '/həˈləʊ/' }, { audio: '' }, { audio: 'https://cdn.example/hello-uk.mp3' }] }]));
-    timers = [];
-    soundTest = make();
+    createAudioContext = vi.fn(() => audioContext);
+    kokoroTts = {
+      generate: vi.fn(() => {
+        clock += 850;
+        return Promise.resolve({ audio: new Float32Array(48000).fill(0.25), sampling_rate: 24000 });
+      })
+    };
+    kokoroLib = {
+      KokoroTTS: {
+        from_pretrained: vi.fn((model, { progress_callback }) => {
+          progress_callback({ status: 'initiate', file: 'config.json' });
+          progress_callback({ status: 'progress', file: 'onnx/model_quantized.onnx', loaded: 60 * MB });
+          progress_callback({ status: 'progress', file: 'onnx/model_quantized.onnx', loaded: 88 * MB });
+          progress_callback({ status: 'progress', file: 'tokenizer.json', loaded: 2 * MB });
+          clock += 12300;
+          return Promise.resolve(kokoroTts);
+        })
+      }
+    };
+    piperSession = {
+      predict: vi.fn(() => {
+        clock += 240;
+        return Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)) });
+      })
+    };
+    piperLib = {
+      TtsSession: {
+        create: vi.fn(({ progress }) => {
+          piperProgress = progress;
+          progress({ url: 'https://huggingface.co/lessac.onnx', loaded: 60 * MB, total: 60 * MB });
+          clock += 7400;
+          return Promise.resolve(piperSession);
+        })
+      }
+    };
+    importModule = vi.fn(url => Promise.resolve(url === urlOf('kokoro') ? kokoroLib : piperLib));
   });
 
   describe('section markup', () => {
-    it('renders the note and one button with a status line per sound test', () => {
-      const buttons = [...document.querySelectorAll('.settings-list .settings-action')];
+    it('renders the note, the prefilled text field, one button with a status line per engine and the clear button', () => {
+      const buttons = [...document.querySelectorAll('[data-action="sound-test"]')];
 
-      expect(document.querySelector('.settings-note').textContent).toBe('Temporary: turn on silent mode and tell which buttons you hear.');
-      expect(buttons).toHaveLength(7);
-      expect(buttons.map(button => button.textContent)).toEqual(SOUND_TESTS.map(test => test.label));
-      buttons.forEach((button, i) => {
-        expect(button.dataset.action).toBe('sound-test');
-        expect(button.dataset.arg).toBe(SOUND_TESTS[i].key);
-        expect(status(SOUND_TESTS[i].key)).toBe('');
+      expect(document.querySelector('.settings-note').textContent)
+        .toBe('Temporary: turn on silent mode, press each engine, tell if you hear it, how long it took and how it sounds.');
+      expect(textField().value).toBe('take something for granted');
+      expect(buttons.map(button => button.dataset.arg)).toEqual(['kokoro', 'piper']);
+      expect(buttons.map(button => button.textContent)).toEqual(ENGINES.map(engine => engine.label));
+      ENGINES.forEach(({ key }) => expect(status(key)).toBe(''));
+      expect(document.querySelector('[data-testid="sound-test-clear"]').dataset.action).toBe('sound-test-clear');
+      expect(status('clear')).toBe('');
+    });
+
+    it('loads every engine from a CDN build pinned to an exact version', () => {
+      ENGINES.forEach(({ url }) => {
+        expect(url).toMatch(/^https:\/\/(cdn\.jsdelivr\.net|esm\.sh)\//);
+        expect(url).toMatch(/@\d+\.\d+\.\d+/);
       });
+      expect(urlOf('piper')).toContain('deps=onnxruntime-web@1.18.0');
     });
   });
 
-  describe('Speech (as now)', () => {
-    it('goes through the app speech manager and reports the Sound setting and session type', () => {
-      soundTest.run('speech');
+  describe('run', () => {
+    it('creates and resumes the AudioContext synchronously, before any library loads', () => {
+      make().run('kokoro');
 
-      expect(speechManager.speakWord).toHaveBeenCalledWith('hello');
-      expect(synth.speak).not.toHaveBeenCalled();
-      expect(status('speech')).toBe('speakWord called, Sound setting on · audioSession: playback');
-    });
-
-    it('tells when the Sound setting is off, since then nothing is spoken', () => {
-      speechManager.speechSettings.enabled = false;
-
-      soundTest.run('speech');
-
-      expect(status('speech')).toContain('Sound setting off');
-    });
-
-    it('reports an error the speech manager throws', () => {
-      speechManager.speakWord.mockImplementation(() => { throw new TypeError('boom'); });
-
-      soundTest.run('speech');
-
-      expect(status('speech')).toBe('TypeError: boom · audioSession: playback');
-    });
-  });
-
-  describe('Speech, audio session auto', () => {
-    it('speaks with the session set to auto and restores playback when speech ends', () => {
-      let typeWhileSpeaking;
-      synth.speak.mockImplementation(() => { typeWhileSpeaking = audioSession.type; });
-
-      soundTest.run('speech-session-auto');
-
-      expect(typeWhileSpeaking).toBe('auto');
-      expect(lastUtterance()).toMatchObject({ text: 'hello', lang: 'en-US' });
-      expect(status('speech-session-auto')).toBe('speak() called · audioSession: auto');
-
-      lastUtterance().onstart();
-      expect(status('speech-session-auto')).toBe('speaking · audioSession: auto');
-
-      lastUtterance().onend();
-      expect(audioSession.type).toBe('playback');
-      expect(status('speech-session-auto')).toBe('speech ended · audioSession: playback');
-    });
-
-    it('restores playback after a timeout when speech never ends', () => {
-      soundTest.run('speech-session-auto');
-      expect(audioSession.type).toBe('auto');
-
-      timers[0].fn();
-
-      expect(timers[0].ms).toBeGreaterThan(0);
-      expect(audioSession.type).toBe('playback');
-    });
-
-    it('restores playback and reports a speech error', () => {
-      soundTest.run('speech-session-auto');
-
-      lastUtterance().onerror({ error: 'not-allowed' });
-
-      expect(audioSession.type).toBe('playback');
-      expect(status('speech-session-auto')).toBe('speech error: not-allowed · audioSession: playback');
-    });
-
-    it('restores playback when speak() throws', () => {
-      synth.speak.mockImplementation(() => { throw new Error('engine down'); });
-
-      soundTest.run('speech-session-auto');
-
-      expect(audioSession.type).toBe('playback');
-      expect(status('speech-session-auto')).toBe('Error: engine down · audioSession: playback');
-    });
-
-    it('still speaks without the Audio Session API and says the API is missing', () => {
-      soundTest = make({ audioSession: null });
-
-      soundTest.run('speech-session-auto');
-
-      expect(synth.speak).toHaveBeenCalledTimes(1);
-      expect(status('speech-session-auto')).toBe('speak() called · audioSession: no audioSession API');
-    });
-
-    it('reports missing speech synthesis', () => {
-      soundTest = make({ speechSynthesis: null });
-
-      soundTest.run('speech-session-auto');
-
-      expect(status('speech-session-auto')).toBe('Error: speechSynthesis unavailable · audioSession: playback');
-      expect(audioSession.type).toBe('playback');
-    });
-  });
-
-  describe('Silent audio, then speech', () => {
-    it('starts a silent WAV inside the click and speaks once it plays', async () => {
-      const done = soundTest.run('silent-audio-speech');
-
-      expect(audios).toHaveLength(1);
-      expect(audios[0].play).toHaveBeenCalledTimes(1);
-      expect(synth.speak).not.toHaveBeenCalled();
-      const wav = decodeWav(audios[0].src);
-      expect(wav.prefix).toBe('data:audio/wav;base64');
-      expect(wav.samples.every(sample => sample === 0)).toBe(true);
-
-      await done;
-
-      expect(lastUtterance()).toMatchObject({ text: 'hello', lang: 'en-US' });
-      expect(status('silent-audio-speech')).toBe('speak() called · audioSession: playback');
-    });
-
-    it('reports a blocked silent clip and does not speak', async () => {
-      playResult = () => Promise.reject(new window.DOMException('play() denied', 'NotAllowedError'));
-
-      await soundTest.run('silent-audio-speech');
-
-      expect(synth.speak).not.toHaveBeenCalled();
-      expect(status('silent-audio-speech')).toBe('NotAllowedError: play() denied · audioSession: playback');
-    });
-  });
-
-  describe('Audio element: beep', () => {
-    it('plays a generated 440 Hz WAV inside the click and reports the start', async () => {
-      const done = soundTest.run('audio-beep');
-
-      expect(audios[0].play).toHaveBeenCalledTimes(1);
-      const wav = decodeWav(audios[0].src);
-      expect(wav.samples.length / wav.sampleRate).toBeCloseTo(0.4, 3);
-      expect(wav.samples.some(sample => sample !== 0)).toBe(true);
-
-      await done;
-
-      expect(status('audio-beep')).toBe('started · audioSession: playback');
-    });
-
-    it('reports a play() rejection', async () => {
-      playResult = () => Promise.reject(new window.DOMException('unsupported source', 'NotSupportedError'));
-
-      await soundTest.run('audio-beep');
-
-      expect(status('audio-beep')).toBe('NotSupportedError: unsupported source · audioSession: playback');
-    });
-  });
-
-  describe('Web Audio: beep', () => {
-    it('resumes the context inside the click, then plays a 0.4 s 440 Hz oscillator', async () => {
-      const done = soundTest.run('web-audio-beep');
-
+      expect(createAudioContext).toHaveBeenCalledTimes(1);
       expect(audioContext.resume).toHaveBeenCalledTimes(1);
-      expect(status('web-audio-beep')).toBe('resuming audio context · audioSession: playback');
-
-      await done;
-
-      expect(oscillator.frequency.value).toBe(440);
-      expect(oscillator.connect).toHaveBeenCalledWith(audioContext.destination);
-      expect(oscillator.start).toHaveBeenCalledWith(2);
-      expect(oscillator.stop.mock.calls[0][0]).toBeCloseTo(2.4, 5);
-      expect(status('web-audio-beep')).toBe('started, context running · audioSession: playback');
-
-      oscillator.onended();
-      expect(audioContext.close).toHaveBeenCalledTimes(1);
+      expect(status('kokoro')).toBe('loading library…');
+      expect(importModule).toHaveBeenCalledWith(urlOf('kokoro'));
     });
 
-    it('does not touch the audio session', async () => {
-      audioSession.type = 'auto';
+    it('loads Kokoro q8 on wasm, speaks the phrase with an American voice and plays its PCM through Web Audio', async () => {
+      await make().run('kokoro');
 
-      await soundTest.run('web-audio-beep');
-
-      expect(audioSession.type).toBe('auto');
+      expect(kokoroLib.KokoroTTS.from_pretrained).toHaveBeenCalledWith('onnx-community/Kokoro-82M-v1.0-ONNX', expect.objectContaining({ dtype: 'q8', device: 'wasm' }));
+      expect(kokoroTts.generate).toHaveBeenCalledWith(TEST_PHRASE, { voice: 'af_heart' });
+      expect(audioContext.createBuffer).toHaveBeenCalledWith(1, 48000, 24000);
+      expect(channel[0]).toBe(0.25);
+      expect(source.buffer.duration).toBe(2);
+      expect(source.connect).toHaveBeenCalledWith(audioContext.destination);
+      expect(source.start).toHaveBeenCalled();
+      expect(status('kokoro')).toBe('loaded in 12.3 s, model 90 MB · generated in 850 ms, 2.0 s of audio · playing');
     });
 
-    it('reports a missing AudioContext', () => {
-      soundTest = make({ createAudioContext: () => { throw new TypeError('AudioContext is not a constructor'); } });
+    it('loads the Piper lessac voice and plays its decoded WAV', async () => {
+      await make().run('piper');
 
-      soundTest.run('web-audio-beep');
-
-      expect(status('web-audio-beep')).toBe('TypeError: AudioContext is not a constructor · audioSession: playback');
+      expect(piperLib.TtsSession.create).toHaveBeenCalledWith(expect.objectContaining({ voiceId: 'en_US-lessac-medium' }));
+      expect(piperSession.predict).toHaveBeenCalledWith(TEST_PHRASE);
+      expect(audioContext.decodeAudioData).toHaveBeenCalledWith(expect.any(ArrayBuffer));
+      expect(source.start).toHaveBeenCalled();
+      expect(status('piper')).toBe('loaded in 7.4 s, model 60 MB · generated in 240 ms, 1.4 s of audio · playing');
     });
 
-    it('reports a failed resume', async () => {
-      audioContext.resume = vi.fn(() => Promise.reject(new window.DOMException('no gesture', 'NotAllowedError')));
+    it('shows the downloaded megabytes while the model is loading', async () => {
+      const loading = deferred();
+      kokoroLib.KokoroTTS.from_pretrained.mockImplementation((model, { progress_callback }) => {
+        progress_callback({ status: 'progress', file: 'onnx/model_quantized.onnx', loaded: 30 * MB });
+        progress_callback({ status: 'progress', file: 'voices/af_heart.bin', loaded: 0.6 * MB });
+        return loading.promise;
+      });
+      const running = make().run('kokoro');
+      await flush();
 
-      await soundTest.run('web-audio-beep');
+      expect(status('kokoro')).toBe('downloading model… 31 MB');
 
-      expect(oscillator.start).not.toHaveBeenCalled();
-      expect(status('web-audio-beep')).toBe('NotAllowedError: no gesture · audioSession: playback');
+      loading.resolve(kokoroTts);
+      await running;
+      expect(status('kokoro')).toMatch(/^loaded in .+, model 31 MB · generated in/);
+    });
+
+    it('says loading model when the library reports no download, as with a model cached earlier', async () => {
+      const loading = deferred();
+      kokoroLib.KokoroTTS.from_pretrained.mockImplementation(() => loading.promise);
+      const running = make().run('kokoro');
+      await flush();
+
+      expect(status('kokoro')).toBe('loading model…');
+
+      loading.resolve(kokoroTts);
+      await running;
+      expect(status('kokoro')).toMatch(/^loaded in 0\.0 s · generated in/);
+    });
+
+    it('ignores progress the library reports after loading, such as Piper inference progress', async () => {
+      const soundTest = make();
+      await soundTest.run('piper');
+      const finished = status('piper');
+
+      piperProgress({ url: 'tts://inference-progress', loaded: 1, total: 2 });
+
+      expect(status('piper')).toBe(finished);
+    });
+
+    it('reuses the loaded engine and the one AudioContext on the next press and shows the warm timing', async () => {
+      const soundTest = make();
+      await soundTest.run('kokoro');
+      await soundTest.run('kokoro');
+
+      expect(importModule).toHaveBeenCalledTimes(1);
+      expect(kokoroLib.KokoroTTS.from_pretrained).toHaveBeenCalledTimes(1);
+      expect(createAudioContext).toHaveBeenCalledTimes(1);
+      expect(audioContext.resume).toHaveBeenCalledTimes(2);
+      expect(source.start).toHaveBeenCalledTimes(2);
+      expect(status('kokoro')).toBe('already loaded · generated in 850 ms, 2.0 s of audio · playing');
+    });
+
+    it('speaks the text typed in the field and falls back to the phrase when it is empty', async () => {
+      const soundTest = make();
+      textField().value = '  break the ice ';
+      await soundTest.run('kokoro');
+      textField().value = '   ';
+      await soundTest.run('kokoro');
+
+      expect(kokoroTts.generate.mock.calls.map(call => call[0])).toEqual(['break the ice', TEST_PHRASE]);
+    });
+
+    it('waits for the AudioContext to resume before playing and reports a failed resume', async () => {
+      audioContext.resume.mockReturnValue(Promise.reject(namedError('NotAllowedError', 'not allowed')));
+
+      await make().run('kokoro');
+
+      expect(source.start).not.toHaveBeenCalled();
+      expect(status('kokoro')).toBe('loaded in 12.3 s, model 90 MB · generated in 850 ms, 2.0 s of audio · NotAllowedError: not allowed');
+    });
+
+    it('reports a library that fails to load and loads it again on the next press', async () => {
+      importModule.mockReturnValueOnce(Promise.reject(new TypeError('Importing a module script failed.')));
+      const soundTest = make();
+
+      await soundTest.run('piper');
+      expect(status('piper')).toBe('TypeError: Importing a module script failed.');
+      expect(source.start).not.toHaveBeenCalled();
+
+      await soundTest.run('piper');
+      expect(importModule).toHaveBeenCalledTimes(2);
+      expect(status('piper')).toMatch(/^loaded in .+ · playing$/);
+    });
+
+    it('reports a model that fails to load', async () => {
+      kokoroLib.KokoroTTS.from_pretrained.mockReturnValue(Promise.reject(new Error('Could not locate file')));
+
+      await make().run('kokoro');
+
+      expect(status('kokoro')).toBe('Error: Could not locate file');
+    });
+
+    it('keeps the load timing and reports a generation error after it', async () => {
+      kokoroTts.generate.mockReturnValue(Promise.reject(new RangeError('Out of memory')));
+
+      await make().run('kokoro');
+
+      expect(status('kokoro')).toBe('loaded in 12.3 s, model 90 MB · RangeError: Out of memory');
+      expect(source.start).not.toHaveBeenCalled();
+    });
+
+    it('reports an AudioContext that cannot be created and loads nothing', async () => {
+      createAudioContext.mockImplementation(() => { throw new TypeError('AudioContext is not a constructor'); });
+
+      await make().run('piper');
+
+      expect(status('piper')).toBe('TypeError: AudioContext is not a constructor');
+      expect(importModule).not.toHaveBeenCalled();
+    });
+
+    it('ignores an unknown engine', async () => {
+      await make().run('nope');
+
+      expect(createAudioContext).not.toHaveBeenCalled();
+      expect(importModule).not.toHaveBeenCalled();
     });
   });
 
-  describe('Audio session playback + Web Audio beep', () => {
-    it('sets the session to playback before the Web Audio beep', async () => {
-      audioSession.type = 'auto';
-      let typeOnResume;
-      audioContext.resume = vi.fn(() => { typeOnResume = audioSession.type; return Promise.resolve(); });
+  describe('addStreamIteration', () => {
+    function fakeStreamClass(chunks) {
+      const reader = {
+        read: vi.fn(() => Promise.resolve(chunks.length ? { done: false, value: chunks.shift() } : { done: true })),
+        releaseLock: vi.fn()
+      };
+      return { StreamClass: class { getReader() { return reader; } }, reader };
+    }
 
-      await soundTest.run('playback-web-audio-beep');
+    it('lets for await read a stream chunk by chunk where the browser cannot, then releases the reader', async () => {
+      const { StreamClass, reader } = fakeStreamClass(['a', 'b']);
+      addStreamIteration(StreamClass);
 
-      expect(typeOnResume).toBe('playback');
-      expect(oscillator.start).toHaveBeenCalledTimes(1);
-      expect(status('playback-web-audio-beep')).toMatch(/^started, context .* · audioSession: playback$/);
+      const read = [];
+      for await (const chunk of new StreamClass()) read.push(chunk);
+
+      expect(read).toEqual(['a', 'b']);
+      expect(reader.releaseLock).toHaveBeenCalledTimes(1);
     });
 
-    it('still beeps without the Audio Session API', async () => {
-      soundTest = make({ audioSession: null });
+    it('keeps the native iterator and tolerates a browser without streams', () => {
+      const native = async function* native() { yield 'x'; };
+      const { StreamClass } = fakeStreamClass([]);
+      StreamClass.prototype[Symbol.asyncIterator] = native;
 
-      await soundTest.run('playback-web-audio-beep');
+      addStreamIteration(StreamClass);
+      addStreamIteration(undefined);
 
-      expect(oscillator.start).toHaveBeenCalledTimes(1);
-      expect(status('playback-web-audio-beep')).toContain('audioSession: no audioSession API');
-    });
-  });
-
-  describe('Dictionary mp3', () => {
-    it('fetches "hello" and plays its first non-empty phonetic audio', async () => {
-      const done = soundTest.run('dictionary-mp3');
-      expect(status('dictionary-mp3')).toBe('fetching · audioSession: playback');
-
-      await done;
-
-      expect(fetchFn).toHaveBeenCalledWith(DICTIONARY_URL);
-      expect(audios.map(audio => audio.src)).toEqual(['https://cdn.example/hello-uk.mp3']);
-      expect(audios[0].play).toHaveBeenCalledTimes(1);
-      expect(status('dictionary-mp3')).toBe('started https://cdn.example/hello-uk.mp3 · audioSession: playback');
+      expect(StreamClass.prototype[Symbol.asyncIterator]).toBe(native);
     });
 
-    it('reports a network failure', async () => {
-      fetchFn = vi.fn(() => Promise.reject(new TypeError('Load failed')));
-      soundTest = make();
+    it('is added before an engine library loads', () => {
+      const { StreamClass } = fakeStreamClass([]);
 
-      await soundTest.run('dictionary-mp3');
+      make({ ReadableStream: StreamClass }).run('kokoro');
 
-      expect(audios).toHaveLength(0);
-      expect(status('dictionary-mp3')).toBe('Error: fetch failed: TypeError: Load failed · audioSession: playback');
-    });
-
-    it('reports an HTTP error', async () => {
-      fetchFn = fetchReturning(jsonResponse({}, { ok: false, status: 404 }));
-      soundTest = make();
-
-      await soundTest.run('dictionary-mp3');
-
-      expect(status('dictionary-mp3')).toBe('Error: fetch failed: HTTP 404 · audioSession: playback');
-    });
-
-    it('reports an entry without audio', async () => {
-      fetchFn = fetchReturning(jsonResponse([{ phonetics: [{ audio: '' }] }]));
-      soundTest = make();
-
-      await soundTest.run('dictionary-mp3');
-
-      expect(audios).toHaveLength(0);
-      expect(status('dictionary-mp3')).toBe('Error: no audio in the dictionary entry · audioSession: playback');
-    });
-
-    it('reports a play() rejection after the fetch', async () => {
-      playResult = () => Promise.reject(new window.DOMException('no gesture', 'NotAllowedError'));
-
-      await soundTest.run('dictionary-mp3');
-
-      expect(status('dictionary-mp3')).toBe('NotAllowedError: no gesture · audioSession: playback');
+      expect(StreamClass.prototype[Symbol.asyncIterator]).toEqual(expect.any(Function));
     });
   });
 
-  it('ignores an unknown sound test', async () => {
-    await soundTest.run('nope');
+  describe('clearModels', () => {
+    let caches;
+    let root;
 
-    expect(speechManager.speakWord).not.toHaveBeenCalled();
-    expect(synth.speak).not.toHaveBeenCalled();
-    expect(audios).toHaveLength(0);
-  });
-
-  describe('toneWavDataUri', () => {
-    it('builds a 16-bit mono PCM WAV of the requested length', () => {
-      const wav = decodeWav(toneWavDataUri(440, 0.4, window.btoa));
-
-      expect(wav).toMatchObject({ riff: 'RIFF', wave: 'WAVE', format: 1, channels: 1, bitsPerSample: 16 });
-      expect(wav.totalSize).toBe(44 + wav.samples.length * 2);
-      expect(wav.samples.length).toBe(Math.round(wav.sampleRate * 0.4));
-      expect(Math.max(...wav.samples)).toBeGreaterThan(0);
-      expect(Math.min(...wav.samples)).toBeLessThan(0);
+    beforeEach(() => {
+      caches = { delete: vi.fn(name => Promise.resolve(name === 'transformers-cache')) };
+      root = { removeEntry: vi.fn(() => Promise.resolve()) };
     });
 
-    it('gives pure silence for frequency 0', () => {
-      const wav = decodeWav(toneWavDataUri(0, 0.5, window.btoa));
+    const storage = () => ({ getDirectory: () => Promise.resolve(root) });
 
-      expect(wav.samples.length).toBe(Math.round(wav.sampleRate * 0.5));
-      expect(wav.samples.every(sample => sample === 0)).toBe(true);
-    });
-  });
+    it('deletes the model caches and folders the engines created and reports how many were removed', async () => {
+      await make({ caches, storage: storage() }).clearModels();
 
-  describe('firstPhoneticAudioUrl', () => {
-    it('takes the first non-empty audio across entries and fixes protocol-relative links', () => {
-      expect(firstPhoneticAudioUrl([{ phonetics: [{ audio: '' }] }, { phonetics: [{ audio: '//ssl.example/hello.mp3' }] }]))
-        .toBe('https://ssl.example/hello.mp3');
+      expect(caches.delete.mock.calls.map(call => call[0])).toEqual(['transformers-cache', 'kokoro-voices']);
+      expect(root.removeEntry).toHaveBeenCalledWith('piper', { recursive: true });
+      expect(status('clear')).toBe('removed 1 caches · removed 1 model folders');
     });
 
-    it('returns null for missing or malformed data', () => {
-      expect(firstPhoneticAudioUrl([])).toBeNull();
-      expect(firstPhoneticAudioUrl({ title: 'No Definitions Found' })).toBeNull();
-      expect(firstPhoneticAudioUrl([{}, null, { phonetics: [{ text: '/x/' }] }])).toBeNull();
+    it('does not count a model folder that is not there', async () => {
+      root.removeEntry.mockReturnValue(Promise.reject(namedError('NotFoundError', 'missing')));
+
+      await make({ caches, storage: storage() }).clearModels();
+
+      expect(status('clear')).toBe('removed 1 caches · removed 0 model folders');
+    });
+
+    it('reports any other storage error after the caches it removed', async () => {
+      root.removeEntry.mockReturnValue(Promise.reject(namedError('NoModificationAllowedError', 'busy')));
+
+      await make({ caches, storage: storage() }).clearModels();
+
+      expect(status('clear')).toBe('removed 1 caches · NoModificationAllowedError: busy');
+    });
+
+    it('reports a file system that cannot be opened after the caches it removed', async () => {
+      const broken = { getDirectory: () => Promise.reject(namedError('UnknownError', 'The operation failed')) };
+
+      await make({ caches, storage: broken }).clearModels();
+
+      expect(status('clear')).toBe('removed 1 caches · UnknownError: The operation failed');
+    });
+
+    it('removes nothing where the browser has no Cache Storage or file system access', async () => {
+      await make({ caches: null, storage: {} }).clearModels();
+
+      expect(status('clear')).toBe('removed 0 caches · removed 0 model folders');
     });
   });
 });

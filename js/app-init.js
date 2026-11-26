@@ -266,6 +266,9 @@ function wireEventHandlers() {
                 case 'sound-test':
                     window.SV?.SoundTest?.run?.(arg);
                     break;
+                case 'sound-test-clear':
+                    window.SV?.SoundTest?.clearModels?.();
+                    break;
                 case 'toggle-card': {
                     const id = el.getAttribute('data-target-id');
                     window.SV?.UIComponents?.toggleWordCard?.(id);
