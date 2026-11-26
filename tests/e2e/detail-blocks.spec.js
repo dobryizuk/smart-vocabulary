@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 test('detail blocks should have a visible background', async ({ page }) => {
   await page.goto('/');

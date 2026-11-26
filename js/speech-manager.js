@@ -21,12 +21,14 @@ function createSpeechManager(context) {
         return null;
     };
     const audioSession = pick('audioSession', g.navigator?.audioSession ?? null);
+    const naturalVoice = () => pick('naturalVoice', g.SV?.NaturalVoice ?? null);
     const log = ctx.log || ((...args) => g.SV?.debugLog?.(...args));
     const setTimer = ctx.setTimeout || ((fn, ms) => setTimeout(fn, ms));
 
     const SPEECH_LANG = 'en-US';
     const START_TIMEOUT_MS = 2000;
     let voicesLogged = false;
+    let lastSpeakId = 0;
     const PERSISTED_KEYS = ['enabled', 'autoPlay', 'rate', 'pitch', 'volume'];
 
     let speechSettings = {
@@ -105,12 +107,7 @@ function createSpeechManager(context) {
     // Speaks synchronously so iOS Safari sees the call inside the user gesture.
     // No explicit voice: iOS lists voices that are not installed and stays silent with them,
     // so the language is set and the system picks its installed default voice.
-    function speakWord(text, options = {}) {
-        if (!text) return;
-        if (!speechSettings.enabled) {
-            log('🔇 Speak skipped, sound is off:', text);
-            return;
-        }
+    function speakWithSynthesis(text) {
         if (!speech) {
             if (typeof console !== 'undefined') console.warn('⚠️ Speech synthesis not available');
             return;
@@ -122,9 +119,9 @@ function createSpeechManager(context) {
             return;
         }
         utterance.lang = SPEECH_LANG;
-        utterance.rate = options.rate || speechSettings.rate;
-        utterance.pitch = options.pitch || speechSettings.pitch;
-        utterance.volume = options.volume || speechSettings.volume;
+        utterance.rate = speechSettings.rate;
+        utterance.pitch = speechSettings.pitch;
+        utterance.volume = speechSettings.volume;
         utterance.onerror = (event) => {
             if (typeof console !== 'undefined') console.error('❌ Speech error:', event.error, 'for text:', text);
         };
@@ -140,6 +137,56 @@ function createSpeechManager(context) {
         } catch (error) {
             if (typeof console !== 'undefined') console.error('❌ Failed to speak:', error);
         }
+    }
+
+    function playClip(voice, text) {
+        voice.play(text).catch(() => speakWithSynthesis(text));
+    }
+
+    function setSpinner(button, on) {
+        if (!button) return;
+        if (on) {
+            button.dataset.idleHtml = button.innerHTML;
+            button.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
+        } else {
+            button.innerHTML = button.dataset.idleHtml;
+            delete button.dataset.idleHtml;
+        }
+        button.setAttribute('aria-busy', String(on));
+    }
+
+    // A missing clip goes first in the queue while the button spins; it plays when ready
+    // unless the button is gone or another word was asked for meanwhile
+    function waitForClip(voice, text, button) {
+        const speakId = lastSpeakId;
+        const isCurrent = () => speakId === lastSpeakId && (!button || button.isConnected);
+        setSpinner(button, true);
+        log('🗣️ Waiting for natural voice clip:', text);
+        voice.request(text).then(
+            () => { if (isCurrent()) playClip(voice, text); },
+            () => { if (isCurrent()) speakWithSynthesis(text); }
+        ).finally(() => setSpinner(button, false));
+    }
+
+    // Natural voice first: heard in iPhone silent mode; built-in speech only when it is unavailable
+    function speakWord(text, button = null) {
+        if (!text) return;
+        if (!speechSettings.enabled) {
+            log('🔇 Speak skipped, sound is off:', text);
+            return;
+        }
+        if (button?.getAttribute('aria-busy') === 'true') return;
+        lastSpeakId += 1;
+        const voice = naturalVoice();
+        if (voice?.hasClip(text)) {
+            playClip(voice, text);
+            return;
+        }
+        if (voice?.isAvailable()) {
+            waitForClip(voice, text, button);
+            return;
+        }
+        speakWithSynthesis(text);
     }
 
     function persistAndUpdate(switchId, isOn) {

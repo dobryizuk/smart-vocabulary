@@ -5,7 +5,6 @@
 const { icon } = require('./icons.js');
 const { MIN_SESSION_SIZE, MAX_SESSION_SIZE } = require('./session-settings.js');
 const { getVersionLabel } = require('./app-version.js');
-const { soundTestBodyHtml } = require('./sound-test.js');
 
 const THEMES = [
     { key: 'light', label: 'Light' },
@@ -34,7 +33,7 @@ function actionRowHtml({ label, iconName, action, testId }) {
     `;
 }
 
-function learningHtml(sessionSize) {
+function learningHtml(sessionSize, voiceStatus) {
     return sectionHtml('Learning', `
         <ul class="settings-list">
             <li class="settings-row">
@@ -46,6 +45,7 @@ function learningHtml(sessionSize) {
                 </div>
             </li>
             ${switchRowHtml({ label: 'Sound', id: 'speechToggle', testId: 'speech-toggle' })}
+            <li><p class="settings-note settings-note--row" id="naturalVoiceStatus" aria-live="polite" data-testid="natural-voice-status">${voiceStatus}</p></li>
             ${switchRowHtml({ label: 'Auto play', id: 'autoPlayToggle', testId: 'autoplay-toggle' })}
             ${switchRowHtml({ label: 'Show definition instead of translation', id: 'showDefinitionToggle', testId: 'show-definition-toggle', action: 'toggle-show-definition' })}
         </ul>
@@ -85,18 +85,17 @@ function diagnosticsHtml() {
     `);
 }
 
-function renderSettingsHtml({ sessionSize, theme, snapshotDate }) {
+function renderSettingsHtml({ sessionSize, theme, snapshotDate, voiceStatus }) {
     return `
         <header class="settings-header">
             <button type="button" class="settings-header__back" aria-label="Back to Progress" data-action="close-settings" data-testid="settings-back-btn">${icon('chevronLeft', 24)}</button>
             <h3>Settings</h3>
         </header>
-        ${learningHtml(sessionSize)}
+        ${learningHtml(sessionSize, voiceStatus)}
         ${appearanceHtml(theme)}
         ${cloudHtml()}
         ${dataHtml(snapshotDate)}
         ${diagnosticsHtml()}
-        ${sectionHtml('Sound test', soundTestBodyHtml())}
         <p class="settings-version" data-testid="app-version">${getVersionLabel()}</p>
     `;
 }

@@ -43,6 +43,7 @@ jobs:
         run: |
           mkdir _site
           cp -R index.html sw.js manifest.json icon-192.png icon-512.png css dist _site/
+          mkdir _site/js && cp js/voice-worker.js _site/js/
           rm -rf _site/css/__purged
 
       - name: Setup Pages

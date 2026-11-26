@@ -1,10 +1,13 @@
 // Smart Vocabulary - Service Worker
-const CACHE_NAME = 'smart-vocabulary-v3';
+// Other caches (the voice model, voice clips) belong to the app's data and outlive deploys
+const CACHE_PREFIX = 'smart-vocabulary-';
+const CACHE_NAME = CACHE_PREFIX + 'v4';
 const BASE_PATH = location.pathname.replace(/\/[^\/]*$/, '/'); // Dynamic base path
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + 'index.html',
   BASE_PATH + 'dist/app.bundle.js',
+  BASE_PATH + 'js/voice-worker.js',
   BASE_PATH + 'css/themes.css',
   BASE_PATH + 'css/base.css',
   BASE_PATH + 'css/navigation.css',
@@ -32,14 +35,14 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up this app's old caches
 self.addEventListener('activate', event => {
   console.log('Service Worker: Activating...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
+          if (cache.startsWith(CACHE_PREFIX) && cache !== CACHE_NAME) {
             console.log('Service Worker: Deleting old cache', cache);
             return caches.delete(cache);
           }

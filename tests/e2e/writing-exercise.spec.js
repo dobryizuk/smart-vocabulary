@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const word = (id, original, translation, reviewHistory) => ({
   id, original, translation, definition: 'A greeting.', examples: [], synonyms: [],

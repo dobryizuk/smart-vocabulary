@@ -8,6 +8,7 @@ const { renderSettingsHtml, updateSessionSizeControl } = require('./settings-vie
 const { icon } = require('./icons.js');
 const sessionSettings = require('./session-settings.js');
 const { stepSessionSize } = sessionSettings;
+const { createNaturalVoice } = require('./natural-voice.js');
 
 ;(function bootstrap(global) {
     // Create namespaced container
@@ -42,7 +43,7 @@ const { stepSessionSize } = sessionSettings;
     attach('Today', () => require('./today-view.js'));
     attach('LearningSession', () => require('./learning-session.js'));
     attach('DictionaryService', () => require('./dictionary-service.js'));
-    attach('SoundTest', () => require('./sound-test.js').createSoundTest());
+    attach('NaturalVoice', () => createNaturalVoice({ onStatus: updateVoiceStatus }));
     attach('AppMain', () => require('./app-main.js'));
     attach('Sync', () => require('./sync.js').createDefaultSync({ onStatus: onSyncStatus, onChange: refreshAfterSync }));
     // Ensure AppState is initialized and available on SV
@@ -112,7 +113,8 @@ function initializeSettings() {
     settingsView.innerHTML = renderSettingsHtml({
         sessionSize,
         theme: window.SV?.themeManager?.getCurrentTheme?.() ?? 'system',
-        snapshotDate: window.SV?.VocabularyStore?.getSnapshotDate?.()
+        snapshotDate: window.SV?.VocabularyStore?.getSnapshotDate?.(),
+        voiceStatus: window.SV?.NaturalVoice?.getStatusText?.() ?? ''
     });
     updateSessionSizeControl(settingsView, sessionSize);
     setSwitch('showDefinitionToggle', sessionSettings.getShowDefinition());
@@ -135,6 +137,11 @@ function updateSyncPanel() {
     const container = document.getElementById('cloudBackup');
     const sync = window.SV?.Sync;
     if (container && sync) renderSyncPanel(container, sync.getStatus(), sync);
+}
+
+function updateVoiceStatus(text) {
+    const status = document.getElementById('naturalVoiceStatus');
+    if (status) status.textContent = text;
 }
 
 function onSyncStatus() {
@@ -231,7 +238,7 @@ function wireEventHandlers() {
                     window.SV?.AppMain?.showWords?.(arg);
                     break;
                 case 'speak-word':
-                    window.SV?.SpeechManager?.speakWord?.(arg);
+                    window.SV?.SpeechManager?.speakWord?.(arg, el);
                     break;
                 case 'speak-original-word':
                     window.SV?.AppMain?.speakOriginalWord?.();
@@ -262,12 +269,6 @@ function wireEventHandlers() {
                     break;
                 case 'save-logs':
                     saveLogs();
-                    break;
-                case 'sound-test':
-                    window.SV?.SoundTest?.run?.(arg);
-                    break;
-                case 'sound-test-clear':
-                    window.SV?.SoundTest?.clearModels?.();
                     break;
                 case 'toggle-card': {
                     const id = el.getAttribute('data-target-id');
@@ -423,6 +424,7 @@ function bootApp() {
     window.SV?.SpeechManager?.initializeSpeech?.();
     loadUserDataAndStats();
     window.SV?.Sync?.start?.();
+    window.SV?.NaturalVoice?.start?.();
     updateSpeechToggleButtons();
     updateLogToggleButton();
     setupEnterKeyBindings();

@@ -28,26 +28,16 @@ describe('Settings view', () => {
     window.wireEventHandlers();
   });
 
-  it('has the six sections', () => {
+  it('has the five sections', () => {
     const titles = [...document.querySelectorAll('.settings-section__title')].map(title => title.textContent);
 
-    expect(titles).toEqual(['Learning', 'Appearance', 'Cloud backup', 'Data on this device', 'Diagnostics', 'Sound test']);
+    expect(titles).toEqual(['Learning', 'Appearance', 'Cloud backup', 'Data on this device', 'Diagnostics']);
   });
 
-  it('ends with the temporary Sound test section: a text field, one button per TTS engine and a clear button', () => {
-    const buttons = [...document.querySelectorAll('[data-action="sound-test"]')];
-    expect(byTestId('sound-test-text').value).toBe('take something for granted');
-    expect(buttons.map(button => button.textContent)).toEqual(['Kokoro 82M (q8, ~90 MB)', 'Piper lessac medium (~60 MB)']);
-
-    const run = vi.spyOn(window.SV.SoundTest, 'run').mockImplementation(() => Promise.resolve());
-    const clearModels = vi.spyOn(window.SV.SoundTest, 'clearModels').mockImplementation(() => Promise.resolve());
-    byTestId('sound-test-piper').click();
-    byTestId('sound-test-clear').click();
-
-    expect(run).toHaveBeenCalledWith('piper');
-    expect(clearModels).toHaveBeenCalledTimes(1);
-    run.mockRestore();
-    clearModels.mockRestore();
+  it('shows the natural voice status under the Sound switch: unavailable without Cache Storage and workers', () => {
+    const status = byTestId('natural-voice-status');
+    expect(status.textContent).toBe('Natural voice: unavailable');
+    expect(status.closest('li').previousElementSibling.contains(byTestId('speech-toggle'))).toBe(true);
   });
 
   it('keeps the ids and test ids of the data and diagnostics controls', () => {

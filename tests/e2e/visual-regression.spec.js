@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 test.describe.skip('Visual Regression Tests', () => {
   test('should match homepage screenshot', async ({ page }) => {

@@ -131,6 +131,24 @@ describe('Learning Answer Screen Layout', () => {
     expect(learningContent.querySelectorAll('#sessionProgressContainer')).toHaveLength(1);
   });
 
+  it('speaks the word with the card speaker button after Show Answer', () => {
+    const word = setupWord();
+    word.repetition = 0;
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    window.SV.SpeechManager = { speechSettings: { enabled: true, autoPlay: false }, speakWord: vi.fn() };
+    try {
+      LS.showLearningCard();
+      LS.showTranslation();
+
+      const cardSpeaker = document.querySelector('#learningMain .word-card [data-action="speak-word"]');
+      expect(cardSpeaker).toBeTruthy();
+      expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledWith('apple', cardSpeaker);
+    } finally {
+      delete window.SV.SpeechManager;
+    }
+  });
+
   it('leaves every rating free in recognition', () => {
     const word = setupWord();
     window.SV.AppState.currentLearningWord = word;
@@ -463,6 +481,20 @@ describe('Writing exercise check', () => {
 
     const speak = document.querySelector('.card-translation [data-action="speak-word"]');
     expect(speak.dataset.arg).toBe('hello');
+  });
+
+  it('speaks the answer with its speaker button, which shows the wait for a missing clip', () => {
+    window.SV.SpeechManager = { speechSettings: { enabled: true, autoPlay: false }, speakWord: vi.fn() };
+    try {
+      start('hello');
+      input().value = 'hello';
+      LS.checkReverseTranslation();
+
+      const speak = document.querySelector('.card-translation [data-action="speak-word"]');
+      expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledWith('hello', speak);
+    } finally {
+      delete window.SV.SpeechManager;
+    }
   });
 
   it('keeps Check enabled for an empty field', () => {

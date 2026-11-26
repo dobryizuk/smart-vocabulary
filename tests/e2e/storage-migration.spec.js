@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 const fixture = require('../test-vocabulary.json');
 
 test('shows words saved by the previous version and moves them to the `vocabulary` key', async ({ page }) => {

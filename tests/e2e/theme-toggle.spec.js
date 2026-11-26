@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 test('Choosing the opposite theme switches the page and choosing the first one switches it back', async ({ page }) => {
   await page.goto('/');

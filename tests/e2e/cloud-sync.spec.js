@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 // A service worker would let requests bypass page.route, so none is registered here
 test.use({ serviceWorkers: 'block' });

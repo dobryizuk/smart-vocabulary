@@ -121,12 +121,12 @@ describe('Add form', () => {
       expect(byTestId('speak-original-btn').hidden).toBe(false);
     });
 
-    it('pronounces the word of the word field', () => {
+    it('pronounces the word of the word field, the speaker button showing the wait', () => {
       fillFields({ originalWord: ' break the ice ' });
 
       byTestId('speak-original-btn').click();
 
-      expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledWith('break the ice');
+      expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledWith('break the ice', byTestId('speak-original-btn'));
     });
   });
 

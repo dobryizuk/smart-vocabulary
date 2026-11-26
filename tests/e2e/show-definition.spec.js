@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const word = (id, original, translation, definition, reviewHistory = []) => ({
   id, original, translation, definition, examples: ['First long example sentence for the word.', 'Second long example sentence for the word.'], synonyms: ['alpha', 'beta'],

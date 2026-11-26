@@ -213,6 +213,7 @@ async function addWord() {
         return;
     }
 
+    window.SV?.NaturalVoice?.wordAdded?.(original);
     clearForm();
     showMessage('Word added successfully', 'success');
     showNewWord(newWord.id);
@@ -231,7 +232,7 @@ function resetForm() {
 
 function speakOriginalWord() {
     const word = document.getElementById('originalWord')?.value.trim();
-    if (word) window.SV?.SpeechManager?.speakWord?.(word);
+    if (word) window.SV?.SpeechManager?.speakWord?.(word, document.querySelector('[data-testid="speak-original-btn"]'));
 }
 
 // Words screen with everything listed, scrolled to the top, and the new word marked until its highlight fades

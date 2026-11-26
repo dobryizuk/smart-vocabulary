@@ -177,10 +177,16 @@ function showLearningCard() {
     if (speechSettings?.enabled && speechSettings?.autoPlay) {
         const id = setTimeout(() => {
             if (typeof window === 'undefined' || typeof document === 'undefined') return;
-            window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
+            speakCurrentWord();
         }, 500); // Delay for DOM initialization
         trackTimeout(id);
     }
+}
+
+// The card's speaker button shows the wait while the word's natural voice clip is made
+function speakCurrentWord() {
+    const button = document.querySelector('#learningMain [data-action="speak-word"]');
+    window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original, button);
 }
 
 // What a prompt or an answer says about the word: its translation, or its definition when that is preferred and exists
@@ -218,7 +224,7 @@ async function showTranslation() {
     const showBtn = document.getElementById('showAnswerButton');
     if (showBtn) showBtn.style.display = 'none';
 
-    window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
+    speakCurrentWord();
     renderSessionProgressBottom();
     scrollAnswerIntoView();
 }
@@ -603,7 +609,7 @@ function revealAnswer(maxRating) {
     if (input) input.disabled = true;
     const actions = document.getElementById('reverseActions');
     if (actions) actions.style.display = 'none';
-    window.SV?.SpeechManager?.speakWord?.(window.SV.AppState.currentLearningWord.original);
+    speakCurrentWord();
     scrollAnswerIntoView();
 }
 
