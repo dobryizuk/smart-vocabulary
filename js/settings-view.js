@@ -5,6 +5,7 @@
 const { icon } = require('./icons.js');
 const { MIN_SESSION_SIZE, MAX_SESSION_SIZE } = require('./session-settings.js');
 const { getVersionLabel } = require('./app-version.js');
+const { soundTestBodyHtml } = require('./sound-test.js');
 
 const THEMES = [
     { key: 'light', label: 'Light' },
@@ -95,6 +96,7 @@ function renderSettingsHtml({ sessionSize, theme, snapshotDate }) {
         ${cloudHtml()}
         ${dataHtml(snapshotDate)}
         ${diagnosticsHtml()}
+        ${sectionHtml('Sound test', soundTestBodyHtml())}
         <p class="settings-version" data-testid="app-version">${getVersionLabel()}</p>
     `;
 }

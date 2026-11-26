@@ -28,10 +28,29 @@ describe('Settings view', () => {
     window.wireEventHandlers();
   });
 
-  it('has the five sections', () => {
+  it('has the six sections', () => {
     const titles = [...document.querySelectorAll('.settings-section__title')].map(title => title.textContent);
 
-    expect(titles).toEqual(['Learning', 'Appearance', 'Cloud backup', 'Data on this device', 'Diagnostics']);
+    expect(titles).toEqual(['Learning', 'Appearance', 'Cloud backup', 'Data on this device', 'Diagnostics', 'Sound test']);
+  });
+
+  it('ends with the temporary Sound test section of seven buttons that run their test on click', () => {
+    const buttons = [...document.querySelectorAll('[data-action="sound-test"]')];
+    expect(buttons.map(button => button.textContent)).toEqual([
+      '1. Speech (as now)',
+      '2. Speech, audio session auto',
+      '3. Silent audio, then speech',
+      '4. Audio element: beep',
+      '5. Web Audio: beep',
+      '6. Audio session playback + Web Audio beep',
+      '7. Dictionary mp3'
+    ]);
+
+    const run = vi.spyOn(window.SV.SoundTest, 'run').mockImplementation(() => Promise.resolve());
+    byTestId('sound-test-web-audio-beep').click();
+
+    expect(run).toHaveBeenCalledWith('web-audio-beep');
+    run.mockRestore();
   });
 
   it('keeps the ids and test ids of the data and diagnostics controls', () => {

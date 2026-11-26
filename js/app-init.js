@@ -42,6 +42,7 @@ const { stepSessionSize } = sessionSettings;
     attach('Today', () => require('./today-view.js'));
     attach('LearningSession', () => require('./learning-session.js'));
     attach('DictionaryService', () => require('./dictionary-service.js'));
+    attach('SoundTest', () => require('./sound-test.js').createSoundTest());
     attach('AppMain', () => require('./app-main.js'));
     attach('Sync', () => require('./sync.js').createDefaultSync({ onStatus: onSyncStatus, onChange: refreshAfterSync }));
     // Ensure AppState is initialized and available on SV
@@ -261,6 +262,9 @@ function wireEventHandlers() {
                     break;
                 case 'save-logs':
                     saveLogs();
+                    break;
+                case 'sound-test':
+                    window.SV?.SoundTest?.run?.(arg);
                     break;
                 case 'toggle-card': {
                     const id = el.getAttribute('data-target-id');
