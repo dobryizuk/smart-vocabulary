@@ -163,7 +163,7 @@ function createDictionaryService(context) {
         };
     }
 
-    return { lookupWord, translateWord, lookupWithTranslation };
+    return { lookupWord, lookupWithTranslation };
 }
 
 function createDefaultDictionaryService() {

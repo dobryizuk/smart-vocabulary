@@ -12,7 +12,7 @@
     width: 100%;
     max-width: 100%;
     padding: var(--screen-top) 20px 12px;
-    background: var(--color-bg);
+    background: var(--ui-bg);
 }
 
 /* Blocks are spaced by their own bottom margin: buttons hidden after the reveal leave no gap behind */
@@ -269,7 +269,7 @@
     position: sticky;
     bottom: 0;
     padding: 12px 0 8px;
-    background: var(--color-bg);
+    background: var(--ui-bg);
 }
 
 .difficulty-buttons__prompt {
@@ -322,8 +322,7 @@
 
 #learningContent .btn--secondary,
 #todayView .btn--secondary,
-#add-tab .btn--secondary,
-#add-tab .btn--warning {
+#add-tab .btn--secondary {
     color: var(--color-text);
     background: var(--ui-surface);
     border: 1px solid var(--ui-border);
@@ -406,83 +405,6 @@
     gap: 10px;
 }
 
-/* Learning Session States */
-.learning-session--start {
-    text-align: center;
-}
-
-.learning-session--start h2 {
-    color: var(--color-text);
-    margin-bottom: 16px;
-    font-size: 1.5em;
-    font-weight: 700;
-}
-
-.learning-session--start p {
-    color: var(--color-text-secondary);
-    margin-bottom: 24px;
-    line-height: 1.5;
-}
-
-.learning-session--complete {
-    text-align: center;
-}
-
-.learning-session--complete h2 {
-    color: var(--color-text);
-    margin-bottom: 16px;
-    font-size: 1.5em;
-    font-weight: 700;
-}
-
-.learning-session--complete .session-stats {
-    background: var(--color-surface-elevated);
-    border-radius: var(--radius-md);
-    padding: 20px;
-    margin: 16px 0;
-    border: 1px solid var(--color-border);
-}
-
-.session-stats__item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.session-stats__item:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
-
-.session-stats__label {
-    color: var(--color-text-secondary);
-    font-weight: 500;
-}
-
-.session-stats__value {
-    color: var(--color-text);
-    font-weight: 700;
-    font-size: 1.1em;
-}
-
-/* Learning Controls */
-.learning-controls {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 20px;
-    flex-wrap: wrap;
-}
-
-.learning-controls .btn {
-    min-width: 120px;
-}
-
-/* (Responsive/animations/accessibility variants removed per simplification request) */
 /* Build exercise: assemble the word from letter tiles */
 .build-slots {
     container-type: inline-size;
@@ -579,7 +501,7 @@
     font-weight: 600;
     color: var(--ui-on-accent);
     background: var(--ui-accent);
-    border: 2px solid var(--color-bg);
+    border: 2px solid var(--ui-bg);
     border-radius: 11px;
 }
 

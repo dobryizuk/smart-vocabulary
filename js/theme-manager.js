@@ -143,14 +143,6 @@ class ThemeManager {
     getCurrentTheme() {
         return this.currentTheme;
     }
-
-    isDarkMode() {
-        return this.getEffectiveTheme() === 'dark';
-    }
-
-    isLightMode() {
-        return this.getEffectiveTheme() === 'light';
-    }
 }
 
 // Export for both CommonJS and browser

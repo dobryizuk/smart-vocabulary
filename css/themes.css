@@ -5,7 +5,6 @@
 /* Light Theme Variables */
 [data-theme="light"] {
     /* Background colors */
-    --color-bg: #FFFFFF;
     --color-surface: #F8F9FA;
     --color-surface-elevated: #FFFFFF;
     --color-border: #E1E5E9;
@@ -17,21 +16,11 @@
     
     /* Accent colors */
     --color-accent-blue: #0D6EFD;
-    --color-accent-green: #198754;
-    --color-accent-orange: #FD7E14;
-    --color-accent-red: #DC3545;
-    --color-accent-purple: #6F42C1;
-    --color-accent-yellow: #FFC107;
-    
-    /* Semantic colors for synonyms */
-    --color-synonym-1: #0D6EFD;
-    --color-synonym-2: #198754;
-    --color-synonym-3: #FD7E14;
-    --color-synonym-4: #6F42C1;
     
     /* Redesign tokens */
     --ui-accent: #3543D0;
     --ui-accent-soft: #E3E6FC;
+    --ui-bg: #FFFFFF;
     --ui-on-accent: #FFFFFF;
     --ui-surface: #FFFFFF;
     --ui-surface-muted: #F0F1F4;
@@ -48,9 +37,6 @@
     --ui-warn-text: #9A3412;
     --ui-success-soft: #DDF3E6;
     --ui-danger-soft: #FDE3E6;
-    
-    /* Progress indicator */
-    --color-progress: #0D6EFD;
     
     /* Shadows for light theme */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -70,14 +56,9 @@
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="light"] .progress-indicator {
-    background: rgba(0, 0, 0, 0.1);
-}
-
 /* Dark Theme Variables */
 [data-theme="dark"] {
     /* Background colors */
-    --color-bg: #0F0F0F;
     --color-surface: #1C1C1E;
     --color-surface-elevated: #2C2C2E;
     --color-border: #38383A;
@@ -89,21 +70,11 @@
     
     /* Accent colors */
     --color-accent-blue: #0A84FF;
-    --color-accent-green: #30D158;
-    --color-accent-orange: #FF9F0A;
-    --color-accent-red: #FF453A;
-    --color-accent-purple: #BF5AF2;
-    --color-accent-yellow: #FFD60A;
-    
-    /* Semantic colors for synonyms */
-    --color-synonym-1: #0A84FF;
-    --color-synonym-2: #30D158;
-    --color-synonym-3: #FF9F0A;
-    --color-synonym-4: #BF5AF2;
     
     /* Redesign tokens */
     --ui-accent: #7C88F5;
     --ui-accent-soft: #2A2F63;
+    --ui-bg: #0F0F0F;
     --ui-on-accent: #0F0F0F;
     --ui-surface: #1C1C1E;
     --ui-surface-muted: #2C2C2E;
@@ -120,9 +91,6 @@
     --ui-warn-text: #F6A97F;
     --ui-success-soft: #1B3A28;
     --ui-danger-soft: #442428;
-    
-    /* Progress indicator */
-    --color-progress: #0A84FF;
     
     /* Shadows for dark theme */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -171,7 +139,6 @@
 /* Default theme (dark) only when no explicit data-theme is set */
 :root:not([data-theme]) {
     /* Background colors */
-    --color-bg: #0F0F0F;
     --color-surface: #1C1C1E;
     --color-surface-elevated: #2C2C2E;
     --color-border: #38383A;
@@ -183,21 +150,11 @@
     
     /* Accent colors */
     --color-accent-blue: #0A84FF;
-    --color-accent-green: #30D158;
-    --color-accent-orange: #FF9F0A;
-    --color-accent-red: #FF453A;
-    --color-accent-purple: #BF5AF2;
-    --color-accent-yellow: #FFD60A;
-    
-    /* Semantic colors for synonyms */
-    --color-synonym-1: #0A84FF;
-    --color-synonym-2: #30D158;
-    --color-synonym-3: #FF9F0A;
-    --color-synonym-4: #BF5AF2;
     
     /* Redesign tokens */
     --ui-accent: #7C88F5;
     --ui-accent-soft: #2A2F63;
+    --ui-bg: #0F0F0F;
     --ui-on-accent: #0F0F0F;
     --ui-surface: #1C1C1E;
     --ui-surface-muted: #2C2C2E;
@@ -214,9 +171,6 @@
     --ui-warn-text: #F6A97F;
     --ui-success-soft: #1B3A28;
     --ui-danger-soft: #442428;
-    
-    /* Progress indicator */
-    --color-progress: #0A84FF;
     
     /* Shadows for dark theme */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);

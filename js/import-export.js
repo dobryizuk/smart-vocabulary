@@ -128,7 +128,7 @@ function createImportExport(context) {
         doc.body.removeChild(input);
     }
 
-    return { createExportData, exportData, validateAndProcessImportData, importFromText, importData, restoreSnapshot };
+    return { createExportData, exportData, importFromText, importData, restoreSnapshot };
 }
 
 function createDefaultImportExport() {

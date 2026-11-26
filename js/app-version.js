@@ -16,4 +16,4 @@ function getVersionLabel() {
     return `Version ${version} · ${getCommit()}`;
 }
 
-module.exports = { getVersionLabel, getCommit, DEV_COMMIT };
+module.exports = { getVersionLabel, getCommit };

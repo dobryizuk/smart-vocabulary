@@ -311,39 +311,6 @@ function createPrimaryAnswerBlock(label, value, actions = []) {
 }
 
 /**
- * Creates translation block component for learning screen
- * @param {Object} word - Word object
- * @returns {string} HTML string for translation block
- */
-function createTranslationBlock(word) {
-    if (!word.translation) return '';
-    return createPrimaryAnswerBlock('Translation', word.translation);
-}
-
-/**
- * Creates complete answer content for learning screen (translation + details + metadata)
- * @param {Object} word - Word object
- * @param {Object} progress - Progress object
- * @returns {string} HTML string for complete answer content
- */
-function createLearningAnswerContent(word, progress) {
-    let content = '';
-    
-    // Add translation block
-    content += createTranslationBlock(word);
-    
-    // Add word detail sections styled like expanded list cards
-    content += createWordDetailSections(word, 'default');
-    
-    // Add metadata if progress data is available
-    if (progress) {
-        content += createWordMetadata(word, progress);
-    }
-    
-    return content;
-}
-
-/**
  * Creates metadata component for word cards
  * @param {Object} word - Word object
  * @param {Object} progress - Progress object
@@ -617,27 +584,6 @@ function createFlexContainer(content, direction = 'row', justify = 'flex-start',
 }
 
 /**
- * Creates a styled container with common patterns
- * @param {string} content - HTML content
- * @param {string} background - background color
- * @param {string} padding - padding
- * @param {string} borderRadius - border radius
- * @param {string} margin - margin
- * @param {string} style - additional styles
- * @returns {string} HTML string for styled container
- */
-// Removed unused createStyledContainer to reduce bundle size
-
-/**
- * Creates an info box with common styling
- * @param {string} content - HTML content
- * @param {string} variant - info, success, warning, error
- * @param {string} style - additional styles
- * @returns {string} HTML string for info box
- */
-
-// Export functions
-/**
  * Toggle the expand/collapse state of a word card
  * @param {string} cardId - The ID of the word card to toggle
  */
@@ -666,14 +612,10 @@ function toggleWordCard(cardId) {
 const UIComponents = {
     createSpeakAction,
     createWordCard,
-    createStatusBadge,
     createWordDetailSections,
-    createTranslationBlock,
-    createLearningAnswerContent,
     createAnswerLayout,
     createPrimaryAnswerBlock,
     createWordMetadata,
-    createDifficultyButtons,
     showDeleteConfirmation,
     toggleWordCard,
     escapeHtml,

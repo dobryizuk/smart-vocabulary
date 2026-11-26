@@ -44,16 +44,6 @@ export function createTestWord(overrides = {}) {
   };
 }
 
-export function createTestProgress(overrides = {}) {
-  return {
-    repetitions: 3,
-    reviewStatus: 'Ready for review',
-    isReady: true,
-    addedDate: new Date('2024-01-01'),
-    ...overrides
-  };
-}
-
 export function renderToDOM(htmlString) {
   const container = document.createElement('div');
   container.innerHTML = htmlString;
@@ -107,10 +97,6 @@ export function mockMatchMedia(prefersDark = false) {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }));
-}
-
-export function nextTick() {
-  return new Promise(resolve => setTimeout(resolve, 0));
 }
 
 export function setupThemeManagerDOM() {

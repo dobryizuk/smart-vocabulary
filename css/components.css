@@ -53,7 +53,7 @@
 
 .word-filter--active {
     font-weight: 600;
-    color: var(--color-bg);
+    color: var(--ui-on-accent);
     background: var(--color-text);
     border-color: var(--color-text);
 }
@@ -334,48 +334,6 @@
         transform: translateX(-50%) translateY(0);
         opacity: 1;
     }
-}
-
-/* Next Review Card */
-.next-review-card {
-    background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
-    border-radius: var(--radius-md);
-    padding: 16px 18px;
-    margin: 12px 0;
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-sm);
-}
-
-.next-review-date {
-    font-size: 1.1em;
-    font-weight: 700;
-    color: var(--color-text);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.next-review-date::before {
-    content: "📅";
-    font-size: 1.2em;
-}
-
-/* Progress Indicator */
-.progress-indicator {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--color-surface-elevated);
-    z-index: 1000;
-}
-
-.progress-indicator__fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-progress) 0%, var(--color-accent-blue) 100%);
-    transition: width var(--transition-normal);
-    box-shadow: 0 0 8px rgba(10, 132, 255, 0.5);
 }
 
 /* Delete confirmation */

@@ -756,7 +756,6 @@ const LearningSessionExports = {
     stopLearningSession,
     selectSessionBatch,
     determineExerciseType,
-    showBuildCard,
     placeBuildLetter,
     undoBuildLetter,
     checkBuildAnswer,
@@ -766,7 +765,6 @@ const LearningSessionExports = {
     showHintForReverse,
     getHintPrefix,
     getMaxHints,
-    normalizeText,
     diffAnswer,
     getWordPrompt,
     LONG_TITLE_MIN_LENGTH
