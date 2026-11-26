@@ -5,7 +5,7 @@
 
 const { escapeHtml, createButton, createLabeledTextInput } = require('../ui-components.js');
 const {
-    scheduleOnScreen, currentWordPrompt, getMaxRating, showExerciseScreen, renderExerciseCard, revealCorrectAnswer
+    scheduleOnScreen, currentWordPrompt, VERDICT_FEEDBACK, getMaxRating, showExerciseScreen, renderExerciseCard, revealCorrectAnswer
 } = require('./exercise-screen.js');
 
 // Lets the card settle before the field takes focus
@@ -197,12 +197,6 @@ function showReverseTranslationCard() {
     });
     scheduleOnScreen(focusAnswerInput, FOCUS_DELAY_MS);
 }
-
-const VERDICT_FEEDBACK = {
-    exact: { tone: 'success', text: 'Correct!' },
-    close: { tone: 'warn', text: 'Almost — check the spelling' },
-    wrong: { tone: 'danger', text: 'Not quite' }
-};
 
 // Edits a typo may have: none in answers under 4 characters, one up to 15 characters, two from 16
 function allowedTypoEdits(answerLength) {

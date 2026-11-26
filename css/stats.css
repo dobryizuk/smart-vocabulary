@@ -47,7 +47,7 @@
     font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.02em;
-    color: var(--color-text);
+    color: var(--ui-text);
 }
 
 .progress-tile--streak .progress-tile__value {
@@ -91,7 +91,7 @@
 .progress-bucket__value {
     font-size: 1.375rem;
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--ui-text);
 }
 
 .progress-bucket__label {
@@ -220,7 +220,7 @@
     font: inherit;
     font-size: 0.9375rem;
     font-weight: 500;
-    color: var(--color-text);
+    color: var(--ui-text);
     text-align: left;
     cursor: pointer;
     background: none;
@@ -340,7 +340,7 @@
     height: 44px;
     font: inherit;
     font-size: 1.25rem;
-    color: var(--color-text);
+    color: var(--ui-text);
     cursor: pointer;
     background: none;
     border: none;
@@ -423,7 +423,7 @@
 
 .segmented__option[aria-pressed="true"] {
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--ui-text);
     background: var(--ui-surface);
     box-shadow: var(--shadow-sm);
 }
@@ -486,7 +486,7 @@
     padding: 0 16px;
     font: inherit;
     font-size: 1rem;
-    color: var(--color-text);
+    color: var(--ui-text);
     background: var(--ui-surface);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-tile);

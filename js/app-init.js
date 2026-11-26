@@ -194,6 +194,36 @@ function saveLogs() {
     downloadFile(document, URL, fileName, recorder.toText(collectEnvironment()), 'text/plain');
 }
 
+// What a click on a [data-action] element does, by the action's name: (data-arg, element) => void
+const ACTION_HANDLERS = new Map(Object.entries({
+    'edit-word': (arg) => window.SV?.AppMain?.editWord?.(arg),
+    'delete-word': (arg) => window.SV?.AppMain?.deleteWord?.(arg),
+    'set-word-filter': (arg) => window.SV?.AppMain?.setWordListFilter?.(arg),
+    'show-words': (arg) => window.SV?.AppMain?.showWords?.(arg),
+    'speak-word': (arg, el) => window.SV?.SpeechManager?.speakWord?.(arg, el),
+    'speak-original-word': () => window.SV?.AppMain?.speakOriginalWord?.(),
+    'clear-form': () => window.SV?.AppMain?.resetForm?.(),
+    'open-settings': () => window.SV?.AppMain?.showStatsView?.('settings'),
+    'close-settings': () => window.SV?.AppMain?.showStatsView?.('progress'),
+    'session-size-step': (arg) => changeSessionSize(Number(arg)),
+    'toggle-show-definition': toggleShowDefinition,
+    'set-theme': (arg) => window.SV?.themeManager?.setTheme?.(arg),
+    'undo-restore': () => window.SV?.ImportExport?.restoreSnapshot?.(),
+    'toggle-logging': toggleLogging,
+    'save-logs': saveLogs,
+    'toggle-card': (arg, el) => window.SV?.UIComponents?.toggleWordCard?.(el.getAttribute('data-target-id')),
+    'force-start-learning': () => window.SV?.LearningSession?.forceStartLearning?.(),
+    'start-learning': () => window.SV?.LearningSession?.startLearning?.(),
+    'stop-session': () => window.SV?.LearningSession?.stopLearningSession?.(),
+    'show-translation': () => window.SV?.LearningSession?.showTranslation?.(),
+    'show-hint-reverse': () => window.SV?.LearningSession?.showHintForReverse?.(),
+    'check-reverse': () => window.SV?.LearningSession?.checkReverseTranslation?.(),
+    'build-place': (arg) => window.SV?.LearningSession?.placeBuildLetter?.(arg),
+    'build-undo': () => window.SV?.LearningSession?.undoBuildLetter?.(),
+    'build-check': () => window.SV?.LearningSession?.checkBuildAnswer?.(),
+    'show-tab': (arg) => { if (arg) window.SV?.AppMain?.showTab?.(arg); }
+}));
+
 // Incremental step: attach event listeners to key UI controls (avoid inline reliance)
 function wireEventHandlers() {
     const markBound = (el) => {
@@ -224,90 +254,7 @@ function wireEventHandlers() {
             if (el.hasAttribute('data-stop-prop')) {
                 e.stopPropagation();
             }
-            switch (action) {
-                case 'edit-word':
-                    window.SV?.AppMain?.editWord?.(arg);
-                    break;
-                case 'delete-word':
-                    window.SV?.AppMain?.deleteWord?.(arg);
-                    break;
-                case 'set-word-filter':
-                    window.SV?.AppMain?.setWordListFilter?.(arg);
-                    break;
-                case 'show-words':
-                    window.SV?.AppMain?.showWords?.(arg);
-                    break;
-                case 'speak-word':
-                    window.SV?.SpeechManager?.speakWord?.(arg, el);
-                    break;
-                case 'speak-original-word':
-                    window.SV?.AppMain?.speakOriginalWord?.();
-                    break;
-                case 'clear-form':
-                    window.SV?.AppMain?.resetForm?.();
-                    break;
-                case 'open-settings':
-                    window.SV?.AppMain?.showStatsView?.('settings');
-                    break;
-                case 'close-settings':
-                    window.SV?.AppMain?.showStatsView?.('progress');
-                    break;
-                case 'session-size-step':
-                    changeSessionSize(Number(arg));
-                    break;
-                case 'toggle-show-definition':
-                    toggleShowDefinition();
-                    break;
-                case 'set-theme':
-                    window.SV?.themeManager?.setTheme?.(arg);
-                    break;
-                case 'undo-restore':
-                    window.SV?.ImportExport?.restoreSnapshot?.();
-                    break;
-                case 'toggle-logging':
-                    toggleLogging();
-                    break;
-                case 'save-logs':
-                    saveLogs();
-                    break;
-                case 'toggle-card': {
-                    const id = el.getAttribute('data-target-id');
-                    window.SV?.UIComponents?.toggleWordCard?.(id);
-                    break;
-                }
-                case 'force-start-learning':
-                    window.SV?.LearningSession?.forceStartLearning?.();
-                    break;
-                case 'start-learning':
-                    window.SV?.LearningSession?.startLearning?.();
-                    break;
-                case 'stop-session':
-                    window.SV?.LearningSession?.stopLearningSession?.();
-                    break;
-                case 'show-translation':
-                    window.SV?.LearningSession?.showTranslation?.();
-                    break;
-                case 'show-hint-reverse':
-                    window.SV?.LearningSession?.showHintForReverse?.();
-                    break;
-                case 'check-reverse':
-                    window.SV?.LearningSession?.checkReverseTranslation?.();
-                    break;
-                case 'build-place':
-                    window.SV?.LearningSession?.placeBuildLetter?.(arg);
-                    break;
-                case 'build-undo':
-                    window.SV?.LearningSession?.undoBuildLetter?.();
-                    break;
-                case 'build-check':
-                    window.SV?.LearningSession?.checkBuildAnswer?.();
-                    break;
-                case 'show-tab':
-                    if (arg) window.SV?.AppMain?.showTab?.(arg);
-                    break;
-                default:
-                    break;
-            }
+            ACTION_HANDLERS.get(action)?.(arg, el);
         });
         container.addEventListener('input', (e) => {
             if (e.target.closest?.('#add-tab')) window.SV?.AppMain?.updateFormControls?.();

@@ -4,20 +4,7 @@
 
 /* Light Theme Variables */
 [data-theme="light"] {
-    /* Background colors */
-    --color-surface: #F8F9FA;
-    --color-surface-elevated: #FFFFFF;
-    --color-border: #E1E5E9;
-    
-    /* Text colors */
-    --color-text: #1A1A1A;
-    --color-text-secondary: #6C757D;
-    --color-text-tertiary: #ADB5BD;
-    
-    /* Accent colors */
-    --color-accent-blue: #0D6EFD;
-    
-    /* Redesign tokens */
+    /* Colors */
     --ui-accent: #3543D0;
     --ui-accent-soft: #E3E6FC;
     --ui-bg: #FFFFFF;
@@ -26,6 +13,7 @@
     --ui-surface-muted: #F0F1F4;
     --ui-border: #D7DBE2;
     --ui-border-muted: #C5CAD3;
+    --ui-text: #1A1A1A;
     --ui-text-muted: #4F5564;
     --ui-disabled-bg: #E9EBEF;
     --ui-disabled-text: #B9BFC9;
@@ -58,20 +46,7 @@
 
 /* Dark Theme Variables */
 [data-theme="dark"] {
-    /* Background colors */
-    --color-surface: #1C1C1E;
-    --color-surface-elevated: #2C2C2E;
-    --color-border: #38383A;
-    
-    /* Text colors */
-    --color-text: #FFFFFF;
-    --color-text-secondary: #98989A;
-    --color-text-tertiary: #636366;
-    
-    /* Accent colors */
-    --color-accent-blue: #0A84FF;
-    
-    /* Redesign tokens */
+    /* Colors */
     --ui-accent: #7C88F5;
     --ui-accent-soft: #2A2F63;
     --ui-bg: #0F0F0F;
@@ -80,6 +55,7 @@
     --ui-surface-muted: #2C2C2E;
     --ui-border: #38383A;
     --ui-border-muted: #48484A;
+    --ui-text: #FFFFFF;
     --ui-text-muted: #98989A;
     --ui-disabled-bg: #242426;
     --ui-disabled-text: #5A5A5E;
@@ -138,20 +114,7 @@
 
 /* Default theme (dark) only when no explicit data-theme is set */
 :root:not([data-theme]) {
-    /* Background colors */
-    --color-surface: #1C1C1E;
-    --color-surface-elevated: #2C2C2E;
-    --color-border: #38383A;
-    
-    /* Text colors */
-    --color-text: #FFFFFF;
-    --color-text-secondary: #98989A;
-    --color-text-tertiary: #636366;
-    
-    /* Accent colors */
-    --color-accent-blue: #0A84FF;
-    
-    /* Redesign tokens */
+    /* Colors */
     --ui-accent: #7C88F5;
     --ui-accent-soft: #2A2F63;
     --ui-bg: #0F0F0F;
@@ -160,6 +123,7 @@
     --ui-surface-muted: #2C2C2E;
     --ui-border: #38383A;
     --ui-border-muted: #48484A;
+    --ui-text: #FFFFFF;
     --ui-text-muted: #98989A;
     --ui-disabled-bg: #242426;
     --ui-disabled-text: #5A5A5E;

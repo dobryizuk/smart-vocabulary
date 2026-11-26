@@ -42,6 +42,13 @@ function speakCurrentWord() {
     window.SV?.SpeechManager?.speakWord?.(currentWord().original, button);
 }
 
+// What a checked answer is told, by its verdict: the tone of the writing field and the text
+const VERDICT_FEEDBACK = {
+    exact: { tone: 'success', text: 'Correct!' },
+    close: { tone: 'warn', text: 'Almost — check the spelling' },
+    wrong: { tone: 'danger', text: 'Not quite' }
+};
+
 // The strongest rating a checked answer allows: Hard after a miss, Medium after a typo or a hint
 function getMaxRating(verdict, hintsUsed = 0) {
     if (verdict === 'wrong') return 'hard';
@@ -105,7 +112,7 @@ function revealCorrectAnswer(maxRating) {
     const { original } = currentWord();
     showAnswer(getLearningLayout().mainEl, {
         label: 'Correct answer',
-        value: original,
+        value: escapeHtml(original),
         actions: [createSpeakAction(original)],
         showDefinition: false,
         maxRating
@@ -119,6 +126,7 @@ module.exports = {
     getWordPrompt,
     currentWordPrompt,
     speakCurrentWord,
+    VERDICT_FEEDBACK,
     getMaxRating,
     showExerciseScreen,
     renderExerciseCard,

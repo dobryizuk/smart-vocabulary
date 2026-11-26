@@ -215,11 +215,9 @@ describe('Word Metadata Component', () => {
 
   describe('Complete Metadata', () => {
     it('should create metadata with all available data', () => {
-      const word = createTestWord({ id: 'meta_test' });
+      const word = createTestWord({ id: 'meta_test', nextReview: '2024-02-01T00:00:00.000Z' });
       const progress = {
         repetitions: 3,
-        reviewStatus: 'Ready for review',
-        isReady: true,
         addedDate: new Date('2024-01-01')
       };
       

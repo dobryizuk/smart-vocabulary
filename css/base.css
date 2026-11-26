@@ -15,26 +15,27 @@
     --screen-top: calc(var(--safe-top) + 28px);
 }
 
+/* The dynamic viewport: Safari's toolbars do not cover the bottom of the screen */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
         Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
     background: var(--ui-bg);
-    height: 100vh;
-    color: var(--color-text);
+    height: 100dvh;
+    color: var(--ui-text);
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     padding: 4px;
 }
 
 .main-content {
-    background: var(--color-surface);
+    background: var(--ui-surface-muted);
     flex: 1;
     overflow: hidden;
     display: flex;
@@ -46,8 +47,8 @@ body {
 .empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: var(--color-text-secondary);
-    background: var(--color-surface);
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-muted);
     border-radius: var(--radius-md);
     /* Full-width in learning tab to match word list */
     max-width: none;
@@ -56,7 +57,7 @@ body {
 
 .empty-state h3 {
     margin-bottom: 12px;
-    color: var(--color-text);
+    color: var(--ui-text);
 }
 
 .empty-state p {
@@ -84,7 +85,7 @@ body {
 
 /* Focus styles for better accessibility */
 *:focus-visible {
-    outline: 2px solid var(--color-accent-blue);
+    outline: 2px solid var(--ui-accent);
     outline-offset: 2px;
 }
 

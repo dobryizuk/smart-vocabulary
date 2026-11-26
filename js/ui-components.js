@@ -6,6 +6,15 @@ const { getWordStatus } = require('./spaced-repetition.js');
 
 const { icon } = require('./icons.js');
 
+// The data-arg attribute of an action button, with quotes escaped; none when there is no argument
+function dataArgAttr(arg) {
+    return arg != null && arg !== '' ? ` data-arg="${String(arg).replace(/"/g, '&quot;')}"` : '';
+}
+
+function formatDate(date) {
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function createSpeakAction(text) {
     return { type: 'primary', icon: icon('speaker'), action: 'speak-word', arg: text, title: 'Pronounce word' };
 }
@@ -22,24 +31,9 @@ function createSpeakAction(text) {
 function buildActionsHtml(actions, expandable) {
     return actions.map(action => {
         const dataAction = action.action || '';
-        const dataArg = action.arg != null ? ` data-arg="${String(action.arg).replace(/"/g, '&quot;')}"` : '';
         const stopAttr = expandable ? ' data-stop-prop="true"' : '';
-        return `<button class="action-btn action-btn--${action.type}" data-action="${dataAction}"${dataArg}${stopAttr} title="${action.title || ''}">${action.icon}</button>`;
+        return `<button class="action-btn action-btn--${action.type}" data-action="${dataAction}"${dataArgAttr(action.arg)}${stopAttr} title="${action.title || ''}">${action.icon}</button>`;
     }).join('');
-}
-
-function computeReview(nextReview) {
-    const date = nextReview ? new Date(nextReview) : null;
-    const invalid = !date || isNaN(date.getTime());
-    if (invalid) {
-        return { isReady: true, reviewText: 'New word' };
-    }
-    const isReady = date <= new Date();
-    if (isReady) {
-        return { isReady, reviewText: 'Ready for review' };
-    }
-    const formatted = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return { isReady, reviewText: `Review: ${formatted}` };
 }
 
 function buildVariantClasses(variant, expandable) {
@@ -116,14 +110,8 @@ function buildSideHtml(word, reviewLabel) {
 
 function createWordCard(word, variant = 'default', actions = [], expandable = false, reviewLabel = '') {
     const uniqueId = `word-card-${word.id}`;
-    
-    // Create extended progress with all metadata fields
-    const { isReady, reviewText } = computeReview(word.nextReview);
-        
     const progress = {
         repetitions: word.repetition || 0,
-        reviewStatus: reviewText,
-        isReady: isReady,
         addedDate: new Date(word.createdAt || word.addedDate)
     };
     
@@ -186,74 +174,22 @@ function createStatusBadge(word) {
  * @returns {string} HTML string for detail sections
  */
 function createWordDetailSections(word, variant = 'default') {
-    let sectionsHtml = '';
     const isLearning = variant === 'learning';
-
-    const baseClass = (type) => `detail-block detail-block--${type}${isLearning ? ' detail-block--learning' : ''}`;
-    const title = (text) => `<div class="detail-title">${text}</div>`;
-    const wrap = (type, content) => {
-        let testId = '';
-        if (type === 'definition') testId = 'detail-definition';
-        else if (type === 'synonyms') testId = 'detail-synonyms';
-        else if (type === 'examples') testId = 'detail-examples';
-        const testAttr = testId ? ` data-testid="${testId}"` : '';
-        return `<div class="${baseClass(type)}"${testAttr}>${content}</div>`;
-    };
-
-    // Definition
-    if (word.definition) {
-        sectionsHtml += wrap('definition', [
-            title('Definition'),
-            `<div class="detail-text">${word.definition}</div>`
-        ].join(''));
-    }
-
-    // Synonyms with chips
-    if (word.synonyms && word.synonyms.length > 0) {
-        const synonymChips = word.synonyms.map(synonym => 
-            `<span class="synonym-chip">${synonym}</span>`
-        ).join('');
-        
-        sectionsHtml += wrap('synonyms', [
-            title('Synonyms'),
-            `<div class="detail-text">${synonymChips}</div>`
-        ].join(''));
-    }
-
-    // Examples
-    if (word.examples && word.examples.length > 0) {
-        const examplesHtml = word.examples
-            .slice(0, isLearning ? 2 : word.examples.length)
-            .map(example => {
-                const text = typeof example === 'string' ? example : example.text || example.toString();
-                return isLearning
-                    ? `<div class="detail-text" style="font-size: 0.85em; font-style: italic; margin-bottom: 4px;">"${text}"</div>`
-                    : `• ${text}`;
-            }).join(isLearning ? '' : '<br>');
-
-        sectionsHtml += wrap('examples', [
-            title('Examples'),
-            `<div class="detail-text">${examplesHtml}</div>`
-        ].join(''));
-    }
-
-    // Next review section removed - now handled in metadata at the bottom
-
-    return sectionsHtml;
+    return createDefinitionSection(word, isLearning) + createSynonymsSection(word, isLearning) + createExamplesSection(word, isLearning);
 }
 
-// Build single detail sections with explicit order control
+function createDetailBlock(type, title, contentHtml, isLearning) {
+    const learningClass = isLearning ? ' detail-block--learning' : '';
+    return `<div class="detail-block detail-block--${type}${learningClass}" data-testid="detail-${type}"><div class="detail-title">${title}</div><div class="detail-text">${contentHtml}</div></div>`;
+}
+
 function createDefinitionSection(word, isLearning = false) {
     if (!word.definition) return '';
-    const baseClass = `detail-block detail-block--definition${isLearning ? ' detail-block--learning' : ''}`;
-    const title = `<div class="detail-title">${'Definition'}</div>`;
-    return `<div class="${baseClass}" data-testid="detail-definition">${title}<div class="detail-text">${word.definition}</div></div>`;
+    return createDetailBlock('definition', 'Definition', word.definition, isLearning);
 }
 
 function createExamplesSection(word, isLearning = false) {
     if (!(word.examples && word.examples.length > 0)) return '';
-    const baseClass = `detail-block detail-block--examples${isLearning ? ' detail-block--learning' : ''}`;
-    const title = `<div class="detail-title">${'Examples'}</div>`;
     const examplesHtml = word.examples
         .slice(0, isLearning ? 2 : word.examples.length)
         .map(example => {
@@ -262,15 +198,13 @@ function createExamplesSection(word, isLearning = false) {
                 ? `<div class="detail-text" style="font-size: 0.85em; font-style: italic; margin-bottom: 4px;">"${text}"</div>`
                 : `• ${text}`;
         }).join(isLearning ? '' : '<br>');
-    return `<div class="${baseClass}" data-testid="detail-examples">${title}<div class="detail-text">${examplesHtml}</div></div>`;
+    return createDetailBlock('examples', 'Examples', examplesHtml, isLearning);
 }
 
 function createSynonymsSection(word, isLearning = false) {
     if (!(word.synonyms && word.synonyms.length > 0)) return '';
-    const baseClass = `detail-block detail-block--synonyms${isLearning ? ' detail-block--learning' : ''}`;
-    const title = `<div class="detail-title">Synonyms</div>`;
     const synonymChips = word.synonyms.map(synonym => `<span class="synonym-chip">${synonym}</span>`).join('');
-    return `<div class="${baseClass}" data-testid="detail-synonyms">${title}<div class="detail-text">${synonymChips}</div></div>`;
+    return createDetailBlock('synonyms', 'Synonyms', synonymChips, isLearning);
 }
 
 /**
@@ -323,19 +257,13 @@ function shouldAddItem(condition) {
 function createWordMetadata(word, progress) {
     const items = [];
 
-    const formatEuropeanDate = (date) => {
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return '';
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
-
     const pushItem = (text) => items.push(text);
 
     const addAddedDateItem = () => {
         if (!shouldAddItem(progress.addedDate)) return;
         const addedDate = progress.addedDate instanceof Date ? progress.addedDate : new Date(progress.addedDate);
         if (isNaN(addedDate.getTime())) return;
-        pushItem(`Added ${formatEuropeanDate(addedDate)}`);
+        pushItem(`Added ${formatDate(addedDate)}`);
     };
 
     const addRepetitionsItem = () => {
@@ -343,19 +271,14 @@ function createWordMetadata(word, progress) {
         pushItem(`${progress.repetitions} repetitions`);
     };
 
+    // A word never reviewed has no date; its status (D14) already says it is new
     const addReviewItem = () => {
-        if (shouldAddItem(word.nextReview)) {
-            const nextReviewDate = new Date(word.nextReview);
-            if (isNaN(nextReviewDate.getTime())) return;
-            const isReady = nextReviewDate <= new Date();
-            const reviewDate = formatEuropeanDate(nextReviewDate);
-            const text = isReady ? `Ready for review (${reviewDate})` : `Next review: ${reviewDate}`;
-            pushItem(text);
-            return;
-        }
-        if (shouldAddItem(progress.reviewStatus)) {
-            pushItem(progress.reviewStatus);
-        }
+        if (!shouldAddItem(word.nextReview)) return;
+        const nextReviewDate = new Date(word.nextReview);
+        if (isNaN(nextReviewDate.getTime())) return;
+        const isReady = nextReviewDate <= new Date();
+        const reviewDate = formatDate(nextReviewDate);
+        pushItem(isReady ? `Ready for review (${reviewDate})` : `Next review: ${reviewDate}`);
     };
 
     addAddedDateItem();
@@ -451,14 +374,7 @@ function escapeHtml(text) {
  * @returns {string} HTML string for empty state
  */
 function createEmptyState(title, message, buttons = []) {
-    const buttonsHtml = buttons.map(button => {
-        const buttonClass = `btn btn--${button.type || 'primary'}`;
-        const style = button.style ? ` style="${button.style}"` : '';
-        const id = button.id ? ` id="${button.id}"` : '';
-        const dataAction = button.action ? ` data-action="${button.action}"` : '';
-        const dataArg = button.arg != null ? ` data-arg="${String(button.arg).replace(/"/g, '&quot;')}"` : '';
-        return `<button class="${buttonClass}"${dataAction}${dataArg}${id}${style}>${button.text}</button>`;
-    }).join('');
+    const buttonsHtml = buttons.map(renderButton).join('');
     
     const buttonsContainer = buttons.length > 0 ? `
         <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
@@ -501,15 +417,7 @@ function createSessionProgress(currentIndex, totalWords) {
  * @returns {string} HTML string for button group
  */
 function createButtonGroup(buttons, justify = 'center') {
-    const buttonsHtml = buttons.map(button => {
-        const buttonClass = `btn btn--${button.type || 'primary'}`;
-        const disabled = button.disabled ? ' disabled' : '';
-        const id = button.id ? ` id="${button.id}"` : '';
-        const style = button.style ? ` style="${button.style}"` : '';
-        const dataAction = button.action ? ` data-action="${button.action}"` : '';
-        const dataArg = button.arg != null ? ` data-arg="${String(button.arg).replace(/"/g, '&quot;')}"` : '';
-        return `<button class="${buttonClass}"${dataAction}${dataArg}${disabled}${id}${style}>${button.text}</button>`;
-    }).join('');
+    const buttonsHtml = buttons.map(renderButton).join('');
     
     return `
         <div class="btn-group" style="justify-content: ${justify};">
@@ -531,14 +439,17 @@ function createButtonGroup(buttons, justify = 'center') {
  * @returns {string} HTML string for button
  */
 function createButton(text, action, type = 'primary', disabled = false, id = '', style = '', className = '', testId = '', arg = '') {
+    return renderButton({ text, action, type, disabled, id, style, className, testId, arg });
+}
+
+function renderButton({ text, action, type = 'primary', disabled, id, style, className, testId, arg }) {
     const buttonClass = `btn btn--${type}${className ? ' ' + className : ''}`;
     const disabledAttr = disabled ? ' disabled' : '';
     const idAttr = id ? ` id="${id}"` : '';
     const styleAttr = style ? ` style="${style}"` : '';
     const testIdAttr = testId ? ` data-testid="${testId}"` : '';
     const actionAttr = action ? ` data-action="${action}"` : '';
-    const argAttr = arg !== '' ? ` data-arg="${String(arg).replace(/"/g, '&quot;')}"` : '';
-    return `<button class="${buttonClass}"${actionAttr}${argAttr}${disabledAttr}${idAttr}${styleAttr}${testIdAttr}>${text}</button>`;
+    return `<button class="${buttonClass}"${actionAttr}${dataArgAttr(arg)}${disabledAttr}${idAttr}${styleAttr}${testIdAttr}>${text}</button>`;
 }
 
 /**

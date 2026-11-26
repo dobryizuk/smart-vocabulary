@@ -201,7 +201,7 @@
     line-height: 1.2;
     text-align: center;
     overflow-wrap: anywhere;
-    color: var(--color-text);
+    color: var(--ui-text);
 }
 
 .exercise-card__title--long {
@@ -293,7 +293,7 @@
 }
 
 .difficulty-btn--hard { color: var(--ui-warn-text); background: var(--ui-warn-soft); }
-.difficulty-btn--medium { color: var(--color-text); background: var(--ui-disabled-bg); }
+.difficulty-btn--medium { color: var(--ui-text); background: var(--ui-disabled-bg); }
 .difficulty-btn--easy { color: var(--ui-accent-text); background: var(--ui-accent-soft); }
 .difficulty-btn--perfect { color: var(--ui-on-accent); background: var(--ui-accent); }
 
@@ -323,7 +323,7 @@
 #learningContent .btn--secondary,
 #todayView .btn--secondary,
 #add-tab .btn--secondary {
-    color: var(--color-text);
+    color: var(--ui-text);
     background: var(--ui-surface);
     border: 1px solid var(--ui-border);
 }
@@ -363,7 +363,7 @@
 .learning-input-block .form-control.typing-input--success,
 .learning-input-block .form-control.typing-input--warn,
 .learning-input-block .form-control.typing-input--danger {
-    color: var(--color-text);
+    color: var(--ui-text);
     box-shadow: none;
     opacity: 1;
     -webkit-text-fill-color: currentcolor;
@@ -433,7 +433,7 @@
     height: 40px;
     font-size: min(1.4rem, calc(var(--slot-width) * 0.85));
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--ui-text);
     border-bottom: 2px solid var(--ui-border-muted);
 }
 
@@ -461,7 +461,7 @@
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
-    margin-bottom: 22px;
+    margin-bottom: 10px;
 }
 
 .build-tile {
@@ -470,7 +470,7 @@
     font: inherit;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--ui-text);
     background: var(--ui-surface);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-tile);
@@ -509,10 +509,20 @@
     background: var(--ui-disabled-text);
 }
 
+/* The build area lays its parts out in the screen itself, so Undo/Check can stick to the bottom of the
+   whole screen: a long definition pushes them below the fold, and they stay reachable like the rating bar */
+#buildArea {
+    display: contents;
+}
+
 .build-controls {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+    position: sticky;
+    bottom: 0;
+    padding: 12px 0 8px;
+    background: var(--ui-bg);
 }
 
 .build-control {
@@ -520,7 +530,7 @@
     font: inherit;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--ui-text);
     background: var(--ui-surface);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-control);

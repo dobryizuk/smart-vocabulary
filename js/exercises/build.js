@@ -6,7 +6,7 @@ const WordBuilder = require('../word-builder.js');
 const { escapeHtml } = require('../ui-components.js');
 const { secureShuffle } = require('../secure-shuffle.js');
 const {
-    currentWordPrompt, getMaxRating, showExerciseScreen, renderExerciseCard, revealCorrectAnswer
+    currentWordPrompt, VERDICT_FEEDBACK, getMaxRating, showExerciseScreen, renderExerciseCard, revealCorrectAnswer
 } = require('./exercise-screen.js');
 
 const SLOT_RESULT_CLASS = { true: 'build-slot--right', false: 'build-slot--wrong' };
@@ -34,7 +34,7 @@ function renderBuildTiles(state) {
 }
 
 function renderBuildFeedback(correct) {
-    const text = correct ? 'Correct!' : 'Not quite';
+    const { text } = VERDICT_FEEDBACK[correct ? 'exact' : 'wrong'];
     return `<div class="build-feedback build-feedback--${correct ? 'correct' : 'wrong'}" role="status">${text}</div>`;
 }
 

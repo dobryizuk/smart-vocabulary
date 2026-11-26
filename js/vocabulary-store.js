@@ -36,10 +36,11 @@ function findInvalidWordField(word) {
     return Object.keys(REQUIRED_WORD_FIELDS).find(field => !REQUIRED_WORD_FIELDS[field](word?.[field]));
 }
 
+// A word without a creation time was created when it was added; only a word without either is dated now
 function withDates(word, timestamp) {
     return {
         ...word,
-        createdAt: word.created_date || word.createdAt || timestamp,
+        createdAt: word.created_date || word.createdAt || word.addedDate || timestamp,
         addedDate: word.created_date || word.addedDate || timestamp
     };
 }

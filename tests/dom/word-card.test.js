@@ -170,6 +170,15 @@ describe('Word Card Component', () => {
       expect(chips.every(c => c.className === 'metadata-chip')).toBe(true);
     });
 
+    it('has no "New word" chip for a word never reviewed: its status badge already says New', () => {
+      const word = createTestWord({ repetition: 0, nextReview: null, createdAt: '2025-09-11T00:00:00.000Z' });
+      const container = renderToDOM(createWordCard(word, 'compact', [], true));
+      const chips = Array.from(container.querySelectorAll('.word-metadata span'));
+
+      expect(chips.map(c => c.textContent)).toEqual(['Added 11/09/2025', '0 repetitions']);
+      expect(container.querySelector('.status-badge').textContent).toBe('New');
+    });
+
     it('should have toggle button for expandable cards', () => {
       const word = createTestWord({
         definition: 'Test definition',

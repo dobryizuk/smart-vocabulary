@@ -135,6 +135,21 @@ describe('Learning Answer Screen Layout', () => {
     expect(learningContent.querySelectorAll('#sessionProgressContainer')).toHaveLength(1);
   });
 
+  it('removes Show Answer with its button group when the answer is shown', () => {
+    const word = setupWord();
+    word.repetition = 0;
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    LS.showLearningCard();
+    expect(document.querySelector('#learningMain .btn-group #showAnswerButton')).toBeTruthy();
+
+    Recognition.showTranslation();
+
+    expect(document.getElementById('showAnswerButton')).toBeNull();
+    expect(document.querySelector('#learningMain .btn-group')).toBeNull();
+    expect(document.querySelector('#cardTranslation .card-translation')).toBeTruthy();
+  });
+
   it('speaks the word with the card speaker button after Show Answer', () => {
     const word = setupWord();
     word.repetition = 0;
@@ -208,7 +223,7 @@ describe('Session progress', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '<div id="learningContent"></div>';
-    window.SV.AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
+    window.SV.AppState.sessionStats = { correct: 0, total: 0, streak: 0, bestStreak: 0 };
     window.SV.DataManager = { vocabulary: words.map((w) => ({ ...w })), save: vi.fn() };
   });
 
@@ -224,6 +239,25 @@ describe('Session progress', () => {
     LS.markDifficulty('hard');
     expect(progressText()).toBe('3 / 3');
     expect(progressWidth()).toBe('100%');
+  });
+
+  it('ends with the best streak of the session, not the streak a later miss reset', () => {
+    LS.forceStartLearning();
+    LS.markDifficulty('easy');
+    LS.markDifficulty('perfect');
+    LS.markDifficulty('medium');
+
+    const summary = document.getElementById('learningContent').textContent;
+    expect(summary).toContain('Session Complete');
+    expect(summary).toContain('Accuracy: 67%');
+    expect(summary).toContain('Best streak: 2');
+  });
+
+  it('counts the best streak from zero when no answer passed', () => {
+    LS.forceStartLearning();
+    ['hard', 'medium', 'hard'].forEach((rating) => LS.markDifficulty(rating));
+
+    expect(document.getElementById('learningContent').textContent).toContain('Best streak: 0');
   });
 });
 
@@ -415,6 +449,15 @@ describe('Writing exercise check', () => {
   const feedback = () => document.getElementById('typingFeedback');
   const diff = () => document.getElementById('typingDiff');
   const answerShown = () => document.querySelector('.difficulty-buttons') !== null;
+
+  it('shows a word with markup in the correct answer as text, not as HTML', () => {
+    start('<b>x</b>');
+    Writing.checkReverseTranslation();
+
+    const answer = document.querySelector('.card-translation .detail-text');
+    expect(answer.textContent).toBe('<b>x</b>');
+    expect(answer.querySelector('b')).toBeNull();
+  });
 
   it('renders only Hint and Check side by side, with no inline handlers', () => {
     start('hello');
@@ -751,7 +794,7 @@ describe('Session resume and restart', () => {
   it('stops on the close button: back to the overview, state cleared, no completion screen', () => {
     LS.startLearning();
     window.SV.Today.showOverview.mockClear();
-    window.SV.AppState.sessionStats = { correct: 2, total: 3, streak: 1 };
+    window.SV.AppState.sessionStats = { correct: 2, total: 3, streak: 1, bestStreak: 2 };
     const closeButton = document.querySelector('[data-testid="session-progress"] [data-action="stop-session"]');
     expect(closeButton.getAttribute('aria-label')).toBe('End session');
 
@@ -762,7 +805,7 @@ describe('Session resume and restart', () => {
     expect(window.SV.AppState.learningSession).toEqual([]);
     expect(window.SV.AppState.sessionTotal).toBe(0);
     expect(window.SV.AppState.currentLearningWord).toBeNull();
-    expect(window.SV.AppState.sessionStats).toEqual({ correct: 0, total: 0, streak: 0 });
+    expect(window.SV.AppState.sessionStats).toEqual({ correct: 0, total: 0, streak: 0, bestStreak: 0 });
   });
 
   it('cancels pending timers when stopped', () => {
@@ -827,7 +870,7 @@ describe('Session resume and restart', () => {
     expect(document.querySelector('[data-action="build-check"]').disabled).toBe(false);
     Build.checkBuildAnswer();
 
-    expect(document.querySelector('.build-feedback--correct')).toBeTruthy();
+    expect(document.querySelector('.build-feedback--correct').textContent).toBe(Screen.VERDICT_FEEDBACK.exact.text);
     expect(document.querySelector('.card-translation').textContent).toContain('ab');
     expect(enabledRatings()).toEqual(['hard', 'medium', 'easy', 'perfect']);
   });
@@ -858,6 +901,19 @@ describe('Session resume and restart', () => {
     expect(tile('l').getAttribute('aria-label')).toBe('l, 0 left');
   });
 
+  it('shows a built word with markup in the correct answer as text, not as HTML', () => {
+    const word = { original: '<b>x</b>', translation: 't', repetition: 2, easeFactor: 2.5, reviewHistory: [] };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    Build.showBuildCard();
+
+    Screen.revealCorrectAnswer('hard');
+
+    const answer = document.querySelector('.card-translation .detail-text');
+    expect(answer.textContent).toBe('<b>x</b>');
+    expect(answer.querySelector('b')).toBeNull();
+  });
+
   it('allows only Hard after checking a wrongly built word', () => {
     const word = {
       original: 'ab', translation: 't', repetition: 2, easeFactor: 2.5,
@@ -871,7 +927,7 @@ describe('Session resume and restart', () => {
     Build.placeBuildLetter('a');
     Build.checkBuildAnswer();
 
-    expect(document.querySelector('.build-feedback--wrong')).toBeTruthy();
+    expect(document.querySelector('.build-feedback--wrong').textContent).toBe(Screen.VERDICT_FEEDBACK.wrong.text);
     expect(ratingButtons()).toHaveLength(4);
     expect(enabledRatings()).toEqual(['hard']);
   });

@@ -26,8 +26,8 @@ function showRecognitionCard() {
 }
 
 function showTranslation() {
-    const showButton = document.getElementById('showAnswerButton');
-    if (showButton) showButton.style.display = 'none';
+    // The answer takes the place of the button
+    document.getElementById('showAnswerButton')?.closest('.btn-group').remove();
 
     const { label, main, detail } = currentWordPrompt();
     showAnswer(document.getElementById('cardTranslation'), {

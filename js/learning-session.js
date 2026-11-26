@@ -112,12 +112,14 @@ function markDifficulty(difficulty) {
         });
     }
 
-    AppState.sessionStats.total++;
+    const stats = AppState.sessionStats;
+    stats.total++;
     if (PASSED_RATINGS.includes(difficulty)) {
-        AppState.sessionStats.correct++;
-        AppState.sessionStats.streak++;
+        stats.correct++;
+        stats.streak++;
+        stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
     } else {
-        AppState.sessionStats.streak = 0;
+        stats.streak = 0;
     }
 
     AppState.learningSession.shift();
@@ -130,16 +132,16 @@ function markDifficulty(difficulty) {
 function resetSessionState() {
     clearScreenTimeouts();
     const AppState = window.SV.AppState;
-    AppState.sessionStats = { correct: 0, total: 0, streak: 0 };
+    AppState.sessionStats = { correct: 0, total: 0, streak: 0, bestStreak: 0 };
     AppState.learningSession = [];
     AppState.sessionTotal = 0;
     AppState.currentLearningWord = null;
 }
 
 function endLearningSession() {
-    const { total, correct, streak } = window.SV.AppState.sessionStats;
+    const { total, correct, bestStreak } = window.SV.AppState.sessionStats;
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const message = `Great work! You reviewed ${total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${streak}`;
+    const message = `Great work! You reviewed ${total} words.<br>Accuracy: ${accuracy}%<br>Best streak: ${bestStreak}`;
 
     document.getElementById('learningContent').innerHTML = createEmptyState(
         'Session Complete!',

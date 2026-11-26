@@ -32,7 +32,7 @@ const oldProgress = {
 };
 // The words the production version shows for the data above
 const expectedWords = [
-    { ...first, createdAt: NOW.toISOString() },
+    { ...first, createdAt: first.addedDate },
     {
         ...second,
         created_date: '2024-05-05T00:00:00.000Z',
@@ -132,6 +132,31 @@ describe('VocabularyStore with the `vocabulary` key', () => {
         expect(storage.data).toEqual(before);
         expect(storage.setItem).not.toHaveBeenCalled();
         expect(storage.removeItem).not.toHaveBeenCalled();
+    });
+
+    it('dates a word without createdAt by its addedDate, not by now', () => {
+        const storage = createMemoryStorage();
+        const word = { ...first, addedDate: '2025-07-24T10:00:00.000Z' };
+        expect(word).not.toHaveProperty('createdAt');
+        storage.data.vocabulary = JSON.stringify({ schemaVersion: 1, words: [word] });
+
+        const [loaded] = createVocabularyStore({ storage, now: () => NOW }).load();
+
+        expect(loaded.createdAt).toBe('2025-07-24T10:00:00.000Z');
+        expect(loaded.addedDate).toBe('2025-07-24T10:00:00.000Z');
+    });
+
+    it('dates a word with neither createdAt nor addedDate by now', () => {
+        const storage = createMemoryStorage();
+        const word = { ...first };
+        delete word.addedDate;
+        expect(word).not.toHaveProperty('createdAt');
+        storage.data.vocabulary = JSON.stringify({ schemaVersion: 1, words: [word] });
+
+        const [loaded] = createVocabularyStore({ storage, now: () => NOW }).load();
+
+        expect(loaded.createdAt).toBe(NOW.toISOString());
+        expect(loaded.addedDate).toBe(NOW.toISOString());
     });
 
     it('round-trips save then load', () => {
