@@ -21,6 +21,10 @@ window.SV = window.SV || {};
 window.SV.UIComponents = UI.UIComponents || UI;
 // Load learning session code via CommonJS exports
 const LS = require('../../js/learning-session.js');
+const Screen = require('../../js/exercises/exercise-screen.js');
+const Recognition = require('../../js/exercises/recognition.js');
+const Build = require('../../js/exercises/build.js');
+const Writing = require('../../js/exercises/writing.js');
 
 const ratingButtons = () => [...document.querySelectorAll('.difficulty-btn')];
 const enabledRatings = () => ratingButtons().filter((button) => !button.disabled).map((button) => button.dataset.difficulty);
@@ -110,7 +114,7 @@ describe('Learning Answer Screen Layout', () => {
 
     // Render learning card then show answer
     LS.showLearningCard();
-    LS.showTranslation();
+    Recognition.showTranslation();
 
     const root = document.getElementById('cardTranslation');
     const order = indexesInParent(root, [
@@ -139,7 +143,7 @@ describe('Learning Answer Screen Layout', () => {
     window.SV.SpeechManager = { speechSettings: { enabled: true, autoPlay: false }, speakWord: vi.fn() };
     try {
       LS.showLearningCard();
-      LS.showTranslation();
+      Recognition.showTranslation();
 
       const cardSpeaker = document.querySelector('#learningMain .word-card [data-action="speak-word"]');
       expect(cardSpeaker).toBeTruthy();
@@ -155,7 +159,7 @@ describe('Learning Answer Screen Layout', () => {
     window.SV.AppState.learningSession = [word];
 
     LS.showLearningCard();
-    LS.showTranslation();
+    Recognition.showTranslation();
 
     expect(ratingButtons().map((button) => button.textContent)).toEqual(['Hard', 'Medium', 'OK', 'Easy']);
     expect(enabledRatings()).toEqual(['hard', 'medium', 'easy', 'perfect']);
@@ -167,8 +171,8 @@ describe('Learning Answer Screen Layout', () => {
     window.SV.AppState.learningSession = [word];
 
     // Render reverse exercise and then show answer
-    LS.showReverseTranslationCard();
-    LS.checkReverseTranslation();
+    Writing.showReverseTranslationCard();
+    Writing.checkReverseTranslation();
 
     const mainEl = document.getElementById('learningMain') || document.getElementById('learningContent');
     const firstSpecific = mainEl.querySelector('.card-translation');
@@ -228,7 +232,7 @@ describe('Writing exercise hint', () => {
     const word = { id: 'h1', original, translation: 'перевод', repetition: 2, easeFactor: 2.5, reviewHistory: [] };
     window.SV.AppState.currentLearningWord = word;
     window.SV.AppState.learningSession = [word];
-    LS.showReverseTranslationCard();
+    Writing.showReverseTranslationCard();
   };
   const hint = () => document.getElementById('reverseTranslationInput').value;
   const hintBtn = () => document.getElementById('hintReverseButton');
@@ -239,18 +243,18 @@ describe('Writing exercise hint', () => {
     expect(hintBtn().textContent).toBe('Hint');
     expect(hintBtn().className).toBe('btn btn--secondary');
 
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     expect(hint()).toBe('D');
     expect(hintBtn().textContent).toBe('Hint (2 left)');
 
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     expect(hint()).toBe('De');
 
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     expect(hint()).toBe('Dev');
     expect(hintBtn().disabled).toBe(true);
 
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     expect(hint()).toBe('Dev');
   });
 
@@ -258,7 +262,7 @@ describe('Writing exercise hint', () => {
     startExercise('Devolve');
     const input = document.getElementById('reverseTranslationInput');
     input.value = 'xyz';
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
 
     expect(input.value).toBe('D');
     expect(input.selectionStart).toBe(1);
@@ -268,18 +272,18 @@ describe('Writing exercise hint', () => {
 
   it('starts from zero hints for the next word', () => {
     startExercise('Devolve');
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     startExercise('Forthright');
 
     expect(hint()).toBe('');
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     expect(hint()).toBe('F');
   });
 
   it('never reveals the whole answer of a short word', () => {
     startExercise('go');
-    LS.showHintForReverse();
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
+    Writing.showHintForReverse();
 
     expect(hint()).toBe('g');
     expect(hintBtn().disabled).toBe(true);
@@ -288,113 +292,113 @@ describe('Writing exercise hint', () => {
   it('disables the hint for a one-letter answer', () => {
     startExercise('I');
     expect(hintBtn().disabled).toBe(true);
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     expect(hint()).toBe('');
   });
 
   it('leaves no hint behind once the answer is shown', () => {
     startExercise('Devolve');
-    LS.showHintForReverse();
-    LS.checkReverseTranslation();
+    Writing.showHintForReverse();
+    Writing.checkReverseTranslation();
     expect(document.getElementById('reverseActions').style.display).toBe('none');
     expect(document.getElementById('reverseHint')).toBeNull();
   });
 
   it('counts letters, not spaces, in phrases', () => {
-    expect(LS.getHintPrefix('a lot', 2)).toBe('a l');
-    expect(LS.getHintPrefix('  break the ice'.trim(), 3)).toBe('bre');
-    expect(LS.getMaxHints('a lot')).toBe(3);
-    expect(LS.getMaxHints('ox')).toBe(1);
-    expect(LS.getMaxHints('')).toBe(0);
+    expect(Writing.getHintPrefix('a lot', 2)).toBe('a l');
+    expect(Writing.getHintPrefix('  break the ice'.trim(), 3)).toBe('bre');
+    expect(Writing.getMaxHints('a lot')).toBe(3);
+    expect(Writing.getMaxHints('ox')).toBe(1);
+    expect(Writing.getMaxHints('')).toBe(0);
   });
 });
 
 describe('Writing exercise verdict', () => {
   it('is exact only for an equal answer, ignoring case, punctuation and extra spaces', () => {
-    expect(LS.getTypingVerdict('hello', 'hello')).toBe('exact');
-    expect(LS.getTypingVerdict('  Hello! ', 'hello')).toBe('exact');
-    expect(LS.getTypingVerdict('break  the ice', 'Break the ice.')).toBe('exact');
+    expect(Writing.getTypingVerdict('hello', 'hello')).toBe('exact');
+    expect(Writing.getTypingVerdict('  Hello! ', 'hello')).toBe('exact');
+    expect(Writing.getTypingVerdict('break  the ice', 'Break the ice.')).toBe('exact');
   });
 
   it('allows no typo in answers shorter than 4 characters', () => {
-    expect(LS.getTypingVerdict('cut', 'cat')).toBe('wrong');
-    expect(LS.getTypingVerdict('ca', 'cat')).toBe('wrong');
-    expect(LS.getTypingVerdict('teh', 'the')).toBe('wrong');
+    expect(Writing.getTypingVerdict('cut', 'cat')).toBe('wrong');
+    expect(Writing.getTypingVerdict('ca', 'cat')).toBe('wrong');
+    expect(Writing.getTypingVerdict('teh', 'the')).toBe('wrong');
   });
 
   it('counts two swapped neighbouring letters as one typo', () => {
-    expect(LS.getTypingVerdict('decisoin', 'decision')).toBe('close');
-    expect(LS.getTypingVerdict('hlelo', 'hello')).toBe('close');
-    expect(LS.getTypingVerdict('dceisoin', 'decision')).toBe('wrong');
-    expect(LS.getTypingVerdict('rseponsibilitise', 'responsibilities')).toBe('close');
-    expect(LS.getTypingVerdict('rseponsibiltiise', 'responsibilities')).toBe('wrong');
+    expect(Writing.getTypingVerdict('decisoin', 'decision')).toBe('close');
+    expect(Writing.getTypingVerdict('hlelo', 'hello')).toBe('close');
+    expect(Writing.getTypingVerdict('dceisoin', 'decision')).toBe('wrong');
+    expect(Writing.getTypingVerdict('rseponsibilitise', 'responsibilities')).toBe('close');
+    expect(Writing.getTypingVerdict('rseponsibiltiise', 'responsibilities')).toBe('wrong');
   });
 
   it('does not count letters swapped across a gap as one typo', () => {
-    expect(LS.getTypingVerdict('dicesion', 'decision')).toBe('wrong');
+    expect(Writing.getTypingVerdict('dicesion', 'decision')).toBe('wrong');
   });
 
   it('allows one edit from 4 to 15 characters', () => {
-    expect(LS.getTypingVerdict('bost', 'boat')).toBe('close');
-    expect(LS.getTypingVerdict('bat', 'boat')).toBe('close');
-    expect(LS.getTypingVerdict('bist', 'boat')).toBe('wrong');
+    expect(Writing.getTypingVerdict('bost', 'boat')).toBe('close');
+    expect(Writing.getTypingVerdict('bat', 'boat')).toBe('close');
+    expect(Writing.getTypingVerdict('bist', 'boat')).toBe('wrong');
     expect('personification').toHaveLength(15);
-    expect(LS.getTypingVerdict('personificatian', 'personification')).toBe('close');
-    expect(LS.getTypingVerdict('persanificatian', 'personification')).toBe('wrong');
+    expect(Writing.getTypingVerdict('personificatian', 'personification')).toBe('close');
+    expect(Writing.getTypingVerdict('persanificatian', 'personification')).toBe('wrong');
   });
 
   it('counts one wrong, missing or extra letter in decision as a typo', () => {
-    expect(LS.getTypingVerdict('decison', 'decision')).toBe('close');
-    expect(LS.getTypingVerdict('decisiom', 'decision')).toBe('close');
-    expect(LS.getTypingVerdict('decission', 'decision')).toBe('close');
+    expect(Writing.getTypingVerdict('decison', 'decision')).toBe('close');
+    expect(Writing.getTypingVerdict('decisiom', 'decision')).toBe('close');
+    expect(Writing.getTypingVerdict('decission', 'decision')).toBe('close');
   });
 
   it('allows two edits from 16 characters', () => {
     expect('responsibilities').toHaveLength(16);
-    expect(LS.getTypingVerdict('responsibilitias', 'responsibilities')).toBe('close');
-    expect(LS.getTypingVerdict('respansibilitias', 'responsibilities')).toBe('close');
-    expect(LS.getTypingVerdict('respansibilitiaz', 'responsibilities')).toBe('wrong');
+    expect(Writing.getTypingVerdict('responsibilitias', 'responsibilities')).toBe('close');
+    expect(Writing.getTypingVerdict('respansibilitias', 'responsibilities')).toBe('close');
+    expect(Writing.getTypingVerdict('respansibilitiaz', 'responsibilities')).toBe('wrong');
   });
 
   it('measures the length of the correct answer after normalisation', () => {
-    expect(LS.getTypingVerdict('cats', 'Cat!')).toBe('wrong');
-    expect(LS.getTypingVerdict('a lott', 'a lot')).toBe('close');
+    expect(Writing.getTypingVerdict('cats', 'Cat!')).toBe('wrong');
+    expect(Writing.getTypingVerdict('a lott', 'a lot')).toBe('close');
   });
 
   it('calls a long near miss close, not exact', () => {
     const answer = 'a'.repeat(300);
-    expect(LS.getTypingVerdict(`${answer}b`, answer)).toBe('close');
+    expect(Writing.getTypingVerdict(`${answer}b`, answer)).toBe('close');
   });
 
   it('fails an unrelated answer', () => {
-    expect(LS.getTypingVerdict('xyz', 'hello')).toBe('wrong');
-    expect(LS.getTypingVerdict('world', 'hello')).toBe('wrong');
+    expect(Writing.getTypingVerdict('xyz', 'hello')).toBe('wrong');
+    expect(Writing.getTypingVerdict('world', 'hello')).toBe('wrong');
   });
 });
 
 describe('Strongest rating a checked answer allows', () => {
   it('allows every rating for an exact writing answer without hints', () => {
-    expect(LS.getMaxRating('exact', 0)).toBe('perfect');
+    expect(Screen.getMaxRating('exact', 0)).toBe('perfect');
   });
 
   it('allows up to Medium for an exact writing answer after a hint', () => {
-    expect(LS.getMaxRating('exact', 1)).toBe('medium');
-    expect(LS.getMaxRating('exact', 3)).toBe('medium');
+    expect(Screen.getMaxRating('exact', 1)).toBe('medium');
+    expect(Screen.getMaxRating('exact', 3)).toBe('medium');
   });
 
   it('allows up to Medium for a typo, with or without hints', () => {
-    expect(LS.getMaxRating('close', 0)).toBe('medium');
-    expect(LS.getMaxRating('close', 2)).toBe('medium');
+    expect(Screen.getMaxRating('close', 0)).toBe('medium');
+    expect(Screen.getMaxRating('close', 2)).toBe('medium');
   });
 
   it('allows only Hard for a wrong answer or a give-up, whatever the hints', () => {
-    expect(LS.getMaxRating('wrong', 0)).toBe('hard');
-    expect(LS.getMaxRating('wrong', 3)).toBe('hard');
+    expect(Screen.getMaxRating('wrong', 0)).toBe('hard');
+    expect(Screen.getMaxRating('wrong', 3)).toBe('hard');
   });
 
   it('allows every rating for right tiles and only Hard for wrong ones', () => {
-    expect(LS.getMaxRating('exact')).toBe('perfect');
-    expect(LS.getMaxRating('wrong')).toBe('hard');
+    expect(Screen.getMaxRating('exact')).toBe('perfect');
+    expect(Screen.getMaxRating('wrong')).toBe('hard');
   });
 });
 
@@ -405,7 +409,7 @@ describe('Writing exercise check', () => {
     window.SV.AppState.learningSession = [word];
     window.SV.AppState.sessionTotal = 1;
     document.body.innerHTML = '<div id="learningContent"></div>';
-    LS.showReverseTranslationCard();
+    Writing.showReverseTranslationCard();
   };
   const input = () => document.getElementById('reverseTranslationInput');
   const feedback = () => document.getElementById('typingFeedback');
@@ -424,7 +428,7 @@ describe('Writing exercise check', () => {
   it('tints the field for a right answer and tells screen readers, without a visible verdict', () => {
     start('hello');
     input().value = 'Hello';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(input().classList.contains('typing-input--success')).toBe(true);
     expect(feedback().textContent).toBe('Correct!');
@@ -439,7 +443,7 @@ describe('Writing exercise check', () => {
   it('tints the field warn for a near miss and marks the difference', () => {
     start('abcdefghij');
     input().value = 'abcdefghi';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(feedback().textContent).toBe('Almost \u2014 check the spelling');
     expect(input().classList.contains('typing-input--warn')).toBe(true);
@@ -449,7 +453,7 @@ describe('Writing exercise check', () => {
   it('tints the field danger for a wrong answer, marks it and still reveals the answer', () => {
     start('hello');
     input().value = 'world';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(feedback().textContent).toBe('Not quite');
     expect(input().classList.contains('typing-input--danger')).toBe(true);
@@ -460,7 +464,7 @@ describe('Writing exercise check', () => {
   it('shows the typed answer with struck wrong letters and the missing ones inserted', () => {
     start('inconceivable');
     input().value = 'inconcievable';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(diff().innerHTML).toBe('inconc<del class="typing-diff__wrong">ie</del><ins class="typing-diff__missing">ei</ins>vable');
   });
@@ -468,7 +472,7 @@ describe('Writing exercise check', () => {
   it('escapes what was typed in the difference', () => {
     start('hello');
     input().value = '<b>';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(diff().querySelector('b')).toBeNull();
     expect(diff().textContent).toContain('<b>');
@@ -477,7 +481,7 @@ describe('Writing exercise check', () => {
   it('gives the correct answer a speaker button', () => {
     start('hello');
     input().value = 'hello';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     const speak = document.querySelector('.card-translation [data-action="speak-word"]');
     expect(speak.dataset.arg).toBe('hello');
@@ -488,7 +492,7 @@ describe('Writing exercise check', () => {
     try {
       start('hello');
       input().value = 'hello';
-      LS.checkReverseTranslation();
+      Writing.checkReverseTranslation();
 
       const speak = document.querySelector('.card-translation [data-action="speak-word"]');
       expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledWith('hello', speak);
@@ -505,7 +509,7 @@ describe('Writing exercise check', () => {
   it('allows only Hard after a wrong answer, keeping the other ratings visible but disabled', () => {
     start('hello');
     input().value = 'world';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(ratingButtons()).toHaveLength(4);
     expect(enabledRatings()).toEqual(['hard']);
@@ -515,7 +519,7 @@ describe('Writing exercise check', () => {
   it('allows every rating after an exact answer without hints', () => {
     start('hello');
     input().value = 'Hello';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(enabledRatings()).toEqual(['hard', 'medium', 'easy', 'perfect']);
   });
@@ -523,7 +527,7 @@ describe('Writing exercise check', () => {
   it('allows up to Medium after a typo', () => {
     start('hello');
     input().value = 'helo';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(input().classList.contains('typing-input--warn')).toBe(true);
     expect(enabledRatings()).toEqual(['hard', 'medium']);
@@ -531,9 +535,9 @@ describe('Writing exercise check', () => {
 
   it('allows up to Medium after an exact answer finished from a hint', () => {
     start('hello');
-    LS.showHintForReverse();
+    Writing.showHintForReverse();
     input().value = 'hello';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(input().classList.contains('typing-input--success')).toBe(true);
     expect(enabledRatings()).toEqual(['hard', 'medium']);
@@ -542,7 +546,7 @@ describe('Writing exercise check', () => {
   it('tints a 3-letter answer with one wrong letter as wrong and allows only Hard', () => {
     start('cat');
     input().value = 'cut';
-    LS.checkReverseTranslation();
+    Writing.checkReverseTranslation();
 
     expect(input().classList.contains('typing-input--danger')).toBe(true);
     expect(feedback().textContent).toBe('Not quite');
@@ -551,7 +555,7 @@ describe('Writing exercise check', () => {
 });
 
 describe('Answer difference', () => {
-  const diff = (input, answer) => LS.diffAnswer(input, answer);
+  const diff = (input, answer) => Writing.diffAnswer(input, answer);
 
   it('is one equal segment for an exact match, ignoring case and the ends', () => {
     expect(diff('hello', 'hello')).toEqual([{ type: 'equal', text: 'hello' }]);
@@ -818,10 +822,10 @@ describe('Session resume and restart', () => {
     expect(document.querySelector('.difficulty-buttons')).toBeNull();
     expect(document.querySelector('[data-action="build-check"]').disabled).toBe(true);
 
-    LS.placeBuildLetter('a');
-    LS.placeBuildLetter('b');
+    Build.placeBuildLetter('a');
+    Build.placeBuildLetter('b');
     expect(document.querySelector('[data-action="build-check"]').disabled).toBe(false);
-    LS.checkBuildAnswer();
+    Build.checkBuildAnswer();
 
     expect(document.querySelector('.build-feedback--correct')).toBeTruthy();
     expect(document.querySelector('.card-translation').textContent).toContain('ab');
@@ -843,12 +847,12 @@ describe('Session resume and restart', () => {
     expect(badge('a').textContent).toBe('2');
     expect(badge('m')).toBeNull();
 
-    LS.placeBuildLetter('l');
+    Build.placeBuildLetter('l');
     expect(badge('l')).toBeNull();
     expect(tile('l').disabled).toBe(false);
     expect(tile('l').getAttribute('aria-label')).toBe('l, 1 left');
 
-    LS.placeBuildLetter('l');
+    Build.placeBuildLetter('l');
     expect(badge('l')).toBeNull();
     expect(tile('l').disabled).toBe(true);
     expect(tile('l').getAttribute('aria-label')).toBe('l, 0 left');
@@ -863,9 +867,9 @@ describe('Session resume and restart', () => {
     window.SV.AppState.learningSession = [word];
     LS.showLearningCard();
 
-    LS.placeBuildLetter('b');
-    LS.placeBuildLetter('a');
-    LS.checkBuildAnswer();
+    Build.placeBuildLetter('b');
+    Build.placeBuildLetter('a');
+    Build.checkBuildAnswer();
 
     expect(document.querySelector('.build-feedback--wrong')).toBeTruthy();
     expect(ratingButtons()).toHaveLength(4);
@@ -930,17 +934,17 @@ describe('Prompt text of a word', () => {
   const withoutDefinition = { translation: 'привет' };
 
   it('uses the translation and keeps the definition as detail when the setting is off', () => {
-    expect(LS.getWordPrompt(withDefinition, false)).toEqual({ label: 'Translation', main: 'привет', detail: 'A greeting.' });
+    expect(Screen.getWordPrompt(withDefinition, false)).toEqual({ label: 'Translation', main: 'привет', detail: 'A greeting.' });
   });
 
   it('uses the definition alone when the setting is on', () => {
-    expect(LS.getWordPrompt(withDefinition, true)).toEqual({ label: 'Definition', main: 'A greeting.', detail: '' });
+    expect(Screen.getWordPrompt(withDefinition, true)).toEqual({ label: 'Definition', main: 'A greeting.', detail: '' });
   });
 
   it('falls back to the translation for a word without a definition', () => {
-    expect(LS.getWordPrompt(withoutDefinition, true)).toEqual({ label: 'Translation', main: 'привет', detail: undefined });
-    expect(LS.getWordPrompt({ ...withoutDefinition, definition: '' }, true).main).toBe('привет');
-    expect(LS.getWordPrompt(withoutDefinition, false).main).toBe('привет');
+    expect(Screen.getWordPrompt(withoutDefinition, true)).toEqual({ label: 'Translation', main: 'привет', detail: undefined });
+    expect(Screen.getWordPrompt({ ...withoutDefinition, definition: '' }, true).main).toBe('привет');
+    expect(Screen.getWordPrompt(withoutDefinition, false).main).toBe('привет');
   });
 });
 
@@ -951,7 +955,7 @@ describe('Prompt title size on the writing card', () => {
     window.SV.AppState.learningSession = [word];
     window.SV.AppState.sessionTotal = 1;
     document.body.innerHTML = '<div id="learningContent"></div>';
-    LS.showReverseTranslationCard();
+    Writing.showReverseTranslationCard();
     return document.querySelector('.exercise-card__title');
   };
 
@@ -965,7 +969,7 @@ describe('Prompt title size on the writing card', () => {
   });
 
   it('switches to the smaller style just above the length limit', () => {
-    const limit = LS.LONG_TITLE_MIN_LENGTH;
+    const limit = Screen.LONG_TITLE_MIN_LENGTH;
     expect(titleFor('я'.repeat(limit - 1)).classList.contains('exercise-card__title--long')).toBe(false);
     expect(titleFor('я'.repeat(limit)).classList.contains('exercise-card__title--long')).toBe(true);
   });
