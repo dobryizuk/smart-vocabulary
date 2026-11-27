@@ -932,6 +932,129 @@ describe('Session resume and restart', () => {
     expect(enabledRatings()).toEqual(['hard']);
   });
 
+  describe('build area updates in place (C31: a rebuilt area threw the scrolled screen back up)', () => {
+    const showBuild = (original) => {
+      const word = { original, translation: 't', repetition: 2, easeFactor: 2.5, reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }] };
+      window.SV.AppState.currentLearningWord = word;
+      window.SV.AppState.learningSession = [word];
+      LS.showLearningCard();
+    };
+    const area = () => document.getElementById('buildArea');
+    const tile = (letter) => document.querySelector(`.build-tile[data-arg="${letter}"]`);
+    const slots = () => [...document.querySelectorAll('.build-slot')];
+    const nodes = () => [...area().querySelectorAll('*')];
+    const control = (action) => document.querySelector(`[data-action="${action}"]`);
+
+    it('keeps the tiles, slots and controls when a letter is placed and taken back', () => {
+      showBuild('a llama');
+      const before = { slotsEl: document.querySelector('.build-slots'), slots: slots(), l: tile('l'), a: tile('a'), undo: control('build-undo'), check: control('build-check') };
+
+      Build.placeBuildLetter('a');
+      Build.placeBuildLetter('l');
+
+      expect(document.querySelector('.build-slots')).toBe(before.slotsEl);
+      expect(slots()).toEqual(before.slots);
+      slots().forEach((slot, index) => expect(slot).toBe(before.slots[index]));
+      expect(tile('l')).toBe(before.l);
+      expect(tile('a')).toBe(before.a);
+      expect(control('build-undo')).toBe(before.undo);
+      expect(control('build-check')).toBe(before.check);
+
+      expect(slots().map((slot) => slot.textContent)).toEqual(['a', 'l', '', '', '', '']);
+      expect(slots().map((slot) => slot.className)).toEqual([
+        'build-slot build-slot--right', 'build-slot build-slot--right', 'build-slot build-slot--active', 'build-slot', 'build-slot', 'build-slot'
+      ]);
+      expect(before.slotsEl.getAttribute('aria-label')).toBe('Your answer: a l');
+      expect(before.undo.disabled).toBe(false);
+
+      Build.undoBuildLetter();
+      expect(tile('l')).toBe(before.l);
+      expect(before.l.querySelector('.build-tile__count').textContent).toBe('2');
+      expect(before.l.getAttribute('aria-label')).toBe('l, 2 left');
+      expect(slots()[1].textContent).toBe('');
+      expect(slots()[1].className).toBe('build-slot build-slot--active');
+      expect(before.slotsEl.getAttribute('aria-label')).toBe('Your answer: a ');
+    });
+
+    it('updates the pressed tile: badge, label and disabled when its last letter is used', () => {
+      showBuild('aab');
+      const a = tile('a');
+      expect(a.querySelector('.build-tile__count').textContent).toBe('2');
+
+      Build.placeBuildLetter('a');
+      expect(a.querySelector('.build-tile__count')).toBeNull();
+      expect(a.textContent).toBe('a');
+      expect(a.getAttribute('aria-label')).toBe('a, 1 left');
+      expect(a.disabled).toBe(false);
+
+      Build.placeBuildLetter('a');
+      expect(tile('a')).toBe(a);
+      expect(a.disabled).toBe(true);
+      expect(a.getAttribute('aria-label')).toBe('a, 0 left');
+
+      Build.undoBuildLetter();
+      expect(a.disabled).toBe(false);
+      expect(a.getAttribute('aria-label')).toBe('a, 1 left');
+    });
+
+    it('enables Undo and Check with the letters and ignores a letter that has none left', () => {
+      showBuild('ab');
+      const [undo, check] = [control('build-undo'), control('build-check')];
+      expect(undo.disabled).toBe(true);
+      expect(check.disabled).toBe(true);
+
+      Build.placeBuildLetter('a');
+      const after = nodes();
+      Build.placeBuildLetter('a');
+      expect(nodes()).toEqual(after);
+      expect(slots().map((slot) => slot.textContent)).toEqual(['a', '']);
+
+      Build.placeBuildLetter('b');
+      expect(check.disabled).toBe(false);
+      Build.undoBuildLetter();
+      Build.undoBuildLetter();
+      expect(undo.disabled).toBe(true);
+      expect(check.disabled).toBe(true);
+      expect(slots()[0].className).toBe('build-slot build-slot--active');
+    });
+
+    it('on Check keeps the slots, marks each letter and swaps the tiles and controls for the verdict', () => {
+      showBuild('ab');
+      const slotsBefore = slots();
+      Build.placeBuildLetter('b');
+      Build.placeBuildLetter('a');
+
+      Build.checkBuildAnswer();
+
+      slots().forEach((slot, index) => expect(slot).toBe(slotsBefore[index]));
+      expect(slots().map((slot) => slot.className)).toEqual(['build-slot build-slot--wrong', 'build-slot build-slot--wrong']);
+      expect(area().querySelector('.build-tiles')).toBeNull();
+      expect(area().querySelector('.build-controls')).toBeNull();
+      expect(area().lastElementChild.className).toBe('build-feedback build-feedback--wrong');
+      expect(area().querySelectorAll('.build-feedback')).toHaveLength(1);
+    });
+
+    it('does nothing on Check before the word is complete', () => {
+      showBuild('ab');
+      Build.placeBuildLetter('a');
+      const html = area().innerHTML;
+
+      Build.checkBuildAnswer();
+
+      expect(area().innerHTML).toBe(html);
+      expect(document.querySelector('.difficulty-buttons')).toBeNull();
+    });
+
+    it('shows a letter with markup in a slot and a tile as text', () => {
+      showBuild('<b');
+      Build.placeBuildLetter('<');
+      expect(slots()[0].textContent).toBe('<');
+      expect(slots()[0].children).toHaveLength(0);
+      expect(tile('<').textContent).toBe('<');
+      expect(document.querySelector('.build-slots').getAttribute('aria-label')).toBe('Your answer: <');
+    });
+  });
+
   it('records build in the review history', () => {
     const word = {
       original: 'ab', translation: 't', repetition: 2, easeFactor: 2.5,
