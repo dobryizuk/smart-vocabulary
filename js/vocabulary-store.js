@@ -12,7 +12,7 @@ const SCHEMA_VERSION = 1;
 // The fields of a word that are kept on the device and in backup files; anything else is memory-only
 const WORD_FIELDS = [
     'id', 'original', 'translation', 'definition', 'examples', 'phonetic', 'synonyms',
-    'easeFactor', 'repetition', 'nextReview', 'reviewHistory', 'createdAt', 'addedDate', 'updatedAt'
+    'easeFactor', 'repetition', 'nextReview', 'reviewHistory', 'createdAt', 'updatedAt'
 ];
 
 function pickWordFields(word) {
@@ -36,13 +36,19 @@ function findInvalidWordField(word) {
     return Object.keys(REQUIRED_WORD_FIELDS).find(field => !REQUIRED_WORD_FIELDS[field](word?.[field]));
 }
 
-// A word without a creation time was created when it was added; only a word without either is dated now
-function withDates(word, timestamp) {
-    return {
-        ...word,
-        createdAt: word.created_date || word.createdAt || word.addedDate || timestamp,
-        addedDate: word.created_date || word.addedDate || timestamp
-    };
+// Milliseconds of an ISO date ("2025-06-29", a UTC day) or date-time; NaN for anything else
+function isoTime(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? Date.parse(value) : NaN;
+}
+
+// Older versions also kept the creation date as `addedDate` or `created_date`, and some `createdAt`
+// were set after the word was added (at the first save after a migration). A word is created at the
+// earliest valid one of them; only a word without any is created now. Every word from storage, a
+// backup file or the server passes here, so the duplicates never get further.
+function withCreatedAt(word, timestamp) {
+    const { addedDate, created_date: createdDate, ...rest } = word;
+    const times = [word.createdAt, addedDate, createdDate].map(isoTime).filter(Number.isFinite);
+    return { ...rest, createdAt: times.length ? new Date(Math.min(...times)).toISOString() : timestamp };
 }
 
 function parseVocabulary(raw) {
@@ -59,10 +65,10 @@ function mergeOldKeys(rawWords, rawProgress, timestamp) {
     if (!Array.isArray(words) || !progressById || typeof progressById !== 'object') {
         throw new Error('Saved words or progress in the old format are unreadable');
     }
-    return words.map(word => ({
-        ...withDates(word, timestamp),
+    return words.map(word => withCreatedAt({
+        ...word,
         ...(progressById[word.id] || { repetition: 0, easeFactor: 1.3, nextReview: null, reviewHistory: [] })
-    }));
+    }, timestamp));
 }
 
 function createVocabularyStore({ storage, now }) {
@@ -73,7 +79,7 @@ function createVocabularyStore({ storage, now }) {
     function load() {
         const timestamp = now().toISOString();
         const raw = storage.getItem(VOCABULARY_KEY);
-        if (raw !== null) return parseVocabulary(raw).map(word => withDates(word, timestamp));
+        if (raw !== null) return parseVocabulary(raw).map(word => withCreatedAt(word, timestamp));
 
         const rawWords = storage.getItem(OLD_WORDS_KEY);
         const rawProgress = storage.getItem(OLD_PROGRESS_KEY);
@@ -109,8 +115,9 @@ function createVocabularyStore({ storage, now }) {
         }
     }
 
-    // Replaces all words so that the result wins over the server: every word is stamped now,
-    // every word that disappears gets a deletion, every word that comes back loses its deletion.
+    // Replaces all words (from a backup file or the snapshot) so that the result wins over the server:
+    // every word is stamped now, every word that disappears gets a deletion, every word that comes back
+    // loses its deletion.
     // Deletions are written first: a deletion of a word that is still present is ignored,
     // a missing one would let sync bring the word back.
     function replaceAll(words) {
@@ -120,7 +127,7 @@ function createVocabularyStore({ storage, now }) {
         keptIds.forEach(id => { delete deletions[id]; });
         storedWordIds().filter(id => !keptIds.has(id)).forEach(id => { deletions[id] = timestamp; });
         storage.setItem(DELETED_KEY, JSON.stringify(deletions));
-        const stamped = words.map(word => ({ ...word, updatedAt: timestamp }));
+        const stamped = words.map(word => ({ ...withCreatedAt(word, timestamp), updatedAt: timestamp }));
         save(stamped);
         return stamped;
     }
@@ -169,4 +176,5 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports.WORD_FIELDS = WORD_FIELDS;
     module.exports.pickWordFields = pickWordFields;
     module.exports.findInvalidWordField = findInvalidWordField;
+    module.exports.withCreatedAt = withCreatedAt;
 }

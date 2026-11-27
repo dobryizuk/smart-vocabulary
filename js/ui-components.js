@@ -117,7 +117,7 @@ function createWordCard(word, variant = 'default', actions = [], expandable = fa
     const uniqueId = escapeHtml(`word-card-${word.id}`);
     const progress = {
         repetitions: word.repetition || 0,
-        addedDate: new Date(word.createdAt || word.addedDate)
+        createdAt: new Date(word.createdAt)
     };
     
     // Determine card classes based on variant
@@ -265,10 +265,10 @@ function createWordMetadata(word, progress) {
     const pushItem = (text) => items.push(text);
 
     const addAddedDateItem = () => {
-        if (!shouldAddItem(progress.addedDate)) return;
-        const addedDate = progress.addedDate instanceof Date ? progress.addedDate : new Date(progress.addedDate);
-        if (isNaN(addedDate.getTime())) return;
-        pushItem(`Added ${formatDate(addedDate)}`);
+        if (!shouldAddItem(progress.createdAt)) return;
+        const createdAt = progress.createdAt instanceof Date ? progress.createdAt : new Date(progress.createdAt);
+        if (isNaN(createdAt.getTime())) return;
+        pushItem(`Added ${formatDate(createdAt)}`);
     };
 
     const addRepetitionsItem = () => {

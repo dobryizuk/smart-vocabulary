@@ -66,6 +66,16 @@ describe('Data protection: export', () => {
         expect(Object.keys(exported)).toEqual(WORD_FIELDS);
     });
 
+    it('exports no addedDate, also for words loaded from storage that still has it', () => {
+        const legacy = { ...fixture.vocabulary[0], createdAt: '2025-09-01T08:00:00.000Z', addedDate: '2025-07-20' };
+        const { ie } = createApp({ storage: createMemoryStorage({ vocabulary: rawVocabulary([legacy]) }) });
+
+        const [exported] = ie.createExportData().vocabulary;
+
+        expect(exported).not.toHaveProperty('addedDate');
+        expect(exported.createdAt).toBe('2025-07-20T00:00:00.000Z');
+    });
+
     it('writes schemaVersion 1 into the export', () => {
         const { ie } = createApp();
         expect(ie.createExportData().schemaVersion).toBe(1);
@@ -123,8 +133,9 @@ describe('Data protection: import', () => {
         expect(cancelled.reload).not.toHaveBeenCalled();
     });
 
-    it('snapshots the previous raw `vocabulary` and restore puts its words back, stamped now', async () => {
-        const oldWord = { id: 'old', original: 'old', translation: 'старый', repetition: 4, easeFactor: 2.1, nextReview: null, reviewHistory: [], createdAt: '2026-01-01T00:00:00.000Z', addedDate: '2026-01-01T00:00:00.000Z' };
+    it('snapshots the previous raw `vocabulary` and restore puts its words back, stamped now and dated right', async () => {
+        // Stored by the previous version: a createdAt later than the word was added
+        const oldWord = { id: 'old', original: 'old', translation: 'старый', repetition: 4, easeFactor: 2.1, nextReview: null, reviewHistory: [], createdAt: '2026-02-01T00:00:00.000Z', addedDate: '2026-01-01T00:00:00.000Z' };
         const raw = rawVocabulary([oldWord]);
         const restoring = createApp({ storage: createMemoryStorage({ vocabulary: raw }) });
         expect(restoring.store.getSnapshotDate()).toBeNull();
@@ -150,14 +161,16 @@ describe('Data protection: import', () => {
             'Go back to your data from before the restore on 2026-11-22? Progress made since then will be lost.'
         );
         expect(restoring.storage.data.snapshotBeforeImport).toBeUndefined();
-        expect(restoring.store.load()).toEqual([{ ...oldWord, updatedAt: NOW.toISOString() }]);
+        const { addedDate, ...repaired } = oldWord;
+        expect(restoring.store.load()).toEqual([{ ...repaired, createdAt: addedDate, updatedAt: NOW.toISOString() }]);
+        expect(JSON.parse(restoring.storage.data.vocabulary).words[0]).not.toHaveProperty('addedDate');
         expect(Object.keys(restoring.store.loadDeletions())).toEqual(fixture.vocabulary.map(w => w.id));
         expect(restoring.reload).toHaveBeenCalledTimes(1);
     });
 
     it('restores an old-shape snapshot from the previous version and migrates it on the next load', () => {
-        const oldWords = [{ id: 'old', original: 'old', translation: 'старый', createdAt: '2026-01-01T00:00:00.000Z', addedDate: '2026-01-01T00:00:00.000Z' }];
-        const oldProgress = { old: { repetition: 4, easeFactor: 2.1, nextReview: '2026-12-01T00:00:00.000Z', reviewHistory: [] } };
+        const oldWords = [{ id: 'old', original: 'old', translation: 'старый', createdAt: '2026-01-05T00:00:00.000Z' }];
+        const oldProgress = { old: { repetition: 4, easeFactor: 2.1, nextReview: '2026-12-01T00:00:00.000Z', reviewHistory: [], addedDate: '2026-01-01' } };
         // State left by the previous version after an import: imported words in the old keys plus an old-shape snapshot
         const storage = createMemoryStorage({
             allVocabulary: JSON.stringify(fixture.vocabulary),
@@ -176,7 +189,8 @@ describe('Data protection: import', () => {
 
         expect(imported.confirm).toHaveBeenLastCalledWith(expect.stringContaining('from before the restore on 2026-11-20'));
         const reloaded = createApp({ storage });
-        expect(reloaded.dm.vocabulary).toEqual([{ ...oldWords[0], ...oldProgress.old, updatedAt: NOW.toISOString() }]);
+        const { addedDate, ...progress } = oldProgress.old;
+        expect(reloaded.dm.vocabulary).toEqual([{ ...oldWords[0], ...progress, createdAt: `${addedDate}T00:00:00.000Z`, updatedAt: NOW.toISOString() }]);
         expect(JSON.parse(storage.data.vocabulary).words).toEqual(reloaded.dm.vocabulary);
     });
 
@@ -262,5 +276,42 @@ describe('Data protection: import', () => {
 
         expect(secondExport).toEqual(firstExport);
         expect(firstExport.totalWords).toBe(fixture.vocabulary.length);
+    });
+
+    // A backup written by the previous version: dates in both fields and in both formats
+    const [first, second, third] = fixture.vocabulary;
+    const legacyBackup = {
+        ...fixture,
+        schemaVersion: 1,
+        vocabulary: [
+            { ...first, createdAt: '2025-09-01T08:00:00.000Z', addedDate: '2025-07-20' },
+            { ...second, addedDate: '2025-08-01T10:00:00.000Z' },
+            { ...third, createdAt: '2025-08-15T10:00:00.000Z', addedDate: '2025-07-28T10:00:00.000Z' }
+        ]
+    };
+    const repairedDates = ['2025-07-20T00:00:00.000Z', second.createdAt, '2025-07-28T10:00:00.000Z'];
+
+    it('restores a legacy backup with the earlier date as createdAt and without addedDate', async () => {
+        await app.ie.importFromText(JSON.stringify(legacyBackup));
+
+        expect(app.dm.vocabulary.map(w => w.createdAt)).toEqual(repairedDates);
+        const stored = createApp({ storage: app.storage }).dm.vocabulary;
+        expect(stored.map(w => w.createdAt)).toEqual(repairedDates);
+        stored.forEach((word, i) => {
+            expect(word).not.toHaveProperty('addedDate');
+            expect(word).toEqual({ ...legacyBackup.vocabulary[i], addedDate: undefined, createdAt: repairedDates[i], updatedAt: NOW.toISOString() });
+        });
+    });
+
+    it('round trip of a legacy backup: import -> export -> import -> export is identical and has no addedDate', async () => {
+        await app.ie.importFromText(JSON.stringify(legacyBackup));
+        const firstExport = createApp({ storage: app.storage }).ie.createExportData();
+
+        await createApp({ storage: app.storage }).ie.importFromText(JSON.stringify(firstExport));
+        const secondExport = createApp({ storage: app.storage }).ie.createExportData();
+
+        expect(secondExport).toEqual(firstExport);
+        expect(firstExport.vocabulary.map(w => w.createdAt)).toEqual(repairedDates);
+        firstExport.vocabulary.forEach(word => expect(word).not.toHaveProperty('addedDate'));
     });
 });

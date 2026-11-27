@@ -7,7 +7,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const defaultVocabularyStore = require('./vocabulary-store.js');
 const defaultDataManager = require('./data-manager.js');
-const { pickWordFields, findInvalidWordField } = defaultVocabularyStore;
+const { pickWordFields, findInvalidWordField, withCreatedAt } = defaultVocabularyStore;
 
 const SUPABASE_URL = 'https://jubhtxkygbxkdafiabps.supabase.co';
 // Publishable by design: row level security limits every user to their own rows
@@ -23,14 +23,19 @@ const errorText = (error) => error?.message || String(error);
 
 const wordRow = (word) => ({ id: word.id, data: pickWordFields(word), updated_at: word.updatedAt || EPOCH, deleted: false });
 const deletedRow = (id, deletedAt) => ({ id, data: { id }, updated_at: deletedAt, deleted: true });
-// The row's id and updated_at are authoritative over the copies inside its data
-const rowWord = (row) => ({ ...pickWordFields(row.data || {}), id: row.id, updatedAt: row.updated_at });
+// The row's id and updated_at are authoritative over the copies inside its data. Rows written by
+// older versions may still carry a late createdAt next to addedDate: they get the same repair as
+// words loaded here, so a pulled row never brings the wrong date back.
+const rowWord = (row, timestamp) => ({
+    ...pickWordFields(withCreatedAt(row.data || {}, timestamp)), id: row.id, updatedAt: row.updated_at
+});
 // Rows that are not words of this app (e.g. written by an experiment) are ignored
-const isUsableRow = (row) => row.deleted || !findInvalidWordField(rowWord(row));
+const isUsableRow = (row) => row.deleted || !findInvalidWordField({ ...row.data, id: row.id });
 
 // Per id the newer side wins. Returns the resulting local words (the same objects where
 // nothing changed) and the rows the server lacks or holds in an older version.
-function mergeWords(words, deletions, rows) {
+// `timestamp` dates a pulled word that has no creation date at all.
+function mergeWords(words, deletions, rows, timestamp) {
     const remote = new Map(rows.filter(isUsableRow).map(row => [row.id, row]));
     const localIds = new Set(words.map(word => word.id));
     const merged = [];
@@ -47,7 +52,7 @@ function mergeWords(words, deletions, rows) {
             return;
         }
         changed = true;
-        if (!row.deleted) merged.push({ ...word, ...rowWord(row) });
+        if (!row.deleted) merged.push({ ...word, ...rowWord(row, timestamp) });
     });
 
     remote.forEach(row => {
@@ -57,7 +62,7 @@ function mergeWords(words, deletions, rows) {
         if (deletedTime > time(row.updated_at)) {
             upload.push(deletedRow(row.id, deletedAt));
         } else if (time(row.updated_at) > deletedTime) {
-            merged.push(rowWord(row));
+            merged.push(rowWord(row, timestamp));
             changed = true;
         }
     });
@@ -142,7 +147,7 @@ function createSync(context) {
     async function fullSync(user) {
         if (dataManager.loadFailed) throw new Error('saved words could not be loaded');
         const rows = await pullRows();
-        const result = mergeWords(dataManager.vocabulary, store.loadDeletions(), rows);
+        const result = mergeWords(dataManager.vocabulary, store.loadDeletions(), rows, now().toISOString());
         if (result.changed) applyLocally(result.words);
         await pushRows(forUser(result.upload, user));
     }

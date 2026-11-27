@@ -19,7 +19,7 @@ const VALID_SECRET = 'valid secret';
 function word(id, overrides = {}) {
     return {
         id, original: `word ${id}`, translation: `слово ${id}`, easeFactor: 1.3, repetition: 0,
-        nextReview: null, reviewHistory: [], createdAt: iso(T1), addedDate: iso(T1), ...overrides
+        nextReview: null, reviewHistory: [], createdAt: iso(T1), ...overrides
     };
 }
 
@@ -304,6 +304,74 @@ describe('Sync merge rules', () => {
 
         expect(device.dm.vocabulary).toHaveLength(1201);
         expect(server.table).toHaveLength(1201);
+    });
+});
+
+describe('Sync of rows written by older versions (createdAt later than addedDate)', () => {
+    const ADDED = '2026-10-01';
+    const REPAIRED = '2026-10-01T00:00:00.000Z';
+    // A row pushed by the previous version: a late createdAt with the real date in addedDate
+    const legacyRow = (w, at) => ({ ...row(w, at), data: { ...pickWordFields(w), addedDate: ADDED } });
+    const legacyStorage = (w) => createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words: [{ ...pickWordFields(w), addedDate: ADDED }] }) });
+
+    it('repairs the date of a newer pulled row and never keeps addedDate', async () => {
+        const server = createServer([legacyRow(word('a', { createdAt: iso(T1), repetition: 3, updatedAt: iso(T3) }), iso(T3))]);
+        const device = createDevice({ server, words: [word('a', { createdAt: REPAIRED, updatedAt: iso(T2) })] });
+
+        await device.sync.sync();
+
+        expect(device.byId('a')).toMatchObject({ createdAt: REPAIRED, repetition: 3, updatedAt: iso(T3) });
+        expect(device.byId('a')).not.toHaveProperty('addedDate');
+        expect(device.store.load()[0].createdAt).toBe(REPAIRED);
+        expect(JSON.parse(device.storage.data.vocabulary).words[0]).not.toHaveProperty('addedDate');
+    });
+
+    it('repairs the date of a word that exists only on the server', async () => {
+        const server = createServer([legacyRow(word('remote', { createdAt: iso(T1), updatedAt: iso(T1) }), iso(T1))]);
+        const device = createDevice({ server });
+
+        await device.sync.sync();
+
+        expect(device.byId('remote').createdAt).toBe(REPAIRED);
+        expect(device.byId('remote')).not.toHaveProperty('addedDate');
+    });
+
+    it('keeps the repaired local date against the same old row and writes nothing to the server', async () => {
+        const legacy = word('a', { createdAt: iso(T1), updatedAt: iso(T1) });
+        const server = createServer([legacyRow(legacy, iso(T1))]);
+        const device = createDevice({ server, storage: legacyStorage(legacy) });
+        expect(device.byId('a').createdAt).toBe(REPAIRED);
+
+        await device.sync.sync();
+
+        expect(device.byId('a').createdAt).toBe(REPAIRED);
+        expect(device.client.requests.map(r => r.type)).toEqual(['select']);
+        expect(server.find('a').data.addedDate).toBe(ADDED);
+    });
+
+    it('sends the repaired date without addedDate with the next change of the word', async () => {
+        const legacy = word('a', { createdAt: iso(T1), updatedAt: iso(T1) });
+        const server = createServer([legacyRow(legacy, iso(T1))]);
+        const device = createDevice({ server, storage: legacyStorage(legacy) });
+        await device.sync.sync();
+
+        Object.assign(device.byId('a'), { repetition: 1, updatedAt: iso(T2) });
+        device.dm.save();
+        await device.sync.push();
+
+        expect(server.find('a').data).toMatchObject({ createdAt: REPAIRED, repetition: 1 });
+        expect(server.find('a').data).not.toHaveProperty('addedDate');
+    });
+
+    it('dates a pulled word without any creation date by the time of the sync', async () => {
+        const undated = word('a', { updatedAt: iso(T1) });
+        delete undated.createdAt;
+        const server = createServer([row(undated, iso(T1))]);
+        const device = createDevice({ server, clock: T4 });
+
+        await device.sync.sync();
+
+        expect(device.byId('a').createdAt).toBe(iso(T4));
     });
 });
 

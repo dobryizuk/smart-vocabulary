@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createMemoryStorage } from './test-helpers.js';
 
 // Mock DOM environment
 beforeEach(() => {
@@ -21,6 +22,7 @@ window.SV = window.SV || {};
 window.SV.UIComponents = UI.UIComponents || UI;
 // Load learning session code via CommonJS exports
 const LS = require('../../js/learning-session.js');
+const { createVocabularyStore } = require('../../js/vocabulary-store.js');
 const Screen = require('../../js/exercises/exercise-screen.js');
 const Recognition = require('../../js/exercises/recognition.js');
 const Build = require('../../js/exercises/build.js');
@@ -685,6 +687,20 @@ describe('Session batch selection', () => {
     expect(names(newOnes(batch))).toEqual(['first', 'late', 'mid']);
     const many = [...freshWords(10).reverse(), ...reviews(20)];
     expect(names(newOnes(LS.selectSessionBatch(many, 10)))).toEqual(['n1', 'n2', 'n3', 'n4']);
+  });
+
+  it('takes the new word added first by its repaired date when an older version stored a later createdAt', () => {
+    const stored = [
+      fresh('second', '2026-02-01T00:00:00.000Z'),
+      { ...fresh('first', '2026-03-01T00:00:00.000Z'), addedDate: '2026-01-01' },
+      { ...fresh('third', '2026-02-15T00:00:00.000Z'), addedDate: '2026-02-20T00:00:00.000Z' },
+      ...reviews(20)
+    ];
+    const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words: stored }) });
+    const words = createVocabularyStore({ storage, now: () => new Date('2026-11-27T00:00:00Z') }).load();
+
+    expect(names(newOnes(LS.selectSessionBatch(words, 3)))).toEqual(['first']);
+    expect(names(newOnes(LS.selectSessionBatch(words, 6)))).toEqual(['first', 'second']);
   });
 
   it('takes reviews with the oldest nextReview first', () => {

@@ -3,7 +3,7 @@ const { test, expect } = require('./fixtures');
 const word = (id, original, translation, definition, reviewHistory = []) => ({
   id, original, translation, definition, examples: ['First long example sentence for the word.', 'Second long example sentence for the word.'], synonyms: ['alpha', 'beta'],
   easeFactor: 2.5, repetition: 1, nextReview: null, reviewHistory,
-  createdAt: '2026-11-01T10:00:00.000Z', addedDate: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z'
+  createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z'
 });
 
 const afterRecognition = [{ date: '2026-11-20T10:00:00.000Z', difficulty: 'easy', exerciseType: 'regular' }];

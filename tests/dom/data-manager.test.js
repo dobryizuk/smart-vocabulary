@@ -6,7 +6,7 @@ const { createVocabularyStore } = require('../../js/vocabulary-store.js');
 const fixture = require('../test-vocabulary.json');
 
 const NOW = new Date('2030-01-02T03:04:05.000Z');
-const words = fixture.vocabulary.map(word => ({ ...word, createdAt: word.addedDate }));
+const words = fixture.vocabulary;
 
 function createManager(storage) {
     const appMain = { showMessage: vi.fn() };

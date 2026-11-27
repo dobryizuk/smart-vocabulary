@@ -8,7 +8,7 @@ const chunkWord = {
     + 'and to assume that they will always be there and always behave in the same way.',
   examples: [], synonyms: [], easeFactor: 2.5, repetition: 1, nextReview: null,
   reviewHistory: [{ date: '2026-11-20T10:00:00.000Z', difficulty: 'easy', exerciseType: 'regular' }],
-  createdAt: '2026-11-01T10:00:00.000Z', addedDate: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z'
+  createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z'
 };
 
 test.use({ viewport: { width: 375, height: 667 } });

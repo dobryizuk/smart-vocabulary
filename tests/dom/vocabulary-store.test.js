@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createMemoryStorage } from './test-helpers.js';
 
-const { createVocabularyStore, WORD_FIELDS, findInvalidWordField } = require('../../js/vocabulary-store.js');
+const { createVocabularyStore, WORD_FIELDS, findInvalidWordField, withCreatedAt } = require('../../js/vocabulary-store.js');
 const fixture = require('../test-vocabulary.json');
 
 const NOW = new Date('2030-01-02T03:04:05.000Z');
@@ -9,7 +9,8 @@ const LATER = new Date('2030-02-01T00:00:00.000Z');
 const [first, second] = fixture.vocabulary;
 const STALE = { repetition: 0, easeFactor: 1.3, nextReview: null, reviewHistory: [] };
 
-// What the production version stores: words with stale progress + current progress by id
+// What the production version stores: words with stale progress + current progress by id.
+// The creation date may also sit in `addedDate` (in the progress) or `created_date` (in the word).
 const oldWords = [
     { ...first, ...STALE },
     { ...second, ...STALE, created_date: '2024-05-05T00:00:00.000Z' },
@@ -21,7 +22,7 @@ const oldProgress = {
         easeFactor: first.easeFactor,
         nextReview: first.nextReview,
         reviewHistory: first.reviewHistory,
-        addedDate: first.addedDate
+        addedDate: '2025-07-20'
     },
     [second.id]: {
         repetition: 4,
@@ -30,30 +31,12 @@ const oldProgress = {
         reviewHistory: [{ date: '2030-01-01T00:00:00.000Z', difficulty: 'easy', exerciseType: 'regular' }]
     }
 };
-// The words the production version shows for the data above
+// The words for the data above: dated by the earliest of their dates, without the duplicates
 const expectedWords = [
-    { ...first, createdAt: first.addedDate },
-    {
-        ...second,
-        created_date: '2024-05-05T00:00:00.000Z',
-        createdAt: '2024-05-05T00:00:00.000Z',
-        addedDate: '2024-05-05T00:00:00.000Z',
-        ...oldProgress[second.id]
-    },
-    {
-        id: 'no_progress',
-        original: 'new',
-        translation: 'новый',
-        createdAt: NOW.toISOString(),
-        addedDate: NOW.toISOString(),
-        ...STALE
-    }
+    { ...first, createdAt: '2025-07-20T00:00:00.000Z' },
+    { ...second, createdAt: '2024-05-05T00:00:00.000Z', ...oldProgress[second.id] },
+    { id: 'no_progress', original: 'new', translation: 'новый', createdAt: NOW.toISOString(), ...STALE }
 ];
-
-// What `vocabulary` holds for them: the same words without fields outside WORD_FIELDS (here: created_date)
-const secondStored = { ...expectedWords[1] };
-delete secondStored.created_date;
-const expectedStored = [expectedWords[0], secondStored, expectedWords[2]];
 
 function oldFormatStorage() {
     return createMemoryStorage({
@@ -73,7 +56,7 @@ describe('VocabularyStore migration from the two old keys', () => {
         expect(words).toEqual(expectedWords);
         expect(storage.setItem).toHaveBeenCalledTimes(1);
         expect(storage.setItem).toHaveBeenCalledWith('vocabulary', expect.any(String));
-        expect(JSON.parse(storage.data.vocabulary)).toEqual({ schemaVersion: 1, words: expectedStored });
+        expect(JSON.parse(storage.data.vocabulary)).toEqual({ schemaVersion: 1, words: expectedWords });
         expect(storage.data.allVocabulary).toBe(rawWords);
         expect(storage.data.userProgress).toBe(rawProgress);
         expect(storage.removeItem).not.toHaveBeenCalled();
@@ -86,7 +69,7 @@ describe('VocabularyStore migration from the two old keys', () => {
 
         const words = createVocabularyStore({ storage, now: () => LATER }).load();
 
-        expect(words).toEqual(expectedStored);
+        expect(words).toEqual(expectedWords);
         expect(storage.setItem).not.toHaveBeenCalled();
         expect(storage.removeItem).not.toHaveBeenCalled();
     });
@@ -134,36 +117,37 @@ describe('VocabularyStore with the `vocabulary` key', () => {
         expect(storage.removeItem).not.toHaveBeenCalled();
     });
 
-    it('dates a word without createdAt by its addedDate, not by now', () => {
-        const storage = createMemoryStorage();
-        const word = { ...first, addedDate: '2025-07-24T10:00:00.000Z' };
-        expect(word).not.toHaveProperty('createdAt');
-        storage.data.vocabulary = JSON.stringify({ schemaVersion: 1, words: [word] });
+    it('repairs a createdAt later than addedDate on every load without writing', () => {
+        const legacy = { ...first, createdAt: '2025-08-30T09:00:00.000Z', addedDate: '2025-07-24' };
+        const raw = JSON.stringify({ schemaVersion: 1, words: [legacy] });
+        const storage = createMemoryStorage({ vocabulary: raw });
 
         const [loaded] = createVocabularyStore({ storage, now: () => NOW }).load();
 
-        expect(loaded.createdAt).toBe('2025-07-24T10:00:00.000Z');
-        expect(loaded.addedDate).toBe('2025-07-24T10:00:00.000Z');
+        expect(loaded).toEqual({ ...first, createdAt: '2025-07-24T00:00:00.000Z' });
+        expect(loaded).not.toHaveProperty('addedDate');
+        expect(storage.setItem).not.toHaveBeenCalled();
+        expect(storage.data.vocabulary).toBe(raw);
     });
 
-    it('dates a word with neither createdAt nor addedDate by now', () => {
-        const storage = createMemoryStorage();
-        const word = { ...first };
-        delete word.addedDate;
-        expect(word).not.toHaveProperty('createdAt');
-        storage.data.vocabulary = JSON.stringify({ schemaVersion: 1, words: [word] });
+    it('stores the repaired date without addedDate at the next save', () => {
+        const legacy = { ...first, createdAt: '2025-08-30T09:00:00.000Z', addedDate: '2025-07-24T10:00:00.000Z' };
+        const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words: [legacy] }) });
+        const store = createVocabularyStore({ storage, now: () => NOW });
 
-        const [loaded] = createVocabularyStore({ storage, now: () => NOW }).load();
+        store.save(store.load());
 
-        expect(loaded.createdAt).toBe(NOW.toISOString());
-        expect(loaded.addedDate).toBe(NOW.toISOString());
+        const [stored] = JSON.parse(storage.data.vocabulary).words;
+        expect(stored.createdAt).toBe('2025-07-24T10:00:00.000Z');
+        expect(stored).not.toHaveProperty('addedDate');
+        expect(WORD_FIELDS).not.toContain('addedDate');
     });
 
     it('round-trips save then load', () => {
         const storage = createMemoryStorage();
         const store = createVocabularyStore({ storage, now: () => NOW });
-        store.save(expectedStored);
-        expect(store.load()).toEqual(expectedStored);
+        store.save(expectedWords);
+        expect(store.load()).toEqual(expectedWords);
     });
 
     it('writes only the word fields of the backup file, leaving session fields in memory', () => {
@@ -197,7 +181,7 @@ const stamped = (words, at = NOW) => words.map(word => ({ ...word, updatedAt: at
 
 describe('VocabularyStore snapshot', () => {
     it('restores the snapshot words stamped now and records deletions for words missing from it', () => {
-        const raw = JSON.stringify({ schemaVersion: 1, words: expectedStored });
+        const raw = JSON.stringify({ schemaVersion: 1, words: expectedWords });
         const storage = createMemoryStorage({ vocabulary: raw });
         const store = createVocabularyStore({ storage, now: () => NOW });
         expect(store.getSnapshotDate()).toBeNull();
@@ -207,10 +191,10 @@ describe('VocabularyStore snapshot', () => {
         expect(store.getSnapshotDate()).toBe('2030-01-02');
 
         const restoring = createVocabularyStore({ storage, now: () => LATER });
-        restoring.save([{ ...expectedStored[0], repetition: 9 }, { id: 'imported' }]);
+        restoring.save([{ ...expectedWords[0], repetition: 9 }, { id: 'imported' }]);
         restoring.restoreSnapshot();
 
-        expect(restoring.load()).toEqual(stamped(expectedStored, LATER));
+        expect(restoring.load()).toEqual(stamped(expectedWords, LATER));
         expect(restoring.loadDeletions()).toEqual({ imported: LATER.toISOString() });
         expect(storage.data.snapshotBeforeImport).toBeUndefined();
         expect(restoring.getSnapshotDate()).toBeNull();
@@ -220,12 +204,12 @@ describe('VocabularyStore snapshot', () => {
         const storage = createMemoryStorage();
         const store = createVocabularyStore({ storage, now: () => NOW });
         store.saveSnapshot();
-        store.save(expectedStored);
+        store.save(expectedWords);
 
         store.restoreSnapshot();
 
         expect(store.load()).toEqual([]);
-        expect(store.loadDeletions()).toEqual(Object.fromEntries(expectedStored.map(w => [w.id, NOW.toISOString()])));
+        expect(store.loadDeletions()).toEqual(Object.fromEntries(expectedWords.map(w => [w.id, NOW.toISOString()])));
         expect(storage.data.snapshotBeforeImport).toBeUndefined();
     });
 
@@ -241,7 +225,7 @@ describe('VocabularyStore snapshot', () => {
 
         store.restoreSnapshot();
 
-        expect(JSON.parse(storage.data.vocabulary)).toEqual({ schemaVersion: 1, words: stamped(expectedStored) });
+        expect(JSON.parse(storage.data.vocabulary)).toEqual({ schemaVersion: 1, words: stamped(expectedWords) });
         expect(storage.data.allVocabulary).toBe('[]');
         expect(storage.data.userProgress).toBe('{}');
         expect(storage.data.snapshotBeforeImport).toBeUndefined();
@@ -277,26 +261,26 @@ describe('VocabularyStore replace all and deletions', () => {
     it('replaceAll stamps every word now, records deletions for missing ids and returns the stamped words', () => {
         const storage = createMemoryStorage();
         const store = createVocabularyStore({ storage, now: () => NOW });
-        store.save([expectedStored[0], expectedStored[1]]);
+        store.save([expectedWords[0], expectedWords[1]]);
 
-        const result = createVocabularyStore({ storage, now: () => LATER }).replaceAll([expectedStored[1], expectedStored[2]]);
+        const result = createVocabularyStore({ storage, now: () => LATER }).replaceAll([expectedWords[1], expectedWords[2]]);
 
-        expect(result).toEqual(stamped([expectedStored[1], expectedStored[2]], LATER));
+        expect(result).toEqual(stamped([expectedWords[1], expectedWords[2]], LATER));
         expect(store.load()).toEqual(result);
-        expect(store.loadDeletions()).toEqual({ [expectedStored[0].id]: LATER.toISOString() });
+        expect(store.loadDeletions()).toEqual({ [expectedWords[0].id]: LATER.toISOString() });
     });
 
     it('replaceAll keeps earlier deletions and drops those of words that come back', () => {
         const storage = createMemoryStorage();
         const store = createVocabularyStore({ storage, now: () => NOW });
         store.recordDeletion('gone');
-        store.recordDeletion(expectedStored[0].id);
-        createVocabularyStore({ storage, now: () => LATER }).replaceAll([expectedStored[0]]);
+        store.recordDeletion(expectedWords[0].id);
+        createVocabularyStore({ storage, now: () => LATER }).replaceAll([expectedWords[0]]);
         expect(store.loadDeletions()).toEqual({ gone: NOW.toISOString() });
     });
 
     it('replaceAll writes deletions before the words, so a failed write never loses a deletion', () => {
-        const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words: [expectedStored[0]] }) });
+        const storage = createMemoryStorage({ vocabulary: JSON.stringify({ schemaVersion: 1, words: [expectedWords[0]] }) });
         const write = storage.setItem.getMockImplementation();
         storage.setItem.mockImplementation((key, value) => {
             if (key === 'vocabulary') throw new Error('QuotaExceededError');
@@ -305,8 +289,8 @@ describe('VocabularyStore replace all and deletions', () => {
         const store = createVocabularyStore({ storage, now: () => NOW });
 
         expect(() => store.replaceAll([])).toThrow('QuotaExceededError');
-        expect(store.loadDeletions()).toEqual({ [expectedStored[0].id]: NOW.toISOString() });
-        expect(store.load()).toEqual([expectedStored[0]]);
+        expect(store.loadDeletions()).toEqual({ [expectedWords[0].id]: NOW.toISOString() });
+        expect(store.load()).toEqual([expectedWords[0]]);
     });
 
     it('recordDeletion adds one deletion per id with the time of deletion', () => {
@@ -331,5 +315,50 @@ describe('findInvalidWordField', () => {
         expect(findInvalidWordField({ ...first, reviewHistory: undefined })).toBe('reviewHistory');
         expect(findInvalidWordField({ id: 'spike-1', original: 'hello', translation: 'привет' })).toBe('easeFactor');
         expect(findInvalidWordField(null)).toBe('id');
+    });
+});
+
+describe('withCreatedAt', () => {
+    const at = NOW.toISOString();
+    const created = (dates) => withCreatedAt({ id: 'w', original: 'a', translation: 'б', ...dates }, at).createdAt;
+
+    it.each([
+        ['createdAt later than addedDate takes addedDate', { createdAt: '2025-09-01T08:00:00.000Z', addedDate: '2025-07-24T10:00:00.000Z' }, '2025-07-24T10:00:00.000Z'],
+        ['createdAt earlier than addedDate is kept', { createdAt: '2025-07-01T08:00:00.000Z', addedDate: '2025-07-24T10:00:00.000Z' }, '2025-07-01T08:00:00.000Z'],
+        ['equal dates stay', { createdAt: '2025-07-24T10:00:00.000Z', addedDate: '2025-07-24T10:00:00.000Z' }, '2025-07-24T10:00:00.000Z'],
+        ['a date-only addedDate is the start of that UTC day', { createdAt: '2025-08-30T09:00:00.000Z', addedDate: '2025-06-29' }, '2025-06-29T00:00:00.000Z'],
+        ['a date-only addedDate after createdAt loses', { createdAt: '2025-06-28T23:00:00.000Z', addedDate: '2025-06-29' }, '2025-06-28T23:00:00.000Z'],
+        ['an offset is compared as an instant', { createdAt: '2025-07-24T01:00:00+03:00', addedDate: '2025-07-23T23:00:00.000Z' }, '2025-07-23T22:00:00.000Z'],
+        ['a createdAt without milliseconds becomes full ISO', { createdAt: '2025-07-24T10:00:00Z' }, '2025-07-24T10:00:00.000Z'],
+        ['only createdAt', { createdAt: '2025-07-24T10:00:00.000Z' }, '2025-07-24T10:00:00.000Z'],
+        ['only addedDate', { addedDate: '2025-07-24T10:00:00.000Z' }, '2025-07-24T10:00:00.000Z'],
+        ['only created_date', { created_date: '2024-05-05T00:00:00.000Z' }, '2024-05-05T00:00:00.000Z'],
+        ['created_date counts too', { createdAt: '2025-07-24T10:00:00.000Z', addedDate: '2025-07-20', created_date: '2024-05-05T00:00:00.000Z' }, '2024-05-05T00:00:00.000Z'],
+        ['neither: now', {}, NOW.toISOString()],
+        ['empty strings and null: now', { createdAt: '', addedDate: null }, NOW.toISOString()],
+        ['an invalid createdAt gives way to addedDate', { createdAt: 'yesterday', addedDate: '2025-07-24' }, '2025-07-24T00:00:00.000Z'],
+        ['an invalid addedDate is ignored', { createdAt: '2025-07-24T10:00:00.000Z', addedDate: '2025-13-45' }, '2025-07-24T10:00:00.000Z'],
+        ['strings that only look like dates to a lenient parser are ignored', { createdAt: '1', addedDate: 'Jan 1' }, NOW.toISOString()],
+        ['non-string dates are ignored', { createdAt: 1700000000000, addedDate: {} }, NOW.toISOString()]
+    ])('%s', (_, dates, expected) => {
+        expect(created(dates)).toBe(expected);
+    });
+
+    it('drops addedDate and created_date, keeps every other field and leaves the input as it was', () => {
+        const legacy = { ...first, createdAt: '2025-09-01T08:00:00.000Z', addedDate: '2025-07-20', created_date: '2025-07-22', updatedAt: '2025-09-02T00:00:00.000Z' };
+        const before = JSON.parse(JSON.stringify(legacy));
+
+        const repaired = withCreatedAt(legacy, at);
+
+        expect(repaired).toEqual({ ...first, createdAt: '2025-07-20T00:00:00.000Z', updatedAt: '2025-09-02T00:00:00.000Z' });
+        expect(repaired).not.toHaveProperty('addedDate');
+        expect(repaired).not.toHaveProperty('created_date');
+        expect(repaired.reviewHistory).toBe(legacy.reviewHistory);
+        expect(legacy).toEqual(before);
+    });
+
+    it('changes nothing on a second pass', () => {
+        const once = withCreatedAt({ ...first, createdAt: '2025-09-01T08:00:00.000Z', addedDate: '2025-07-20' }, at);
+        expect(withCreatedAt(once, LATER.toISOString())).toEqual(once);
     });
 });

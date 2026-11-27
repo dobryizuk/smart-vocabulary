@@ -218,7 +218,7 @@ describe('Word Metadata Component', () => {
       const word = createTestWord({ id: 'meta_test', nextReview: '2024-02-01T00:00:00.000Z' });
       const progress = {
         repetitions: 3,
-        addedDate: new Date('2024-01-01')
+        createdAt: new Date('2024-01-01')
       };
       
       const metadataHtml = createWordMetadata(word, progress);
@@ -263,7 +263,7 @@ describe('Word Metadata Component', () => {
       const word = createTestWord({ id: 'date_test' });
       const progress = {
         repetitions: 1,
-        addedDate: new Date('2024-06-15')
+        createdAt: new Date('2024-06-15')
       };
       
       const metadataHtml = createWordMetadata(word, progress);
