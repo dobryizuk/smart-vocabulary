@@ -7,6 +7,7 @@ const BASE_URL = 'https://app.test/smart-vocabulary/';
 const CLIP_PREFIX = `${BASE_URL}voice-clips/onnx-community%2FKokoro-82M-v1.0-ONNX/q8/af_heart/`;
 const clipUrl = (text) => CLIP_PREFIX + encodeURIComponent(text);
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const { Event, EventTarget } = globalThis;
 
 function createFakeCaches() {
   const stores = new Map();
@@ -42,12 +43,17 @@ function createFakeWorker() {
   return worker;
 }
 
+// Its clock moves only while it runs and is not frozen, as a context silenced by an interruption
 function createFakeAudioContext() {
   const context = {
     state: 'suspended',
+    currentTime: 0,
+    frozen: false,
     destination: {},
     sources: [],
+    advance: (seconds) => { if (context.state === 'running' && !context.frozen) context.currentTime += seconds; },
     resume: vi.fn(async () => { context.state = 'running'; }),
+    close: vi.fn(async () => { context.state = 'closed'; }),
     decodeAudioData: vi.fn(async (data) => ({ bytes: data.byteLength })),
     createBufferSource: () => {
       const source = { connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
@@ -135,6 +141,7 @@ describe('Natural voice', () => {
     }),
     createAudioContext: () => audio,
     document: null,
+    window: null,
     baseUrl: BASE_URL,
     getWords: () => words,
     getSessionTexts: () => session,
@@ -257,6 +264,9 @@ describe('speakWord with the natural voice', () => {
   let caches;
   let workers;
   let audio;
+  let contexts;
+  let page;
+  let win;
   let speech;
   let words;
 
@@ -267,14 +277,22 @@ describe('speakWord with the natural voice', () => {
       workers.push(worker);
       return worker;
     },
-    createAudioContext: () => audio,
-    document: null,
+    // The first context is the prepared `audio`, later ones are new
+    createAudioContext: () => {
+      const context = contexts.length === 0 ? audio : createFakeAudioContext();
+      contexts.push(context);
+      return context;
+    },
+    document: page,
+    window: win,
     baseUrl: BASE_URL,
     getWords: () => words,
     getSessionTexts: () => [],
     isSoundEnabled: () => true,
     isOnline: () => true,
     log: () => undefined,
+    // Waiting for the render check lets 0.4 s pass on every context
+    wait: async () => contexts.forEach(context => context.advance(0.4)),
     ...overrides
   });
   const makeManager = (naturalVoice) => createSpeechManager({
@@ -294,8 +312,155 @@ describe('speakWord with the natural voice', () => {
     caches = createFakeCaches();
     workers = [];
     audio = createFakeAudioContext();
+    contexts = [];
+    page = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+    win = new EventTarget();
     speech = { speaking: false, pending: false, cancel: vi.fn(), speak: vi.fn() };
     words = [word('alpha'), word('beta', { createdAt: '2026-11-05T00:00:00Z' })];
+  });
+
+  // A tap runs the capture listener on the document before the button's handler
+  const tap = (manager, text) => {
+    page.dispatchEvent(new Event('touchend'));
+    manager.speakWord(text, addButton());
+  };
+  const startWithClips = async (overrides = {}) => {
+    caches.seed('voice-clips', clipUrl('alpha'));
+    caches.seed('voice-clips', clipUrl('beta'));
+    const voice = makeVoice(overrides);
+    await voice.start();
+    return { voice, manager: makeManager(voice) };
+  };
+
+  it('keeps one audio context while it plays', async () => {
+    const { manager } = await startWithClips();
+
+    tap(manager, 'alpha');
+    await flush();
+    tap(manager, 'beta');
+    await flush();
+
+    expect(contexts).toEqual([audio]);
+    expect(audio.close).not.toHaveBeenCalled();
+    expect(audio.sources.map(source => source.start.mock.calls.length)).toEqual([1, 1]);
+    expect(speech.speak).not.toHaveBeenCalled();
+  });
+
+  it('closes the audio context when the page is hidden and makes a new one on the next tap', async () => {
+    const { manager } = await startWithClips();
+    tap(manager, 'alpha');
+    await flush();
+
+    page.visibilityState = 'hidden';
+    page.dispatchEvent(new Event('visibilitychange'));
+    expect(audio.close).toHaveBeenCalledTimes(1);
+    expect(audio.sources[0].stop).toHaveBeenCalled();
+
+    page.visibilityState = 'visible';
+    page.dispatchEvent(new Event('visibilitychange'));
+    tap(manager, 'beta');
+    await flush();
+
+    expect(contexts).toHaveLength(2);
+    expect(contexts[1].resume).toHaveBeenCalled();
+    expect(contexts[1].sources[0].start).toHaveBeenCalledTimes(1);
+    expect(speech.speak).not.toHaveBeenCalled();
+  });
+
+  it('closes the audio context on pagehide', async () => {
+    const { manager } = await startWithClips();
+    tap(manager, 'alpha');
+    await flush();
+
+    win.dispatchEvent(new Event('pagehide'));
+    tap(manager, 'beta');
+    await flush();
+
+    expect(audio.close).toHaveBeenCalledTimes(1);
+    expect(contexts).toHaveLength(2);
+    expect(contexts[1].sources[0].start).toHaveBeenCalledTimes(1);
+  });
+
+  it('replaces an interrupted audio context inside the tap instead of resuming it', async () => {
+    const { manager } = await startWithClips();
+    tap(manager, 'alpha');
+    await flush();
+
+    audio.state = 'interrupted';
+    page.dispatchEvent(new Event('touchend'));
+
+    expect(audio.close).toHaveBeenCalledTimes(1);
+    expect(audio.resume).toHaveBeenCalledTimes(1);
+    expect(contexts).toHaveLength(2);
+    expect(contexts[1].resume).toHaveBeenCalledTimes(1);
+
+    manager.speakWord('beta', addButton());
+    await flush();
+    expect(contexts[1].sources[0].start).toHaveBeenCalledTimes(1);
+    expect(speech.speak).not.toHaveBeenCalled();
+  });
+
+  it('waits for a slow resume of a new context and plays the clip without the built-in speech', async () => {
+    let finishResume;
+    const resumed = new Promise(resolve => { finishResume = resolve; }).then(() => { audio.state = 'running'; });
+    audio.resume = vi.fn(() => resumed);
+    const { voice, manager } = await startWithClips();
+
+    tap(manager, 'alpha');
+    // Longer than the render check takes, still inside the resume time-box
+    await flush();
+    await flush();
+    expect(audio.sources).toHaveLength(0);
+    expect(speech.speak).not.toHaveBeenCalled();
+
+    finishResume();
+    await flush();
+
+    expect(audio.sources[0].start).toHaveBeenCalledTimes(1);
+    expect(speech.speak).not.toHaveBeenCalled();
+    expect(audio.close).not.toHaveBeenCalled();
+    expect(voice.hasClip('alpha')).toBe(true);
+  });
+
+  it('says the word with speechSynthesis and keeps the clip when the context never resumes', async () => {
+    audio.resume = vi.fn(() => new Promise(() => undefined));
+    const { voice, manager } = await startWithClips({ resumeTimeoutMs: 5 });
+
+    tap(manager, 'alpha');
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    expect(audio.sources).toHaveLength(0);
+    expect(speech.speak).toHaveBeenCalledTimes(1);
+    expect(speech.speak.mock.calls[0][0].text).toBe('alpha');
+    expect(voice.hasClip('alpha')).toBe(true);
+    expect(audio.close).toHaveBeenCalledTimes(1);
+
+    tap(manager, 'alpha');
+    await flush();
+    expect(contexts).toHaveLength(2);
+    expect(contexts[1].sources[0].start).toHaveBeenCalledTimes(1);
+    expect(speech.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('says the word with speechSynthesis when the audio clock stands still, keeps the clip and uses a new context next time', async () => {
+    const { voice, manager } = await startWithClips();
+    audio.frozen = true;
+
+    tap(manager, 'alpha');
+    await flush();
+
+    expect(audio.sources[0].start).toHaveBeenCalledTimes(1);
+    expect(speech.speak).toHaveBeenCalledTimes(1);
+    expect(speech.speak.mock.calls[0][0].text).toBe('alpha');
+    expect(voice.hasClip('alpha')).toBe(true);
+    expect(audio.close).toHaveBeenCalledTimes(1);
+
+    tap(manager, 'alpha');
+    await flush();
+
+    expect(contexts).toHaveLength(2);
+    expect(contexts[1].sources[0].start).toHaveBeenCalledTimes(1);
+    expect(speech.speak).toHaveBeenCalledTimes(1);
   });
 
   it('plays a stored clip through Web Audio and does not call speechSynthesis', async () => {

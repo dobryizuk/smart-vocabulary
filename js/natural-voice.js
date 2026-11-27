@@ -19,6 +19,12 @@ const CLIP_PATH = `voice-clips/${encodeURIComponent(KOKORO.model)}/${KOKORO.dtyp
 // A hung or silently killed worker must not leave the speaker button spinning
 const LOAD_TIMEOUT_MS = 180000;
 const CLIP_TIMEOUT_MS = 60000;
+// A new context runs only once resume() settles; one that never does is silent
+const RESUME_TIMEOUT_MS = 2000;
+// After an interruption WebKit may keep a context that reports itself alive but renders
+// nothing; its clock standing still after start() is the only sign
+const RENDER_CHECK_MS = 400;
+const DEAD_AUDIO_STATES = new Set(['interrupted', 'closed']);
 
 const WAV_HEADER_BYTES = 44;
 const BYTES_PER_SAMPLE = 2;
@@ -117,6 +123,7 @@ function createNaturalVoice(deps = {}) {
     const AudioContextClass = g.AudioContext || g.webkitAudioContext;
     const createAudioContext = pick('createAudioContext', AudioContextClass ? (() => new AudioContextClass()) : null);
     const doc = pick('document', g.document ?? null);
+    const win = pick('window', typeof g.addEventListener === 'function' ? g : null);
     const baseUrl = pick('baseUrl', g.document?.baseURI ?? 'http://localhost/');
     const getWords = pick('getWords', () => (g.SV?.DataManager?.loadFailed ? null : g.SV?.DataManager?.vocabulary ?? null));
     const getSessionTexts = pick('getSessionTexts', () => (g.SV?.AppState?.learningSession ?? []).map(word => word.original));
@@ -125,6 +132,9 @@ function createNaturalVoice(deps = {}) {
     const onStatus = pick('onStatus', () => undefined);
     const loadTimeoutMs = pick('loadTimeoutMs', LOAD_TIMEOUT_MS);
     const clipTimeoutMs = pick('clipTimeoutMs', CLIP_TIMEOUT_MS);
+    const resumeTimeoutMs = pick('resumeTimeoutMs', RESUME_TIMEOUT_MS);
+    const renderCheckMs = pick('renderCheckMs', RENDER_CHECK_MS);
+    const wait = pick('wait', (ms) => new Promise(resolve => setTimeout(resolve, ms)));
     const log = pick('log', (...args) => g.SV?.debugLog?.(...args));
 
     const clipPrefix = new URL(CLIP_PATH, baseUrl).href;
@@ -143,6 +153,7 @@ function createNaturalVoice(deps = {}) {
     let broken = !cacheStorage || !createWorker || !createAudioContext;
     let pumping = false;
     let audioContext = null;
+    let audioResumed = Promise.resolve();
     let source = null;
 
     const openCache = () => {
@@ -286,28 +297,67 @@ function createNaturalVoice(deps = {}) {
         }
     }
 
-    // iOS lets an AudioContext start only inside a user gesture and suspends it again
-    // when the app goes to the background, so every tap resumes it while sound is on
+    // A context that went through the background or an interruption is closed; the next
+    // tap makes a new one, the only kind iOS reliably lets play again
+    function dropAudio(context, reason) {
+        if (!context || context !== audioContext) return;
+        audioContext = null;
+        source?.stop();
+        source = null;
+        Promise.resolve(context.close()).catch(error => log('🗣️ Audio close failed:', error));
+        log('🗣️ Audio context dropped:', reason);
+    }
+
+    // iOS lets an AudioContext start only inside a user gesture, so every tap
+    // (re)creates or resumes it while sound is on
     function resumeAudio() {
-        if (!createAudioContext || !isSoundEnabled()) return;
+        if (!createAudioContext || !isSoundEnabled()) return audioContext;
         try {
-            audioContext = audioContext || createAudioContext();
-            if (audioContext.state !== 'running') Promise.resolve(audioContext.resume()).catch(error => log('🗣️ Audio resume failed:', error));
+            if (DEAD_AUDIO_STATES.has(audioContext?.state)) dropAudio(audioContext, audioContext.state);
+            if (!audioContext) {
+                audioContext = createAudioContext();
+                audioResumed = Promise.resolve();
+            }
+            if (audioContext.state !== 'running') {
+                audioResumed = Promise.resolve(audioContext.resume()).catch(error => log('🗣️ Audio resume failed:', error));
+            }
         } catch (error) {
             log('🗣️ Audio context unavailable:', error);
         }
+        return audioContext;
     }
 
-    async function playClip(text) {
+    function dropAudioWhenHidden() {
+        if (doc?.visibilityState === 'hidden') dropAudio(audioContext, 'page hidden');
+    }
+
+    async function decodeClip(context, text) {
         const response = await (await openCache()).match(clipKey(text));
         if (!response) throw new Error('Clip is missing');
-        const buffer = await audioContext.decodeAudioData(await response.arrayBuffer());
+        return context.decodeAudioData(await response.arrayBuffer());
+    }
+
+    // Starts the clip and tells whether the context's clock moved meanwhile
+    async function startSource(context, buffer) {
         source?.stop();
-        source = audioContext.createBufferSource();
+        source = context.createBufferSource();
         source.buffer = buffer;
-        source.connect(audioContext.destination);
+        source.connect(context.destination);
+        const startedAt = context.currentTime;
         source.start();
-        log('🗣️ Natural voice played:', text);
+        await wait(renderCheckMs);
+        return context.currentTime > startedAt;
+    }
+
+    // A silent context is not the clip's fault: the clip stays, the word goes to the
+    // built-in speech for this tap, and the next tap gets a new context
+    async function playBuffer({ context, resumed, buffer, text, stateBefore }) {
+        const running = await withTimeout(resumed, resumeTimeoutMs, 'Audio resume').then(() => true, () => false);
+        const rendering = running && await startSource(context, buffer);
+        log('🗣️ Natural voice played:', text, { stateBefore, stateAfter: context.state, running, rendering });
+        if (rendering) return;
+        dropAudio(context, running ? 'clock stood still' : 'resume timed out');
+        throw new Error('Audio context is silent');
     }
 
     const hasClip = (text) => clips.has(text);
@@ -315,13 +365,18 @@ function createNaturalVoice(deps = {}) {
     // Plays a stored clip; a clip that fails is dropped so it is made again, and the error
     // goes on to the caller. The context resumes before the first await, inside the tap.
     function play(text) {
-        resumeAudio();
-        return playClip(text).catch(error => {
-            clips.delete(text);
-            log('🗣️ Natural voice clip failed:', text, error);
-            notify();
-            throw error;
-        });
+        const stateBefore = audioContext?.state ?? 'none';
+        const context = resumeAudio();
+        const resumed = audioResumed;
+        return decodeClip(context, text).then(
+            (buffer) => playBuffer({ context, resumed, buffer, text, stateBefore }),
+            (error) => {
+                clips.delete(text);
+                log('🗣️ Natural voice clip failed:', text, error);
+                notify();
+                throw error;
+            }
+        );
     }
 
     // Puts a text first in the queue; settles when its clip is stored or the voice gives up
@@ -348,6 +403,8 @@ function createNaturalVoice(deps = {}) {
     function start() {
         doc?.addEventListener('touchend', resumeAudio, true);
         doc?.addEventListener('click', resumeAudio, true);
+        doc?.addEventListener('visibilitychange', dropAudioWhenHidden);
+        win?.addEventListener('pagehide', () => dropAudio(audioContext, 'page hide'));
         return pump();
     }
 
