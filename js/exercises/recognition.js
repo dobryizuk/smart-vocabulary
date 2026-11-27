@@ -2,7 +2,7 @@
 // RECOGNITION: the word is shown, Show Answer reveals its meaning, every rating is free
 // ============================================================================
 
-const { escapeHtml, createSpeakAction, createWordCard, createButtonGroup } = require('../ui-components.js');
+const { createSpeakAction, createWordCard, createButtonGroup } = require('../ui-components.js');
 const { scheduleOnScreen, currentWordPrompt, speakCurrentWord, showExerciseScreen, showAnswer } = require('./exercise-screen.js');
 
 // Lets the card settle before the word is spoken
@@ -32,7 +32,7 @@ function showTranslation() {
     const { label, main, detail } = currentWordPrompt();
     showAnswer(document.getElementById('cardTranslation'), {
         label,
-        value: escapeHtml(main),
+        value: main,
         showDefinition: Boolean(detail)
     });
 }

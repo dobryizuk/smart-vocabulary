@@ -112,7 +112,7 @@ function revealCorrectAnswer(maxRating) {
     const { original } = currentWord();
     showAnswer(getLearningLayout().mainEl, {
         label: 'Correct answer',
-        value: escapeHtml(original),
+        value: original,
         actions: [createSpeakAction(original)],
         showDefinition: false,
         maxRating

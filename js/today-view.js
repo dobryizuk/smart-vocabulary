@@ -91,7 +91,7 @@ function trickyRowHtml({ word, percentRight, status }) {
         <li class="tricky-row" data-testid="tricky-word">
             <div class="tricky-row__text">
                 <span class="tricky-row__original">${UIComponents.escapeHtml(word.original)}</span>
-                <span class="tricky-row__translation">${UIComponents.escapeHtml(word.translation || '')}</span>
+                <span class="tricky-row__translation">${UIComponents.escapeHtml(word.translation)}</span>
             </div>
             <span class="tricky-row__chip${warnClass}">${percentRight}% right</span>
         </li>

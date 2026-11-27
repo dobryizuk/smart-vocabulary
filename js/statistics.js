@@ -6,6 +6,7 @@ const SpacedRepetition = require('./spaced-repetition.js');
 const Metrics = require('./progress-metrics.js');
 const { icon } = require('./icons.js');
 const { syncStatusText } = require('./sync-panel.js');
+const { escapeHtml } = require('./ui-components.js');
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -90,7 +91,7 @@ function renderProgressHtml({ words, syncStatus, now }) {
         <div class="progress-buckets">${bucketsHtml(Metrics.getStatusCounts(words))}${needReviewHtml(Metrics.countDue(words, now))}</div>
         ${weekChartHtml(Metrics.getWeeklyCounts(words, now))}
         <ul class="progress-links">
-            ${linkRowHtml({ testId: 'progress-cloud-row', iconName: 'cloud', label: 'Cloud backup', detail: `<span data-testid="progress-cloud-status">${syncStatusText(syncStatus)}</span>` })}
+            ${linkRowHtml({ testId: 'progress-cloud-row', iconName: 'cloud', label: 'Cloud backup', detail: `<span data-testid="progress-cloud-status">${escapeHtml(syncStatusText(syncStatus))}</span>` })}
             ${linkRowHtml({ testId: 'open-settings-btn', iconName: 'settings', label: 'Settings', detail: 'Learning · theme · data' })}
         </ul>
     `;

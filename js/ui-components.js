@@ -6,9 +6,14 @@ const { getWordStatus } = require('./spaced-repetition.js');
 
 const { icon } = require('./icons.js');
 
-// The data-arg attribute of an action button, with quotes escaped; none when there is no argument
+// User text (a word's fields, typed or from dictionaries) as HTML text or an attribute value
+function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
+// The data-arg attribute of an action button, escaped; none when there is no argument
 function dataArgAttr(arg) {
-    return arg != null && arg !== '' ? ` data-arg="${String(arg).replace(/"/g, '&quot;')}"` : '';
+    return arg != null && arg !== '' ? ` data-arg="${escapeHtml(arg)}"` : '';
 }
 
 function formatDate(date) {
@@ -62,8 +67,8 @@ function buildVariantClasses(variant, expandable) {
 
 function buildNonExpandableDetails(word, variant) {
     const showDetails = variant !== 'compact' && variant !== 'learning';
-    const definitionHtml = showDetails && word.definition ? `<div class="word-card__definition">${word.definition}</div>` : '';
-    const examplesHtml = showDetails && word.examples ? `<div class="word-card__examples">${word.examples}</div>` : '';
+    const definitionHtml = showDetails && word.definition ? `<div class="word-card__definition">${escapeHtml(word.definition)}</div>` : '';
+    const examplesHtml = showDetails && word.examples ? `<div class="word-card__examples">${escapeHtml(word.examples)}</div>` : '';
     return { definitionHtml, examplesHtml };
 }
 
@@ -74,14 +79,14 @@ function buildToggleButtonHTML(expandable, hasExtra, uniqueId) {
 
 function buildPhoneticHtml(word) {
     if (!word.phonetic) return '';
-    return `<span class="word-card__phonetic">${word.phonetic}</span>`;
+    return `<span class="word-card__phonetic">${escapeHtml(word.phonetic)}</span>`;
 }
 
 function buildOriginalHtml(word, originalClasses) {
     const phoneticHtml = buildPhoneticHtml(word);
     return `
         <div class="${originalClasses.join(' ')}">
-            ${word.original}
+            ${escapeHtml(word.original)}
             ${phoneticHtml}
         </div>
     `;
@@ -89,7 +94,7 @@ function buildOriginalHtml(word, originalClasses) {
 
 function buildTranslationHtml(word, translationClasses, variant) {
     if (variant === 'learning') return '';
-    return `<div class="${translationClasses.join(' ')}">${word.translation}</div>`;
+    return `<div class="${translationClasses.join(' ')}">${escapeHtml(word.translation)}</div>`;
 }
 
 function buildHeaderSection(word, variant, originalClasses, translationClasses, headerClasses) {
@@ -109,7 +114,7 @@ function buildSideHtml(word, reviewLabel) {
 }
 
 function createWordCard(word, variant = 'default', actions = [], expandable = false, reviewLabel = '') {
-    const uniqueId = `word-card-${word.id}`;
+    const uniqueId = escapeHtml(`word-card-${word.id}`);
     const progress = {
         repetitions: word.repetition || 0,
         addedDate: new Date(word.createdAt || word.addedDate)
@@ -185,7 +190,7 @@ function createDetailBlock(type, title, contentHtml, isLearning) {
 
 function createDefinitionSection(word, isLearning = false) {
     if (!word.definition) return '';
-    return createDetailBlock('definition', 'Definition', word.definition, isLearning);
+    return createDetailBlock('definition', 'Definition', escapeHtml(word.definition), isLearning);
 }
 
 function createExamplesSection(word, isLearning = false) {
@@ -193,7 +198,7 @@ function createExamplesSection(word, isLearning = false) {
     const examplesHtml = word.examples
         .slice(0, isLearning ? 2 : word.examples.length)
         .map(example => {
-            const text = typeof example === 'string' ? example : example.text || example.toString();
+            const text = escapeHtml(typeof example === 'string' ? example : example.text || example.toString());
             return isLearning
                 ? `<div class="detail-text" style="font-size: 0.85em; font-style: italic; margin-bottom: 4px;">"${text}"</div>`
                 : `• ${text}`;
@@ -203,7 +208,7 @@ function createExamplesSection(word, isLearning = false) {
 
 function createSynonymsSection(word, isLearning = false) {
     if (!(word.synonyms && word.synonyms.length > 0)) return '';
-    const synonymChips = word.synonyms.map(synonym => `<span class="synonym-chip">${synonym}</span>`).join('');
+    const synonymChips = word.synonyms.map(synonym => `<span class="synonym-chip">${escapeHtml(synonym)}</span>`).join('');
     return createDetailBlock('synonyms', 'Synonyms', synonymChips, isLearning);
 }
 
@@ -227,7 +232,7 @@ function createAnswerLayout({ specificHtml = '', word, showDefinition = true, ma
 /**
  * Creates a primary answer block used above details (unified style)
  * @param {string} label - Title of the block (e.g., 'Translation', 'Correct answer')
- * @param {string} value - Main text value
+ * @param {string} value - Main text, escaped here
  * @param {Array} actions - Round action buttons shown beside the text
  * @returns {string} HTML string
  */
@@ -237,7 +242,7 @@ function createPrimaryAnswerBlock(label, value, actions = []) {
         <div class="card-translation detail-block detail-block--translation">
             <div class="detail-block__body">
                 <div class="detail-title">${label}</div>
-                <div class="detail-text">${value}</div>
+                <div class="detail-text">${escapeHtml(value)}</div>
             </div>
             ${buildActionsHtml(actions, false)}
         </div>
@@ -330,7 +335,7 @@ function showDeleteConfirmation(word, onConfirm, context) {
     dialog.innerHTML = `
         <h3 class="confirm-dialog__title">Delete Word</h3>
         <p class="confirm-dialog__text">
-            Delete "<strong>${word.original}</strong>"?<br>
+            Delete "<strong>${escapeHtml(word.original)}</strong>"?<br>
             <small class="confirm-dialog__note">This action cannot be undone.</small>
         </p>
         <div class="confirm-dialog__actions">
@@ -360,10 +365,6 @@ function showDeleteConfirmation(word, onConfirm, context) {
             doc.body.removeChild(overlay);
         }
     };
-}
-
-function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
 /**

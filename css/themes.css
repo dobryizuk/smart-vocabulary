@@ -30,7 +30,6 @@
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.15);
     --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.2);
-    --shadow-glow: 0 0 20px rgba(13, 110, 253, 0.15);
 }
 
 /* Light theme specific overrides */
@@ -72,7 +71,6 @@
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.1);
 }
 
 /* Dark theme specific overrides */
@@ -140,5 +138,4 @@
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.1);
 }

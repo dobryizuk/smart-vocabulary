@@ -90,6 +90,14 @@ describe('Progress screen', () => {
         expect(text('progress-cloud-status')).toBe('Not signed in');
     });
 
+    it('shows a sync error from the server as text', () => {
+        syncStatus = { state: 'error', error: '<b>Bad</b> "gateway" & more' };
+        stats.updateStats();
+
+        expect(text('progress-cloud-status')).toBe('Not synced: <b>Bad</b> "gateway" & more');
+        expect(byTestId('progress-cloud-status').querySelector('b')).toBeNull();
+    });
+
     it('renders an empty vocabulary with zeros and an empty chart', () => {
         vocabulary = [];
         stats.updateStats();

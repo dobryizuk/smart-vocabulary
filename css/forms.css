@@ -32,7 +32,7 @@
     outline: none;
     border-color: var(--ui-accent);
     background: var(--ui-surface-muted);
-    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 10%, transparent);
 }
 
 .form-control::placeholder {
@@ -78,7 +78,7 @@
 
 .btn:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 30%, transparent);
 }
 
 /* Button variants */
