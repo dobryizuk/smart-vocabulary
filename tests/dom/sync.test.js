@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createMemoryStorage } from './test-helpers.js';
 
 const { createSync } = require('../../js/sync.js');
-const { createVocabularyStore, pickWordFields } = require('../../js/vocabulary-store.js');
+const { createVocabularyStore, pickWordFields, findInvalidWordField } = require('../../js/vocabulary-store.js');
 const { createDataManager } = require('../../js/data-manager.js');
 const { createImportExport } = require('../../js/import-export.js');
 
@@ -771,5 +771,47 @@ describe('Sync triggers, sign-in and sign-out', () => {
         expect(device.sync.getStatus()).toEqual({ state: 'signed-out', email: null, lastSyncedAt: null, error: null });
         expect(device.storage.data).toEqual(before);
         expect(device.dm.vocabulary.map(w => w.id)).toEqual(['a']);
+    });
+});
+
+describe('A listening review in the data (C34)', () => {
+    const listenReview = { date: iso(T1), difficulty: 'easy', exerciseType: 'listen' };
+    const listened = () => word('a', { repetition: 1, reviewHistory: [listenReview], updatedAt: iso(T1) });
+
+    it('passes the validation of words from outside the device', () => {
+        expect(findInvalidWordField(listened())).toBeUndefined();
+    });
+
+    it('survives loading from storage and the next save', () => {
+        const device = createDevice({ server: createServer(), words: [listened()] });
+        expect(device.byId('a').reviewHistory).toEqual([listenReview]);
+
+        device.dm.save();
+
+        expect(device.store.load()[0].reviewHistory).toEqual([listenReview]);
+    });
+
+    it('survives an export and an import of the backup file', async () => {
+        const phone = createDevice({ server: createServer(), words: [listened()] });
+        const tablet = createDevice({ server: createServer(), words: [word('b')], clock: T2 });
+
+        await tablet.ie.importFromText(JSON.stringify(phone.ie.createExportData()));
+
+        expect(tablet.dm.vocabulary.map(w => w.id)).toEqual(['a']);
+        expect(tablet.byId('a').reviewHistory).toEqual([listenReview]);
+        expect(tablet.store.load()[0].reviewHistory).toEqual([listenReview]);
+    });
+
+    it('reaches another device through sync', async () => {
+        const server = createServer();
+        const phone = createDevice({ server, words: [listened()] });
+        await phone.sync.sync();
+        const tablet = createDevice({ server, clock: T2 });
+
+        await tablet.sync.sync();
+
+        expect(server.find('a').data.reviewHistory).toEqual([listenReview]);
+        expect(tablet.byId('a').reviewHistory).toEqual([listenReview]);
+        expect(tablet.store.load()[0].reviewHistory).toEqual([listenReview]);
     });
 });

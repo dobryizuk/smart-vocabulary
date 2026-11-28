@@ -3,10 +3,7 @@
 // ============================================================================
 
 const { createSpeakAction, createWordCard, createButtonGroup } = require('../ui-components.js');
-const { scheduleOnScreen, currentWordPrompt, speakCurrentWord, showExerciseScreen, showAnswer } = require('./exercise-screen.js');
-
-// Lets the card settle before the word is spoken
-const AUTO_PLAY_DELAY_MS = 500;
+const { scheduleAutoPlay, currentWordPrompt, showExerciseScreen, showAnswer } = require('./exercise-screen.js');
 
 function showRecognitionCard() {
     const word = window.SV.AppState.currentLearningWord;
@@ -21,7 +18,7 @@ function showRecognitionCard() {
 
     const speechSettings = window.SV?.SpeechManager?.speechSettings;
     if (speechSettings?.enabled && speechSettings?.autoPlay) {
-        scheduleOnScreen(speakCurrentWord, AUTO_PLAY_DELAY_MS);
+        scheduleAutoPlay();
     }
 }
 

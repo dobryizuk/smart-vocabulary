@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMemoryStorage } from './test-helpers.js';
 
 // Mock DOM environment
@@ -27,13 +27,29 @@ const Screen = require('../../js/exercises/exercise-screen.js');
 const Recognition = require('../../js/exercises/recognition.js');
 const Build = require('../../js/exercises/build.js');
 const Writing = require('../../js/exercises/writing.js');
+const Listen = require('../../js/exercises/listen.js');
+const TypedAnswer = require('../../js/exercises/typed-answer.js');
 const WordBuilder = require('../../js/word-builder.js');
 
 const ratingButtons = () => [...document.querySelectorAll('.difficulty-btn')];
 const enabledRatings = () => ratingButtons().filter((button) => !button.disabled).map((button) => button.dataset.difficulty);
 
+// Sound on and a stored natural voice clip for every word, so the listening stage is open
+function stubListening({ soundOn = true, hasClip = () => true } = {}) {
+  window.SV.SpeechManager = { speechSettings: { enabled: soundOn, autoPlay: false }, speakWord: vi.fn() };
+  window.SV.NaturalVoice = { hasClip };
+}
+
+function removeListeningStubs() {
+  delete window.SV.SpeechManager;
+  delete window.SV.NaturalVoice;
+}
+
 describe('Exercise stage of a word', () => {
-  const stageAfter = (...reviews) => LS.determineExerciseType({ reviewHistory: reviews });
+  const stageAfter = (...reviews) => LS.determineExerciseType({ original: 'apple', reviewHistory: reviews });
+
+  beforeEach(() => stubListening());
+  afterEach(removeListeningStubs);
 
   it('starts every word with recognition', () => {
     expect(LS.determineExerciseType({ repetition: 0 })).toBe('regular');
@@ -43,8 +59,10 @@ describe('Exercise stage of a word', () => {
   it('moves forward after OK or Easy', () => {
     expect(stageAfter({ difficulty: 'easy', exerciseType: 'regular' })).toBe('build');
     expect(stageAfter({ difficulty: 'perfect', exerciseType: 'regular' })).toBe('build');
-    expect(stageAfter({ difficulty: 'perfect', exerciseType: 'build' })).toBe('reverse');
-    expect(stageAfter({ difficulty: 'easy', exerciseType: 'build' })).toBe('reverse');
+    expect(stageAfter({ difficulty: 'perfect', exerciseType: 'build' })).toBe('listen');
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'build' })).toBe('listen');
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'listen' })).toBe('reverse');
+    expect(stageAfter({ difficulty: 'perfect', exerciseType: 'listen' })).toBe('reverse');
   });
 
   it('stays on writing after OK or Easy in writing', () => {
@@ -53,7 +71,8 @@ describe('Exercise stage of a word', () => {
   });
 
   it('moves back one stage after Hard, but not below recognition', () => {
-    expect(stageAfter({ difficulty: 'hard', exerciseType: 'reverse' })).toBe('build');
+    expect(stageAfter({ difficulty: 'hard', exerciseType: 'reverse' })).toBe('listen');
+    expect(stageAfter({ difficulty: 'hard', exerciseType: 'listen' })).toBe('build');
     expect(stageAfter({ difficulty: 'hard', exerciseType: 'build' })).toBe('regular');
     expect(stageAfter({ difficulty: 'hard', exerciseType: 'regular' })).toBe('regular');
   });
@@ -61,6 +80,7 @@ describe('Exercise stage of a word', () => {
   it('keeps the stage after Medium', () => {
     expect(stageAfter({ difficulty: 'medium', exerciseType: 'regular' })).toBe('regular');
     expect(stageAfter({ difficulty: 'medium', exerciseType: 'build' })).toBe('build');
+    expect(stageAfter({ difficulty: 'medium', exerciseType: 'listen' })).toBe('listen');
     expect(stageAfter({ difficulty: 'medium', exerciseType: 'reverse' })).toBe('reverse');
   });
 
@@ -71,7 +91,7 @@ describe('Exercise stage of a word', () => {
     )).toBe('build');
     expect(stageAfter(
       { difficulty: 'easy', exerciseType: 'build' },
-      { difficulty: 'hard', exerciseType: 'reverse' }
+      { difficulty: 'hard', exerciseType: 'listen' }
     )).toBe('build');
   });
 
@@ -83,6 +103,61 @@ describe('Exercise stage of a word', () => {
   it('continues from where a legacy history ended', () => {
     expect(stageAfter({ difficulty: 'easy', exerciseType: 'regular' }, { difficulty: 'easy', exerciseType: 'reverse' })).toBe('reverse');
     expect(stageAfter({ difficulty: 'easy', exerciseType: 'reverse' }, { difficulty: 'easy', exerciseType: 'regular' })).toBe('build');
+  });
+
+  it('reads an unknown exercise type as recognition, as a client older than listening reads listen', () => {
+    expect(stageAfter({ difficulty: 'easy', exerciseType: 'dictation' })).toBe('build');
+    expect(stageAfter({ difficulty: 'hard', exerciseType: 'dictation' })).toBe('regular');
+    expect(stageAfter({ difficulty: 'medium', exerciseType: 'dictation' })).toBe('regular');
+  });
+});
+
+describe('Listening falls back without a clip', () => {
+  const afterBuild = [{ difficulty: 'easy', exerciseType: 'build' }];
+  const afterWriting = [{ difficulty: 'hard', exerciseType: 'reverse' }];
+  const stageOf = (reviewHistory) => LS.determineExerciseType({ original: 'apple', reviewHistory });
+
+  afterEach(removeListeningStubs);
+
+  it('gives listening when sound is on and the word has a clip', () => {
+    const hasClip = vi.fn(() => true);
+    stubListening({ hasClip });
+    expect(stageOf(afterBuild)).toBe('listen');
+    expect(stageOf(afterWriting)).toBe('listen');
+    expect(hasClip).toHaveBeenCalledWith('apple');
+  });
+
+  it('without a clip skips listening the way the word moves: up to writing, down to build', () => {
+    stubListening({ hasClip: (text) => text !== 'apple' });
+    expect(stageOf(afterBuild)).toBe('reverse');
+    expect(stageOf(afterWriting)).toBe('build');
+    expect(stageOf([{ difficulty: 'medium', exerciseType: 'listen' }])).toBe('reverse');
+  });
+
+  it('gives writing when sound is off in the settings, without asking for the clip', () => {
+    const hasClip = vi.fn(() => true);
+    stubListening({ soundOn: false, hasClip });
+    expect(stageOf(afterBuild)).toBe('reverse');
+    expect(hasClip).not.toHaveBeenCalled();
+  });
+
+  it('gives writing when there is no natural voice', () => {
+    stubListening();
+    delete window.SV.NaturalVoice;
+    expect(stageOf(afterBuild)).toBe('reverse');
+  });
+
+  it('gives writing when there is no speech manager', () => {
+    stubListening();
+    delete window.SV.SpeechManager;
+    expect(stageOf(afterBuild)).toBe('reverse');
+  });
+
+  it('leaves the other stages alone without a clip', () => {
+    stubListening({ hasClip: () => false });
+    expect(stageOf([])).toBe('regular');
+    expect(stageOf([{ difficulty: 'easy', exerciseType: 'regular' }])).toBe('build');
+    expect(stageOf([{ difficulty: 'hard', exerciseType: 'listen' }])).toBe('build');
   });
 });
 
@@ -287,8 +362,11 @@ describe('Repeat of a word rated Hard (C35)', () => {
     document.body.innerHTML = '<div id="learningContent"></div>';
     window.SV.SpacedRepetition = require('../../js/spaced-repetition.js');
     window.SV.Today = { showSession: vi.fn(), showOverview: vi.fn() };
+    stubListening();
     LS.stopLearningSession();
   });
+
+  afterEach(removeListeningStubs);
 
   it('queues the word once more at the end and counts it in the progress', () => {
     startWith(makeWord('a', 'apple'), makeWord('b', 'bread'));
@@ -311,16 +389,44 @@ describe('Repeat of a word rated Hard (C35)', () => {
   });
 
   it.each([
-    ['build', 'regular', 'Do you know this word?'],
-    ['reverse', 'build', 'Build the word']
-  ])('shows the repeat of a %s card one stage easier, as %s', (stageBefore, firstStage, task) => {
-    startWith(makeWord('a', 'apple', atStage(stageBefore === 'build' ? 'regular' : 'build')));
+    ['build', 'regular', 'regular', 'Do you know this word?'],
+    ['listen', 'build', 'build', 'Build the word'],
+    ['reverse', 'listen', 'listen', 'Write what you hear']
+  ])('shows the repeat of a %s card one stage easier, as %s', (stageBefore, repeatStage, previousStage, task) => {
+    startWith(makeWord('a', 'apple', atStage(previousStage)));
     expect(current().currentExerciseType).toBe(stageBefore);
 
     LS.markDifficulty('hard');
 
-    expect(current().currentExerciseType).toBe(firstStage);
+    expect(current().currentExerciseType).toBe(repeatStage);
     expect(taskText()).toBe(`One more time: ${task}`);
+  });
+
+  it('records Hard on listening and answers its build repeat with Next', () => {
+    startWith(makeWord('a', 'ab', atStage('build')));
+    Listen.checkListenAnswer();
+    expect(enabledRatings()).toEqual(['hard']);
+
+    LS.markDifficulty('hard');
+
+    expect(current().reviewHistory.at(-1)).toMatchObject({ difficulty: 'hard', exerciseType: 'listen' });
+    expect(document.querySelector('.build-slots')).toBeTruthy();
+    Build.placeBuildLetter('a');
+    Build.placeBuildLetter('b');
+    Build.checkBuildAnswer();
+    expect(ratingButtons()).toHaveLength(0);
+    expect(nextButton()).toBeTruthy();
+  });
+
+  it('builds the repeat of a writing card when the word has no clip', () => {
+    stubListening({ hasClip: () => false });
+    startWith(makeWord('a', 'apple', atStage('listen')));
+    expect(current().currentExerciseType).toBe('reverse');
+
+    LS.markDifficulty('hard');
+
+    expect(current().currentExerciseType).toBe('build');
+    expect(taskText()).toBe('One more time: Build the word');
   });
 
   it('answers the repeat with Next instead of the rating buttons', () => {
@@ -435,18 +541,18 @@ describe('Writing exercise hint', () => {
     expect(hintBtn().textContent).toBe('Hint');
     expect(hintBtn().className).toBe('btn btn--secondary');
 
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     expect(hint()).toBe('D');
     expect(hintBtn().textContent).toBe('Hint (2 left)');
 
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     expect(hint()).toBe('De');
 
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     expect(hint()).toBe('Dev');
     expect(hintBtn().disabled).toBe(true);
 
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     expect(hint()).toBe('Dev');
   });
 
@@ -454,7 +560,7 @@ describe('Writing exercise hint', () => {
     startExercise('Devolve');
     const input = document.getElementById('reverseTranslationInput');
     input.value = 'xyz';
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
 
     expect(input.value).toBe('D');
     expect(input.selectionStart).toBe(1);
@@ -464,18 +570,18 @@ describe('Writing exercise hint', () => {
 
   it('starts from zero hints for the next word', () => {
     startExercise('Devolve');
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     startExercise('Forthright');
 
     expect(hint()).toBe('');
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     expect(hint()).toBe('F');
   });
 
   it('never reveals the whole answer of a short word', () => {
     startExercise('go');
-    Writing.showHintForReverse();
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
+    TypedAnswer.showAnswerHint();
 
     expect(hint()).toBe('g');
     expect(hintBtn().disabled).toBe(true);
@@ -484,87 +590,87 @@ describe('Writing exercise hint', () => {
   it('disables the hint for a one-letter answer', () => {
     startExercise('I');
     expect(hintBtn().disabled).toBe(true);
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     expect(hint()).toBe('');
   });
 
   it('leaves no hint behind once the answer is shown', () => {
     startExercise('Devolve');
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     Writing.checkReverseTranslation();
     expect(document.getElementById('reverseActions').style.display).toBe('none');
     expect(document.getElementById('reverseHint')).toBeNull();
   });
 
   it('counts letters, not spaces, in phrases', () => {
-    expect(Writing.getHintPrefix('a lot', 2)).toBe('a l');
-    expect(Writing.getHintPrefix('  break the ice'.trim(), 3)).toBe('bre');
-    expect(Writing.getMaxHints('a lot')).toBe(3);
-    expect(Writing.getMaxHints('ox')).toBe(1);
-    expect(Writing.getMaxHints('')).toBe(0);
+    expect(TypedAnswer.getHintPrefix('a lot', 2)).toBe('a l');
+    expect(TypedAnswer.getHintPrefix('  break the ice'.trim(), 3)).toBe('bre');
+    expect(TypedAnswer.getMaxHints('a lot')).toBe(3);
+    expect(TypedAnswer.getMaxHints('ox')).toBe(1);
+    expect(TypedAnswer.getMaxHints('')).toBe(0);
   });
 });
 
 describe('Writing exercise verdict', () => {
   it('is exact only for an equal answer, ignoring case, punctuation and extra spaces', () => {
-    expect(Writing.getTypingVerdict('hello', 'hello')).toBe('exact');
-    expect(Writing.getTypingVerdict('  Hello! ', 'hello')).toBe('exact');
-    expect(Writing.getTypingVerdict('break  the ice', 'Break the ice.')).toBe('exact');
+    expect(TypedAnswer.getTypingVerdict('hello', 'hello')).toBe('exact');
+    expect(TypedAnswer.getTypingVerdict('  Hello! ', 'hello')).toBe('exact');
+    expect(TypedAnswer.getTypingVerdict('break  the ice', 'Break the ice.')).toBe('exact');
   });
 
   it('allows no typo in answers shorter than 4 characters', () => {
-    expect(Writing.getTypingVerdict('cut', 'cat')).toBe('wrong');
-    expect(Writing.getTypingVerdict('ca', 'cat')).toBe('wrong');
-    expect(Writing.getTypingVerdict('teh', 'the')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('cut', 'cat')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('ca', 'cat')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('teh', 'the')).toBe('wrong');
   });
 
   it('counts two swapped neighbouring letters as one typo', () => {
-    expect(Writing.getTypingVerdict('decisoin', 'decision')).toBe('close');
-    expect(Writing.getTypingVerdict('hlelo', 'hello')).toBe('close');
-    expect(Writing.getTypingVerdict('dceisoin', 'decision')).toBe('wrong');
-    expect(Writing.getTypingVerdict('rseponsibilitise', 'responsibilities')).toBe('close');
-    expect(Writing.getTypingVerdict('rseponsibiltiise', 'responsibilities')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('decisoin', 'decision')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('hlelo', 'hello')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('dceisoin', 'decision')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('rseponsibilitise', 'responsibilities')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('rseponsibiltiise', 'responsibilities')).toBe('wrong');
   });
 
   it('does not count letters swapped across a gap as one typo', () => {
-    expect(Writing.getTypingVerdict('dicesion', 'decision')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('dicesion', 'decision')).toBe('wrong');
   });
 
   it('allows one edit from 4 to 15 characters', () => {
-    expect(Writing.getTypingVerdict('bost', 'boat')).toBe('close');
-    expect(Writing.getTypingVerdict('bat', 'boat')).toBe('close');
-    expect(Writing.getTypingVerdict('bist', 'boat')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('bost', 'boat')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('bat', 'boat')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('bist', 'boat')).toBe('wrong');
     expect('personification').toHaveLength(15);
-    expect(Writing.getTypingVerdict('personificatian', 'personification')).toBe('close');
-    expect(Writing.getTypingVerdict('persanificatian', 'personification')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('personificatian', 'personification')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('persanificatian', 'personification')).toBe('wrong');
   });
 
   it('counts one wrong, missing or extra letter in decision as a typo', () => {
-    expect(Writing.getTypingVerdict('decison', 'decision')).toBe('close');
-    expect(Writing.getTypingVerdict('decisiom', 'decision')).toBe('close');
-    expect(Writing.getTypingVerdict('decission', 'decision')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('decison', 'decision')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('decisiom', 'decision')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('decission', 'decision')).toBe('close');
   });
 
   it('allows two edits from 16 characters', () => {
     expect('responsibilities').toHaveLength(16);
-    expect(Writing.getTypingVerdict('responsibilitias', 'responsibilities')).toBe('close');
-    expect(Writing.getTypingVerdict('respansibilitias', 'responsibilities')).toBe('close');
-    expect(Writing.getTypingVerdict('respansibilitiaz', 'responsibilities')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('responsibilitias', 'responsibilities')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('respansibilitias', 'responsibilities')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('respansibilitiaz', 'responsibilities')).toBe('wrong');
   });
 
   it('measures the length of the correct answer after normalisation', () => {
-    expect(Writing.getTypingVerdict('cats', 'Cat!')).toBe('wrong');
-    expect(Writing.getTypingVerdict('a lott', 'a lot')).toBe('close');
+    expect(TypedAnswer.getTypingVerdict('cats', 'Cat!')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('a lott', 'a lot')).toBe('close');
   });
 
   it('calls a long near miss close, not exact', () => {
     const answer = 'a'.repeat(300);
-    expect(Writing.getTypingVerdict(`${answer}b`, answer)).toBe('close');
+    expect(TypedAnswer.getTypingVerdict(`${answer}b`, answer)).toBe('close');
   });
 
   it('fails an unrelated answer', () => {
-    expect(Writing.getTypingVerdict('xyz', 'hello')).toBe('wrong');
-    expect(Writing.getTypingVerdict('world', 'hello')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('xyz', 'hello')).toBe('wrong');
+    expect(TypedAnswer.getTypingVerdict('world', 'hello')).toBe('wrong');
   });
 });
 
@@ -839,7 +945,7 @@ describe('Writing exercise check', () => {
 
   it('allows up to Medium after an exact answer finished from a hint', () => {
     start('hello');
-    Writing.showHintForReverse();
+    TypedAnswer.showAnswerHint();
     input().value = 'hello';
     Writing.checkReverseTranslation();
 
@@ -859,7 +965,7 @@ describe('Writing exercise check', () => {
 });
 
 describe('Answer difference', () => {
-  const diff = (input, answer) => Writing.diffAnswer(input, answer);
+  const diff = (input, answer) => TypedAnswer.diffAnswer(input, answer);
 
   it('is one equal segment for an exact match, ignoring case and the ends', () => {
     expect(diff('hello', 'hello')).toEqual([{ type: 'equal', text: 'hello' }]);
@@ -1426,5 +1532,218 @@ describe('Prompt title size on the writing card', () => {
     const limit = Screen.LONG_TITLE_MIN_LENGTH;
     expect(titleFor('я'.repeat(limit - 1)).classList.contains('exercise-card__title--long')).toBe(false);
     expect(titleFor('я'.repeat(limit)).classList.contains('exercise-card__title--long')).toBe(true);
+  });
+});
+
+describe('Listening exercise (C34)', () => {
+  const makeWord = (original) => ({
+    id: 'l1', original, translation: 'яблоко', definition: 'A round fruit.', phonetic: '/ˈæp.əl/',
+    examples: ['I eat an apple.'], synonyms: [], repetition: 2, easeFactor: 2.5, reviewHistory: []
+  });
+  const start = (original = 'apple') => {
+    const word = makeWord(original);
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    window.SV.AppState.sessionTotal = 1;
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    Listen.showListenCard();
+    return word;
+  };
+  const main = () => document.getElementById('learningMain');
+  const card = () => document.querySelector('.listen-card');
+  const speaker = () => card().querySelector('[data-action="speak-word"]');
+  const input = () => document.getElementById('reverseTranslationInput');
+  const answerBlocks = () => [...document.querySelectorAll('.card-translation')];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    window.SV.SpeechManager = { speechSettings: { enabled: true, autoPlay: false }, speakWord: vi.fn() };
+  });
+
+  afterEach(() => {
+    Screen.clearScreenTimeouts();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    delete window.SV.SpeechManager;
+  });
+
+  it('shows the task and a speaker, but neither the word, its translation nor its definition', () => {
+    start();
+    expect(document.querySelector('.learning-prompt').textContent).toBe('Write what you hear');
+    expect(speaker().dataset.arg).toBe('apple');
+    expect(speaker().getAttribute('aria-label')).toBe('Play the word');
+    expect(card().querySelector('.exercise-card__chip').textContent).toBe('word');
+    expect(main().textContent).not.toContain('apple');
+    expect(main().textContent).not.toContain('яблоко');
+    expect(main().textContent).not.toContain('A round fruit.');
+    expect(main().querySelector('.exercise-card__title, .exercise-card__definition, .detail-block')).toBeNull();
+  });
+
+  it('calls a phrase a phrase on the chip', () => {
+    start('break the ice');
+    expect(card().querySelector('.exercise-card__chip').textContent).toBe('phrase');
+  });
+
+  it('escapes the word in the speaker', () => {
+    start('<b>x</b>');
+    expect(speaker().dataset.arg).toBe('<b>x</b>');
+    expect(card().querySelector('b')).toBeNull();
+  });
+
+  it('plays the word with the card speaker as the card opens, even with auto-play off', () => {
+    start();
+    expect(window.SV.SpeechManager.speakWord).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+
+    expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledTimes(1);
+    expect(window.SV.SpeechManager.speakWord).toHaveBeenCalledWith('apple', speaker());
+  });
+
+  it('does not play the word of a card that is gone', () => {
+    start();
+    Screen.clearScreenTimeouts();
+    vi.runAllTimers();
+    expect(window.SV.SpeechManager.speakWord).not.toHaveBeenCalled();
+  });
+
+  it('checks with its own action and focuses the field', () => {
+    start();
+    expect(document.getElementById('checkReverseButton').dataset.action).toBe('check-listen');
+    expect(document.getElementById('hintReverseButton').dataset.action).toBe('show-answer-hint');
+    vi.runAllTimers();
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('reveals the word with its transcription, then its translation and definition after Check', () => {
+    start();
+    input().value = 'apple';
+    Listen.checkListenAnswer();
+
+    const [answer, translation] = answerBlocks();
+    expect(answer.querySelector('.detail-title').textContent).toBe('Correct answer');
+    expect(answer.querySelector('.detail-text').textContent).toBe('apple');
+    expect(answer.textContent).toContain('/ˈæp.əl/');
+    expect(answer.querySelector('[data-action="speak-word"]').dataset.arg).toBe('apple');
+    expect(translation.querySelector('.detail-title').textContent).toBe('Translation');
+    expect(translation.querySelector('.detail-text').textContent).toBe('яблоко');
+    expect(main().querySelector('.detail-block--definition').textContent).toContain('A round fruit.');
+
+    const children = [...main().children];
+    const order = [answer, translation, main().querySelector('.detail-block--definition'),
+      main().querySelector('.detail-block--examples'), main().querySelector('.difficulty-buttons')].map((el) => children.indexOf(el));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order[0]).toBeGreaterThan(-1);
+  });
+
+  it('reveals the translation after an empty Check too', () => {
+    start();
+    Listen.checkListenAnswer();
+    expect(answerBlocks().map((block) => block.querySelector('.detail-text').textContent)).toEqual(['apple', 'яблоко']);
+    expect(enabledRatings()).toEqual(['hard']);
+  });
+
+  it('answers with Next on a repeat', () => {
+    const word = start();
+    window.SV.AppState.repeatedWords = new Set([word]);
+    Listen.showListenCard();
+    expect(document.querySelector('.learning-prompt').textContent).toBe('One more time: Write what you hear');
+
+    Listen.checkListenAnswer();
+
+    expect(ratingButtons()).toHaveLength(0);
+    expect(document.querySelector('[data-testid="next-card-btn"]')).toBeTruthy();
+    window.SV.AppState.repeatedWords = new Set();
+  });
+});
+
+describe('Typed answer shared by writing and listening', () => {
+  const exercises = [
+    ['writing', Writing.showReverseTranslationCard, Writing.checkReverseTranslation],
+    ['listening', Listen.showListenCard, Listen.checkListenAnswer]
+  ];
+  const start = (show, original) => {
+    const word = { id: 't1', original, translation: 'перевод', repetition: 2, easeFactor: 2.5, reviewHistory: [] };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    window.SV.AppState.sessionTotal = 1;
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    show();
+  };
+  const input = () => document.getElementById('reverseTranslationInput');
+  const controlsHtml = () => document.querySelector('.learning-input-block').outerHTML + document.getElementById('reverseActions').outerHTML;
+
+  afterEach(() => Screen.clearScreenTimeouts());
+
+  it('renders the same field, Hint and Check in both, apart from the Check action', () => {
+    start(Writing.showReverseTranslationCard, 'hello');
+    const writing = controlsHtml();
+    start(Listen.showListenCard, 'hello');
+    const listening = controlsHtml();
+
+    expect(listening.replace('check-listen', 'check-reverse')).toBe(writing);
+  });
+
+  it.each(exercises)('starts %s from zero hints and types the first letters', (_, show) => {
+    window.SV.AppState.reverseHintCount = 2;
+    start(show, 'Devolve');
+    TypedAnswer.showAnswerHint();
+    TypedAnswer.showAnswerHint();
+    expect(input().value).toBe('De');
+    expect(document.getElementById('hintReverseButton').textContent).toBe('Hint (1 left)');
+  });
+
+  it.each(exercises.flatMap(([name, show, check]) => [
+    [name, 'hello', 0, 'success', 'Correct!', ['hard', 'medium', 'easy', 'perfect'], show, check],
+    [name, 'hello', 1, 'success', 'Correct!', ['hard', 'medium'], show, check],
+    [name, 'hallo', 0, 'warn', 'Almost — check the spelling', ['hard', 'medium'], show, check],
+    [name, 'world', 0, 'danger', 'Not quite', ['hard'], show, check]
+  ]))('%s: "%s" after %i hints tints the field %s, says "%s" and allows %j', (_, typed, hints, tone, text, ratings, show, check) => {
+    start(show, 'hello');
+    for (let i = 0; i < hints; i++) TypedAnswer.showAnswerHint();
+    input().value = typed;
+    check();
+
+    expect(input().className).toContain(`typing-input--${tone}`);
+    expect(document.getElementById('typingFeedback').textContent).toBe(text);
+    expect(input().disabled).toBe(true);
+    expect(document.getElementById('reverseActions').style.display).toBe('none');
+    expect(enabledRatings()).toEqual(ratings);
+  });
+
+  it.each(exercises)('%s: an empty Check gives up without a verdict and allows only Hard', (_, show, check) => {
+    start(show, 'hello');
+    check();
+
+    expect(input().className).not.toContain('typing-input--');
+    expect(document.getElementById('typingFeedback').textContent).toBe('');
+    expect(enabledRatings()).toEqual(['hard']);
+  });
+
+  it.each(exercises)('%s: marks the difference of a misspelled answer', (_, show, check) => {
+    start(show, 'hello');
+    input().value = 'hallo';
+    check();
+    expect(document.getElementById('typingDiff').innerHTML)
+      .toBe('h<del class="typing-diff__wrong">a</del><ins class="typing-diff__missing">e</ins>llo');
+  });
+
+  it.each(exercises)('%s: ignores a second Check', (_, show, check) => {
+    start(show, 'hello');
+    input().value = 'hello';
+    check();
+    check();
+    expect(document.querySelectorAll('.difficulty-buttons')).toHaveLength(1);
+  });
+
+  it('shows the translation in the answer of listening only', () => {
+    start(Writing.showReverseTranslationCard, 'hello');
+    Writing.checkReverseTranslation();
+    expect(document.querySelectorAll('.card-translation')).toHaveLength(1);
+
+    start(Listen.showListenCard, 'hello');
+    Listen.checkListenAnswer();
+    expect(document.querySelectorAll('.card-translation')).toHaveLength(2);
   });
 });

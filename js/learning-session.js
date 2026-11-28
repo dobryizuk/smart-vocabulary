@@ -8,11 +8,13 @@ const { secureShuffle } = require('./secure-shuffle.js');
 const { clearScreenTimeouts } = require('./exercises/exercise-screen.js');
 const { showRecognitionCard, showTranslation } = require('./exercises/recognition.js');
 const { showBuildCard, placeBuildLetter, undoBuildLetter, checkBuildAnswer } = require('./exercises/build.js');
-const { showReverseTranslationCard, showHintForReverse, checkReverseTranslation } = require('./exercises/writing.js');
+const { showAnswerHint } = require('./exercises/typed-answer.js');
+const { showReverseTranslationCard, checkReverseTranslation } = require('./exercises/writing.js');
+const { showListenCard, checkListenAnswer } = require('./exercises/listen.js');
 
 // Exercises in the order a word moves through them, by their name in the review history
-const EXERCISE_STAGES = ['regular', 'build', 'reverse'];
-const SHOW_EXERCISE = { regular: showRecognitionCard, build: showBuildCard, reverse: showReverseTranslationCard };
+const EXERCISE_STAGES = ['regular', 'build', 'listen', 'reverse'];
+const SHOW_EXERCISE = { regular: showRecognitionCard, build: showBuildCard, listen: showListenCard, reverse: showReverseTranslationCard };
 
 // Ratings of the "OK" and "Easy" buttons
 const PASSED_RATINGS = ['easy', 'perfect'];
@@ -34,13 +36,25 @@ function stageShift(difficulty) {
 }
 
 // The stage follows the last rating: OK/Easy moves a word one stage forward, Hard one stage back
-function determineExerciseType(word) {
+function stageOf(word) {
     const history = word.reviewHistory || [];
     const last = history[history.length - 1];
     if (!last) return EXERCISE_STAGES[0];
 
     const stage = Math.max(0, EXERCISE_STAGES.indexOf(last.exerciseType ?? 'regular'));
     return EXERCISE_STAGES[Math.min(EXERCISE_STAGES.length - 1, Math.max(0, stage + stageShift(last.difficulty)))];
+}
+
+// Listening needs sound on and the word's natural voice clip: iOS speech synthesis is silent in silent mode
+function canListen(word) {
+    return Boolean(window.SV?.SpeechManager?.speechSettings?.enabled && window.SV?.NaturalVoice?.hasClip?.(word.original));
+}
+
+// A word that cannot be listened to skips listening the way it moves: down from writing to build, otherwise up to writing
+function determineExerciseType(word) {
+    const stage = stageOf(word);
+    if (stage !== 'listen' || canListen(word)) return stage;
+    return word.reviewHistory.at(-1).exerciseType === 'reverse' ? 'build' : 'reverse';
 }
 
 function beginSession(candidates) {
@@ -197,6 +211,7 @@ module.exports = {
     placeBuildLetter,
     undoBuildLetter,
     checkBuildAnswer,
-    showHintForReverse,
-    checkReverseTranslation
+    showAnswerHint,
+    checkReverseTranslation,
+    checkListenAnswer
 };

@@ -6,6 +6,7 @@ const word = (id, original, translation, reviewHistory) => ({
   createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z'
 });
 
+// Last rated OK in build: listening comes next, but without a natural voice clip (e2e never has one) the word is written
 const afterBuild = [{ date: '2026-11-20T10:00:00.000Z', difficulty: 'easy', exerciseType: 'build' }];
 
 const ratings = ['hard', 'medium', 'easy', 'perfect'];
@@ -65,6 +66,7 @@ test.describe('Writing exercise', () => {
     const history = await page.evaluate(() => JSON.parse(localStorage.getItem('vocabulary')).words[0].reviewHistory);
     expect(history).toHaveLength(1);
 
+    // One stage easier is listening; without a clip the word skips it down to build
     await page.locator('.difficulty-btn[data-difficulty="hard"]').click();
     await expect(page.locator('.learning-prompt')).toHaveText('One more time: Build the word');
   });

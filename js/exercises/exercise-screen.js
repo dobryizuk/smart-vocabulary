@@ -7,6 +7,9 @@ const {
     escapeHtml, createSpeakAction, createSessionProgress, createAnswerLayout, createPrimaryAnswerBlock
 } = require('../ui-components.js');
 
+// Lets the card settle before the word is spoken
+const AUTO_PLAY_DELAY_MS = 500;
+
 // Longer prompts (a definition, a phrase) get a smaller title so they do not fill the screen
 const LONG_TITLE_MIN_LENGTH = 31;
 
@@ -43,6 +46,10 @@ function currentWordPrompt() {
 function speakCurrentWord() {
     const button = document.querySelector('#learningMain [data-action="speak-word"]');
     window.SV?.SpeechManager?.speakWord?.(currentWord().original, button);
+}
+
+function scheduleAutoPlay() {
+    scheduleOnScreen(speakCurrentWord, AUTO_PLAY_DELAY_MS);
 }
 
 // What a checked answer is told, by its verdict: the tone of the writing field and the text
@@ -104,29 +111,32 @@ function renderExerciseCard({ extraClass = '', chip, title, definition }) {
     `;
 }
 
-// The revealed answer: its main block, the word's details and the rating buttons up to maxRating
-// (Next on a repeat); the word is spoken and the answer kept above the sticky rating bar
-function showAnswer(container, { label, value, actions, phonetic, showDefinition, maxRating }) {
+// The revealed answer: its main block (with the translation under it, when given), the word's details
+// and the rating buttons up to maxRating (Next on a repeat); the word is spoken and the answer blocks
+// kept above the sticky rating bar
+function showAnswer(container, { label, value, actions, phonetic, translation, showDefinition, maxRating }) {
     container.insertAdjacentHTML('beforeend', createAnswerLayout({
-        specificHtml: createPrimaryAnswerBlock(label, value, actions, phonetic),
+        specificHtml: createPrimaryAnswerBlock(label, value, actions, phonetic) + createPrimaryAnswerBlock('Translation', translation),
         word: currentWord(),
         showDefinition,
         maxRating,
         isRepeat: isRepeatCard()
     }));
     speakCurrentWord();
-    document.querySelector('#learningContent .card-translation')?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+    [...document.querySelectorAll('#learningContent .card-translation')].at(-1)?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
 }
 
-// After a check: the correct answer with its speaker and transcription; the definition is already on the card
-function revealCorrectAnswer(maxRating) {
-    const { original, phonetic } = currentWord();
+// After a check: the correct answer with its speaker and transcription. The meaning is already on the
+// card, unless the card had none (listening): then the translation and the definition follow the answer
+function revealCorrectAnswer(maxRating, { withMeaning = false } = {}) {
+    const { original, phonetic, translation } = currentWord();
     showAnswer(getLearningLayout().mainEl, {
         label: 'Correct answer',
         value: original,
         actions: [createSpeakAction(original)],
         phonetic,
-        showDefinition: false,
+        translation: withMeaning ? translation : '',
+        showDefinition: withMeaning,
         maxRating
     });
 }
@@ -138,6 +148,7 @@ module.exports = {
     getWordPrompt,
     currentWordPrompt,
     speakCurrentWord,
+    scheduleAutoPlay,
     VERDICT_FEEDBACK,
     allowedTypoEdits,
     getMaxRating,
