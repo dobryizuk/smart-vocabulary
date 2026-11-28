@@ -78,6 +78,25 @@ test.describe('Build exercise', () => {
     await expect(page.locator('.difficulty-btn:enabled')).toHaveCount(1);
     await expect(page.locator('.difficulty-btn[data-difficulty="hard"]')).toBeEnabled();
   });
+
+  test('a wrong tile counts as a mistake after it is undone: OK and Easy are not offered', async ({ page }) => {
+    await page.getByTestId('start-session-btn').click();
+
+    await page.locator('.build-tile[data-arg="o"]').click();
+    await expect(page.locator('.build-slot--wrong')).toHaveText('o');
+    await page.getByRole('button', { name: 'Undo' }).click();
+    for (const letter of 'hello') {
+      await page.locator(`.build-tile[data-arg="${letter}"]`).click();
+    }
+    await page.getByTestId('build-check').click();
+
+    await expect(page.locator('.build-feedback--correct')).toBeVisible();
+    await expect(page.locator('.difficulty-btn:enabled')).toHaveCount(2);
+    await expect(page.locator('.difficulty-btn[data-difficulty="hard"]')).toBeEnabled();
+    await expect(page.locator('.difficulty-btn[data-difficulty="medium"]')).toBeEnabled();
+    await expect(page.locator('.difficulty-btn[data-difficulty="easy"]')).toBeDisabled();
+    await expect(page.locator('.difficulty-btn[data-difficulty="perfect"]')).toBeDisabled();
+  });
 });
 
 test.describe('Build exercise with a phrase', () => {

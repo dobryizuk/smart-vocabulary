@@ -15,7 +15,7 @@ function createBuildState(original, shuffle = keepOrder) {
         totals.set(letter, (totals.get(letter) || 0) + 1);
     });
     const tiles = shuffle([...totals].map(([letter, total]) => ({ letter, total })));
-    return { slots, tiles, entered: [] };
+    return { slots, tiles, entered: [], mistakes: 0 };
 }
 
 function countLettersToBuild(state) {
@@ -32,9 +32,11 @@ function isComplete(state) {
     return state.entered.length === countLettersToBuild(state);
 }
 
+// A letter placed where the answer has another one is a mistake; Undo does not take it back
 function placeLetter(state, letter) {
     if (isComplete(state) || remainingCount(state, letter) <= 0) return state;
-    return { ...state, entered: [...state.entered, letter] };
+    const placed = { ...state, entered: [...state.entered, letter] };
+    return { ...placed, mistakes: state.mistakes + Number(!isLetterRight(placed, state.entered.length)) };
 }
 
 function undoLetter(state) {

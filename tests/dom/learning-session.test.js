@@ -27,6 +27,7 @@ const Screen = require('../../js/exercises/exercise-screen.js');
 const Recognition = require('../../js/exercises/recognition.js');
 const Build = require('../../js/exercises/build.js');
 const Writing = require('../../js/exercises/writing.js');
+const WordBuilder = require('../../js/word-builder.js');
 
 const ratingButtons = () => [...document.querySelectorAll('.difficulty-btn')];
 const enabledRatings = () => ratingButtons().filter((button) => !button.disabled).map((button) => button.dataset.difficulty);
@@ -435,6 +436,109 @@ describe('Strongest rating a checked answer allows', () => {
   it('allows every rating for right tiles and only Hard for wrong ones', () => {
     expect(Screen.getMaxRating('exact')).toBe('perfect');
     expect(Screen.getMaxRating('wrong')).toBe('hard');
+  });
+});
+
+describe('Rating cap of a built word', () => {
+  // Letters to place in order; 'undo' takes the last one back
+  const checked = (original, steps) => {
+    const built = steps.reduce((state, step) => (step === 'undo' ? WordBuilder.undoLetter(state) : WordBuilder.placeLetter(state, step)),
+      WordBuilder.createBuildState(original));
+    return WordBuilder.checkBuild(built, original);
+  };
+  const capOf = (original, steps) => Screen.getMaxRating(Build.getBuildVerdict(checked(original, steps)));
+  const LONG = 'responsibilities';
+
+  it('allows every rating without mistakes', () => {
+    expect(capOf('hello', [...'hello'])).toBe('perfect');
+    expect(capOf(LONG, [...LONG])).toBe('perfect');
+  });
+
+  it('allows up to Medium for undone mistakes within the typo tolerance: one from 4 letters, two from 16', () => {
+    expect(capOf('hello', ['o', 'undo', ...'hello'])).toBe('medium');
+    expect(capOf(LONG, ['e', 'undo', 's', 'undo', ...LONG])).toBe('medium');
+  });
+
+  it('allows only Hard beyond the tolerance', () => {
+    expect(capOf('hello', ['o', 'undo', 'e', 'undo', ...'hello'])).toBe('hard');
+    expect(capOf(LONG, ['e', 'undo', 's', 'undo', 'p', 'undo', ...LONG])).toBe('hard');
+  });
+
+  it('has no tolerance under 4 letters', () => {
+    expect(capOf('cat', [...'cat'])).toBe('perfect');
+    expect(capOf('cat', ['t', 'undo', ...'cat'])).toBe('hard');
+  });
+
+  it('counts letters, not spaces or hyphens, toward the tolerance', () => {
+    expect(capOf('a-b c', ['b', 'undo', ...'abc'])).toBe('hard');
+  });
+
+  it('allows only Hard for a wrong final word', () => {
+    expect(capOf('hello', [...'olleh'])).toBe('hard');
+  });
+
+  it('caps the rating buttons after a wrong tile that was fixed', () => {
+    const word = {
+      original: 'hello', translation: 't', repetition: 2, easeFactor: 2.5,
+      reviewHistory: [{ difficulty: 'easy', exerciseType: 'regular' }]
+    };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+    LS.showLearningCard();
+
+    Build.placeBuildLetter('o');
+    Build.undoBuildLetter();
+    [...'hello'].forEach(Build.placeBuildLetter);
+    Build.checkBuildAnswer();
+
+    expect(document.querySelector('.build-feedback--correct').textContent).toBe(Screen.VERDICT_FEEDBACK.exact.text);
+    expect(enabledRatings()).toEqual(['hard', 'medium']);
+  });
+});
+
+describe('Transcription in the revealed answer', () => {
+  const phoneticsIn = (selector) => [...document.querySelectorAll(`${selector} .word-card__phonetic`)].map((el) => el.textContent);
+  const show = (fields) => {
+    const word = { id: 'w1', original: 'hello', translation: 'привет', repetition: 2, easeFactor: 2.5, reviewHistory: [], ...fields };
+    window.SV.AppState.currentLearningWord = word;
+    window.SV.AppState.learningSession = [word];
+  };
+
+  it('shows the transcription under the answer text, escaped, and nothing without one', () => {
+    const block = UI.createPrimaryAnswerBlock('Correct answer', 'hello', [], '<i>/həˈləʊ/</i>');
+    document.body.innerHTML = block;
+    expect(phoneticsIn('.card-translation .detail-block__body')).toEqual(['<i>/həˈləʊ/</i>']);
+    expect(document.querySelector('.card-translation i')).toBeNull();
+
+    document.body.innerHTML = UI.createPrimaryAnswerBlock('Correct answer', 'hello');
+    expect(document.querySelector('.word-card__phonetic')).toBeNull();
+  });
+
+  it('shows it in the correct answer of build and writing', () => {
+    show({ phonetic: '/həˈləʊ/' });
+    Build.showBuildCard();
+    Screen.revealCorrectAnswer('hard');
+    expect(phoneticsIn('.card-translation')).toEqual(['/həˈləʊ/']);
+
+    Writing.showReverseTranslationCard();
+    Writing.checkReverseTranslation();
+    expect(phoneticsIn('.card-translation')).toEqual(['/həˈləʊ/']);
+  });
+
+  it('shows nothing for a word without a transcription', () => {
+    show({ phonetic: '' });
+    Writing.showReverseTranslationCard();
+    Writing.checkReverseTranslation();
+    expect(document.querySelector('.card-translation')).toBeTruthy();
+    expect(document.querySelector('#learningMain .word-card__phonetic')).toBeNull();
+  });
+
+  it('shows it once in recognition: on the card, not again in the answer', () => {
+    show({ phonetic: '/həˈləʊ/', reviewHistory: [] });
+    Recognition.showRecognitionCard();
+    Recognition.showTranslation();
+    expect(phoneticsIn('#learningMain')).toEqual(['/həˈləʊ/']);
+    expect(phoneticsIn('.card-translation')).toEqual([]);
   });
 });
 

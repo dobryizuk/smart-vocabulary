@@ -49,6 +49,12 @@ const VERDICT_FEEDBACK = {
     wrong: { tone: 'danger', text: 'Not quite' }
 };
 
+// Edits a typo may have: none in answers under 4 characters, one up to 15 characters, two from 16
+function allowedTypoEdits(answerLength) {
+    if (answerLength < 4) return 0;
+    return answerLength < 16 ? 1 : 2;
+}
+
 // The strongest rating a checked answer allows: Hard after a miss, Medium after a typo or a hint
 function getMaxRating(verdict, hintsUsed = 0) {
     if (verdict === 'wrong') return 'hard';
@@ -96,9 +102,9 @@ function renderExerciseCard({ extraClass = '', chip, title, definition }) {
 
 // The revealed answer: its main block, the word's details and the rating buttons up to maxRating;
 // the word is spoken and the answer kept above the sticky rating bar
-function showAnswer(container, { label, value, actions, showDefinition, maxRating }) {
+function showAnswer(container, { label, value, actions, phonetic, showDefinition, maxRating }) {
     container.insertAdjacentHTML('beforeend', createAnswerLayout({
-        specificHtml: createPrimaryAnswerBlock(label, value, actions),
+        specificHtml: createPrimaryAnswerBlock(label, value, actions, phonetic),
         word: currentWord(),
         showDefinition,
         maxRating
@@ -107,13 +113,14 @@ function showAnswer(container, { label, value, actions, showDefinition, maxRatin
     document.querySelector('#learningContent .card-translation')?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
 }
 
-// After a check: the correct answer with its speaker; the definition is already on the card
+// After a check: the correct answer with its speaker and transcription; the definition is already on the card
 function revealCorrectAnswer(maxRating) {
-    const { original } = currentWord();
+    const { original, phonetic } = currentWord();
     showAnswer(getLearningLayout().mainEl, {
         label: 'Correct answer',
         value: original,
         actions: [createSpeakAction(original)],
+        phonetic,
         showDefinition: false,
         maxRating
     });
@@ -127,6 +134,7 @@ module.exports = {
     currentWordPrompt,
     speakCurrentWord,
     VERDICT_FEEDBACK,
+    allowedTypoEdits,
     getMaxRating,
     showExerciseScreen,
     renderExerciseCard,

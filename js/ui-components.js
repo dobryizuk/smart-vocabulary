@@ -77,13 +77,13 @@ function buildToggleButtonHTML(expandable, hasExtra, uniqueId) {
     return `<div class="word-card__toggle" data-action="toggle-card" data-target-id="${uniqueId}" title="Show/hide details"></div>`;
 }
 
-function buildPhoneticHtml(word) {
-    if (!word.phonetic) return '';
-    return `<span class="word-card__phonetic">${escapeHtml(word.phonetic)}</span>`;
+function buildPhoneticHtml(phonetic) {
+    if (!phonetic) return '';
+    return `<span class="word-card__phonetic">${escapeHtml(phonetic)}</span>`;
 }
 
 function buildOriginalHtml(word, originalClasses) {
-    const phoneticHtml = buildPhoneticHtml(word);
+    const phoneticHtml = buildPhoneticHtml(word.phonetic);
     return `
         <div class="${originalClasses.join(' ')}">
             ${escapeHtml(word.original)}
@@ -234,15 +234,17 @@ function createAnswerLayout({ specificHtml = '', word, showDefinition = true, ma
  * @param {string} label - Title of the block (e.g., 'Translation', 'Correct answer')
  * @param {string} value - Main text, escaped here
  * @param {Array} actions - Round action buttons shown beside the text
+ * @param {string} phonetic - Transcription shown under the text, none when empty
  * @returns {string} HTML string
  */
-function createPrimaryAnswerBlock(label, value, actions = []) {
+function createPrimaryAnswerBlock(label, value, actions = [], phonetic = '') {
     if (!value) return '';
     return `
         <div class="card-translation detail-block detail-block--translation">
             <div class="detail-block__body">
                 <div class="detail-title">${label}</div>
                 <div class="detail-text">${escapeHtml(value)}</div>
+                ${buildPhoneticHtml(phonetic)}
             </div>
             ${buildActionsHtml(actions, false)}
         </div>

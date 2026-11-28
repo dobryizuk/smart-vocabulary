@@ -21,9 +21,19 @@ describe('Session size setting', () => {
     expect(settingsWith('12').getSessionSize()).toBe(12);
   });
 
-  it('clamps values below 10 and above 20', () => {
-    expect(settingsWith('3').getSessionSize()).toBe(10);
-    expect(settingsWith('99').getSessionSize()).toBe(20);
+  it('clamps values below 5 and above 15', () => {
+    expect(settingsWith('3').getSessionSize()).toBe(5);
+    expect(settingsWith('99').getSessionSize()).toBe(15);
+  });
+
+  it('allows 5 and raises 4 to 5', () => {
+    expect(settingsWith('5').getSessionSize()).toBe(5);
+    expect(settingsWith('4').getSessionSize()).toBe(5);
+  });
+
+  it('brings a size stored under the old 10 to 20 range down to 15', () => {
+    expect(settingsWith('20').getSessionSize()).toBe(15);
+    expect(settingsWith('16').getSessionSize()).toBe(15);
   });
 
   it('falls back to 15 for invalid values', () => {
@@ -34,17 +44,19 @@ describe('Session size setting', () => {
 
   it('persists the written value as a number string', () => {
     const s = settingsWith();
-    s.setSessionSize(18);
-    expect(s.storage.data[SESSION_SIZE_KEY]).toBe('18');
-    expect(s.getSessionSize()).toBe(18);
+    s.setSessionSize(12);
+    expect(s.storage.data[SESSION_SIZE_KEY]).toBe('12');
+    expect(s.getSessionSize()).toBe(12);
   });
 
   it('clamps written values and ignores invalid ones', () => {
     const s = settingsWith();
-    s.setSessionSize(50);
-    expect(s.getSessionSize()).toBe(20);
+    s.setSessionSize(20);
+    expect(s.storage.data[SESSION_SIZE_KEY]).toBe('15');
+    s.setSessionSize(4);
+    expect(s.getSessionSize()).toBe(5);
     s.setSessionSize('oops');
-    expect(s.getSessionSize()).toBe(20);
+    expect(s.getSessionSize()).toBe(5);
   });
 
   it('works without storage', () => {
@@ -56,18 +68,18 @@ describe('Session size setting', () => {
 
 describe('Session size stepper', () => {
   it('moves by the step inside the range', () => {
-    expect(stepSessionSize(15, 1)).toBe(16);
-    expect(stepSessionSize(15, -1)).toBe(14);
+    expect(stepSessionSize(10, 1)).toBe(11);
+    expect(stepSessionSize(10, -1)).toBe(9);
   });
 
   it('stops at the limits', () => {
-    expect(stepSessionSize(10, -1)).toBe(10);
-    expect(stepSessionSize(20, 1)).toBe(20);
+    expect(stepSessionSize(5, -1)).toBe(5);
+    expect(stepSessionSize(15, 1)).toBe(15);
   });
 
   it('reaches the limits from the inside', () => {
-    expect(stepSessionSize(11, -1)).toBe(10);
-    expect(stepSessionSize(19, 1)).toBe(20);
+    expect(stepSessionSize(6, -1)).toBe(5);
+    expect(stepSessionSize(14, 1)).toBe(15);
   });
 });
 

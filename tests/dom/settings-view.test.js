@@ -60,18 +60,18 @@ describe('Settings view', () => {
     expect(byTestId('undo-restore-btn').dataset.action).toBe('undo-restore');
   });
 
-  it('shows the stored session size and steps it within 10 to 20', () => {
-    stored.sessionSize = '19';
+  it('shows the stored session size and steps it within 5 to 15', () => {
+    stored.sessionSize = '14';
     window.initializeComponents();
-    expect(byTestId('session-size-value').textContent).toBe('19');
+    expect(byTestId('session-size-value').textContent).toBe('14');
 
     byTestId('session-size-inc').click();
-    expect(byTestId('session-size-value').textContent).toBe('20');
-    expect(stored.sessionSize).toBe('20');
+    expect(byTestId('session-size-value').textContent).toBe('15');
+    expect(stored.sessionSize).toBe('15');
     expect(byTestId('session-size-inc').disabled).toBe(true);
 
     byTestId('session-size-dec').click();
-    expect(stored.sessionSize).toBe('19');
+    expect(stored.sessionSize).toBe('14');
     expect(byTestId('session-size-inc').disabled).toBe(false);
   });
 
@@ -97,13 +97,13 @@ describe('Settings view', () => {
     expect(stored.showDefinition).toBe('false');
   });
 
-  it('disables the minus button at 10', () => {
-    stored.sessionSize = '11';
+  it('disables the minus button at 5', () => {
+    stored.sessionSize = '6';
     window.initializeComponents();
 
     byTestId('session-size-dec').click();
 
-    expect(byTestId('session-size-value').textContent).toBe('10');
+    expect(byTestId('session-size-value').textContent).toBe('5');
     expect(byTestId('session-size-dec').disabled).toBe(true);
   });
 

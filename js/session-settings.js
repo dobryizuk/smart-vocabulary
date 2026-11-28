@@ -4,8 +4,8 @@
 
 const SESSION_SIZE_KEY = 'sessionSize';
 const SHOW_DEFINITION_KEY = 'showDefinition';
-const MIN_SESSION_SIZE = 10;
-const MAX_SESSION_SIZE = 20;
+const MIN_SESSION_SIZE = 5;
+const MAX_SESSION_SIZE = 15;
 const DEFAULT_SESSION_SIZE = 15;
 
 function clampSessionSize(value) {

@@ -6,7 +6,7 @@ const WordBuilder = require('../word-builder.js');
 const { escapeHtml } = require('../ui-components.js');
 const { secureShuffle } = require('../secure-shuffle.js');
 const {
-    currentWordPrompt, VERDICT_FEEDBACK, getMaxRating, showExerciseScreen, renderExerciseCard, revealCorrectAnswer
+    currentWordPrompt, VERDICT_FEEDBACK, allowedTypoEdits, getMaxRating, showExerciseScreen, renderExerciseCard, revealCorrectAnswer
 } = require('./exercise-screen.js');
 
 const SLOT_RESULT_CLASS = { true: 'build-slot--right', false: 'build-slot--wrong' };
@@ -133,12 +133,19 @@ function undoBuildLetter() {
     updateBuildArea();
 }
 
+// A checked build rated like a typed answer: wrong letters placed on the way count as typos even when undone
+function getBuildVerdict(state) {
+    if (!state.correct) return 'wrong';
+    if (state.mistakes === 0) return 'exact';
+    return state.mistakes <= allowedTypoEdits(WordBuilder.countLettersToBuild(state)) ? 'close' : 'wrong';
+}
+
 function checkBuildAnswer() {
     const AppState = window.SV.AppState;
     if (!WordBuilder.isComplete(AppState.buildState)) return;
     AppState.buildState = WordBuilder.checkBuild(AppState.buildState, AppState.currentLearningWord.original);
     updateBuildArea();
-    revealCorrectAnswer(getMaxRating(AppState.buildState.correct ? 'exact' : 'wrong'));
+    revealCorrectAnswer(getMaxRating(getBuildVerdict(AppState.buildState)));
 }
 
-module.exports = { showBuildCard, placeBuildLetter, undoBuildLetter, checkBuildAnswer };
+module.exports = { showBuildCard, placeBuildLetter, undoBuildLetter, checkBuildAnswer, getBuildVerdict };

@@ -155,3 +155,33 @@ describe('Word builder completion and correctness', () => {
     expect(WordBuilder.isCorrect(state, 'ab')).toBe(false);
   });
 });
+
+describe('Word builder mistakes', () => {
+  it('starts with no mistakes and right letters add none, fixed characters skipped', () => {
+    expect(WordBuilder.createBuildState("it's").mistakes).toBe(0);
+    expect(place(WordBuilder.createBuildState("it's"), 'i', 't', 's').mistakes).toBe(0);
+    expect(place(WordBuilder.createBuildState('Cat'), 'c', 'a', 't').mistakes).toBe(0);
+  });
+
+  it('counts every letter placed where the answer has another one', () => {
+    expect(place(WordBuilder.createBuildState('cat'), 'c', 't').mistakes).toBe(1);
+    expect(place(WordBuilder.createBuildState('cat'), 't', 'a', 'c').mistakes).toBe(2);
+  });
+
+  it('keeps a mistake after the wrong letter is undone and counts it again when repeated', () => {
+    let state = place(WordBuilder.createBuildState('hello'), 'o');
+    state = WordBuilder.undoLetter(state);
+    expect(state.mistakes).toBe(1);
+    state = place(state, 'o');
+    expect(state.mistakes).toBe(2);
+    state = place(WordBuilder.undoLetter(state), 'h', 'e', 'l', 'l', 'o');
+    expect(state.mistakes).toBe(2);
+    expect(WordBuilder.isCorrect(state, 'hello')).toBe(true);
+  });
+
+  it('does not count a refused letter', () => {
+    expect(place(WordBuilder.createBuildState('ab'), 'z').mistakes).toBe(0);
+    expect(place(WordBuilder.createBuildState('ab'), 'a', 'b', 'a').mistakes).toBe(0);
+    expect(place(WordBuilder.createBuildState('aab'), 'b', 'b').mistakes).toBe(1);
+  });
+});

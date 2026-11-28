@@ -51,25 +51,30 @@ test.describe('Learning session size and completion', () => {
     expect(await content.innerText()).toBe(before);
   });
 
-  test('Words per session stepper stays within 10 to 20 and survives a reload', async ({ page }) => {
+  test('Words per session stepper stays within 5 to 15 and survives a reload', async ({ page }) => {
     await page.getByTestId('stats-tab-btn').click();
     await page.getByTestId('open-settings-btn').click();
     const value = page.getByTestId('session-size-value');
     await expect(value).toHaveText('15');
-
-    for (let i = 0; i < 5; i++) await page.getByTestId('session-size-inc').click();
-    await expect(value).toHaveText('20');
     await expect(page.getByTestId('session-size-inc')).toBeDisabled();
-    expect(await page.evaluate(() => localStorage.getItem('sessionSize'))).toBe('20');
+
+    for (let i = 0; i < 5; i++) await page.getByTestId('session-size-dec').click();
+    await expect(value).toHaveText('10');
+    expect(await page.evaluate(() => localStorage.getItem('sessionSize'))).toBe('10');
 
     await page.reload();
     await page.getByTestId('stats-tab-btn').click();
     await page.getByTestId('open-settings-btn').click();
-    await expect(page.getByTestId('session-size-value')).toHaveText('20');
-
-    for (let i = 0; i < 10; i++) await page.getByTestId('session-size-dec').click();
     await expect(page.getByTestId('session-size-value')).toHaveText('10');
+
+    for (let i = 0; i < 5; i++) await page.getByTestId('session-size-dec').click();
+    await expect(page.getByTestId('session-size-value')).toHaveText('5');
     await expect(page.getByTestId('session-size-dec')).toBeDisabled();
-    expect(await page.evaluate(() => localStorage.getItem('sessionSize'))).toBe('10');
+    expect(await page.evaluate(() => localStorage.getItem('sessionSize'))).toBe('5');
+
+    for (let i = 0; i < 10; i++) await page.getByTestId('session-size-inc').click();
+    await expect(page.getByTestId('session-size-value')).toHaveText('15');
+    await expect(page.getByTestId('session-size-inc')).toBeDisabled();
+    expect(await page.evaluate(() => localStorage.getItem('sessionSize'))).toBe('15');
   });
 });
