@@ -9,6 +9,8 @@
     currentLearningWord: null,
     learningSession: [],
     sessionTotal: 0,
+    // Words rated Hard whose one practice repeat is queued at the end of this session
+    repeatedWords: new Set(),
     // streak: passed answers in a row now; bestStreak: the longest run of the session
     sessionStats: { correct: 0, total: 0, streak: 0, bestStreak: 0 },
     currentDictionaryData: null,

@@ -218,10 +218,10 @@ function createSynonymsSection(word, isLearning = false) {
  * 2) definition (unless the exercise card above already shows it)
  * 3) examples
  * 4) synonyms
- * 5) difficulty buttons, the ones above maxRating disabled
+ * 5) difficulty buttons, the ones above maxRating disabled; on a repeat, a Next button instead
  */
-function createAnswerLayout({ specificHtml = '', word, showDefinition = true, maxRating }) {
-    const buttons = createDifficultyButtons(maxRating);
+function createAnswerLayout({ specificHtml = '', word, showDefinition = true, maxRating, isRepeat = false }) {
+    const buttons = isRepeat ? createNextButton() : createDifficultyButtons(maxRating);
     // Borrow list-view styles for detail blocks in learning
     const definition = showDefinition ? createDefinitionSection(word, false) : '';
     const examples = createExamplesSection(word, false);
@@ -321,6 +321,15 @@ function createDifficultyButtons(maxRating = 'perfect') {
         <div class="difficulty-buttons">
             <p class="difficulty-buttons__prompt">How well did you know it?</p>
             ${buttonsHtml}
+        </div>
+    `;
+}
+
+// A repeat is practice, not rated: the rating bar holds one button that moves on
+function createNextButton() {
+    return `
+        <div class="difficulty-buttons difficulty-buttons--next">
+            ${renderButton({ text: 'Next', action: 'next-card', testId: 'next-card-btn' })}
         </div>
     `;
 }

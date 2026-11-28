@@ -97,22 +97,21 @@ function showLearningCard() {
     SHOW_EXERCISE[word.currentExerciseType]();
 }
 
-function markDifficulty(difficulty) {
-    const AppState = window.SV.AppState;
-    const word = AppState.currentLearningWord;
+function recordReview(word, difficulty) {
     const reviewData = window.SV?.SpacedRepetition?.calculateNextReview?.(difficulty, word);
+    if (!reviewData) return;
 
-    if (reviewData) {
-        const answeredAt = new Date().toISOString();
-        Object.assign(word, reviewData, { updatedAt: answeredAt });
-        word.reviewHistory.push({
-            date: answeredAt,
-            difficulty,
-            exerciseType: word.currentExerciseType || 'regular'
-        });
-    }
+    const answeredAt = new Date().toISOString();
+    Object.assign(word, reviewData, { updatedAt: answeredAt });
+    word.reviewHistory.push({
+        date: answeredAt,
+        difficulty,
+        exerciseType: word.currentExerciseType || 'regular'
+    });
+}
 
-    const stats = AppState.sessionStats;
+function countAnswer(difficulty) {
+    const stats = window.SV.AppState.sessionStats;
     stats.total++;
     if (PASSED_RATINGS.includes(difficulty)) {
         stats.correct++;
@@ -121,11 +120,30 @@ function markDifficulty(difficulty) {
     } else {
         stats.streak = 0;
     }
+}
 
+// A word rated Hard comes back once at the end of the session, one stage easier, as practice
+function queueRepeat(word) {
+    const AppState = window.SV.AppState;
+    AppState.repeatedWords.add(word);
+    AppState.learningSession.push(word);
+    AppState.sessionTotal++;
+}
+
+// Ratings exist only on a word's first card of the session; its repeat moves on with Next
+function markDifficulty(difficulty) {
+    const word = window.SV.AppState.currentLearningWord;
+    recordReview(word, difficulty);
+    countAnswer(difficulty);
+    if (difficulty === 'hard') queueRepeat(word);
+    window.SV?.DataManager?.save?.();
+    showNextCard();
+}
+
+function showNextCard() {
+    const AppState = window.SV.AppState;
     AppState.learningSession.shift();
     AppState.currentLearningWord = AppState.learningSession[0];
-
-    window.SV?.DataManager?.save?.();
     showLearningCard();
 }
 
@@ -135,6 +153,7 @@ function resetSessionState() {
     AppState.sessionStats = { correct: 0, total: 0, streak: 0, bestStreak: 0 };
     AppState.learningSession = [];
     AppState.sessionTotal = 0;
+    AppState.repeatedWords = new Set();
     AppState.currentLearningWord = null;
 }
 
@@ -168,6 +187,7 @@ module.exports = {
     forceStartLearning,
     showLearningCard,
     markDifficulty,
+    showNextCard,
     endLearningSession,
     stopLearningSession,
     selectSessionBatch,

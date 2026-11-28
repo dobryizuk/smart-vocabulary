@@ -66,7 +66,7 @@ test.describe('Writing exercise', () => {
     expect(history).toHaveLength(1);
 
     await page.locator('.difficulty-btn[data-difficulty="hard"]').click();
-    await expect(page.getByText('Session Complete!')).toBeVisible();
+    await expect(page.locator('.learning-prompt')).toHaveText('One more time: Build the word');
   });
 
   test('Enter in the input checks the answer', async ({ page }) => {

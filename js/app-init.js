@@ -215,6 +215,7 @@ const ACTION_HANDLERS = new Map(Object.entries({
     'force-start-learning': () => window.SV?.LearningSession?.forceStartLearning?.(),
     'start-learning': () => window.SV?.LearningSession?.startLearning?.(),
     'stop-session': () => window.SV?.LearningSession?.stopLearningSession?.(),
+    'next-card': () => window.SV?.LearningSession?.showNextCard?.(),
     'show-translation': () => window.SV?.LearningSession?.showTranslation?.(),
     'show-hint-reverse': () => window.SV?.LearningSession?.showHintForReverse?.(),
     'check-reverse': () => window.SV?.LearningSession?.checkReverseTranslation?.(),

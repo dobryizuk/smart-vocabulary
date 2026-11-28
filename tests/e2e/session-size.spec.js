@@ -31,7 +31,7 @@ test.describe('Learning session size and completion', () => {
 
     for (let i = 0; i < 2; i++) {
       await page.getByRole('button', { name: 'Show Answer' }).click();
-      await page.locator('.difficulty-btn[data-difficulty="hard"]').click();
+      await page.locator('.difficulty-btn[data-difficulty="medium"]').click();
     }
 
     await expect(page.getByText('Session Complete!')).toBeVisible();

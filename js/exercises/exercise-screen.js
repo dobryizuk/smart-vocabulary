@@ -12,6 +12,9 @@ const LONG_TITLE_MIN_LENGTH = 31;
 
 const currentWord = () => window.SV.AppState.currentLearningWord;
 
+// The card of a word whose repeat was queued is that repeat: practice only, answered with Next
+const isRepeatCard = () => window.SV.AppState.repeatedWords.has(currentWord());
+
 // Timers of the screen on show: a new card or the end of the session cancels them
 const screenTimeouts = [];
 
@@ -83,7 +86,8 @@ function getLearningLayout() {
 // The frame of every exercise: session progress on top, then the task, the card and the exercise's controls
 function showExerciseScreen({ task, cardHtml, controlsHtml }) {
     const { mainEl, progressEl } = getLearningLayout();
-    mainEl.innerHTML = `<p class="learning-prompt">${task}</p>${cardHtml}${controlsHtml}`;
+    const taskText = isRepeatCard() ? `One more time: ${task}` : task;
+    mainEl.innerHTML = `<p class="learning-prompt">${taskText}</p>${cardHtml}${controlsHtml}`;
     progressEl.innerHTML = renderSessionProgress();
 }
 
@@ -100,14 +104,15 @@ function renderExerciseCard({ extraClass = '', chip, title, definition }) {
     `;
 }
 
-// The revealed answer: its main block, the word's details and the rating buttons up to maxRating;
-// the word is spoken and the answer kept above the sticky rating bar
+// The revealed answer: its main block, the word's details and the rating buttons up to maxRating
+// (Next on a repeat); the word is spoken and the answer kept above the sticky rating bar
 function showAnswer(container, { label, value, actions, phonetic, showDefinition, maxRating }) {
     container.insertAdjacentHTML('beforeend', createAnswerLayout({
         specificHtml: createPrimaryAnswerBlock(label, value, actions, phonetic),
         word: currentWord(),
         showDefinition,
-        maxRating
+        maxRating,
+        isRepeat: isRepeatCard()
     }));
     speakCurrentWord();
     document.querySelector('#learningContent .card-translation')?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });

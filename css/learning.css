@@ -272,6 +272,11 @@
     background: var(--ui-bg);
 }
 
+.difficulty-buttons--next {
+    grid-template-columns: 1fr;
+    align-content: end;
+}
+
 .difficulty-buttons__prompt {
     grid-column: 1 / -1;
     margin: 0 0 2px;

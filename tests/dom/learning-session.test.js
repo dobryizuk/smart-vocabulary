@@ -22,7 +22,7 @@ window.SV = window.SV || {};
 window.SV.UIComponents = UI.UIComponents || UI;
 // Load learning session code via CommonJS exports
 const LS = require('../../js/learning-session.js');
-const { createVocabularyStore } = require('../../js/vocabulary-store.js');
+const { createVocabularyStore, WORD_FIELDS } = require('../../js/vocabulary-store.js');
 const Screen = require('../../js/exercises/exercise-screen.js');
 const Recognition = require('../../js/exercises/recognition.js');
 const Build = require('../../js/exercises/build.js');
@@ -239,7 +239,7 @@ describe('Session progress', () => {
     expect(progressText()).toBe('2 / 3');
     expect(progressWidth()).toBe('67%');
 
-    LS.markDifficulty('hard');
+    LS.markDifficulty('medium');
     expect(progressText()).toBe('3 / 3');
     expect(progressWidth()).toBe('100%');
   });
@@ -258,9 +258,164 @@ describe('Session progress', () => {
 
   it('counts the best streak from zero when no answer passed', () => {
     LS.forceStartLearning();
-    ['hard', 'medium', 'hard'].forEach((rating) => LS.markDifficulty(rating));
+    ['medium', 'medium', 'medium'].forEach((rating) => LS.markDifficulty(rating));
 
     expect(document.getElementById('learningContent').textContent).toContain('Best streak: 0');
+  });
+});
+
+describe('Repeat of a word rated Hard (C35)', () => {
+  const makeWord = (id, original, reviewHistory = []) => ({
+    id, original, translation: `t-${original}`, repetition: 1, easeFactor: 2.5,
+    nextReview: null, reviewHistory, createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z'
+  });
+  const atStage = (exerciseType) => [{ date: '2026-11-20T10:00:00.000Z', difficulty: 'easy', exerciseType }];
+
+  const state = () => window.SV.AppState;
+  const current = () => state().currentLearningWord;
+  const content = () => document.getElementById('learningContent').textContent;
+  const progressText = () => document.querySelector('[data-testid="session-progress"]').textContent.trim();
+  const taskText = () => document.querySelector('.learning-prompt').textContent;
+  const nextButton = () => document.querySelector('[data-testid="next-card-btn"]');
+
+  const startWith = (...words) => {
+    window.SV.DataManager = { vocabulary: words, save: vi.fn() };
+    LS.forceStartLearning();
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="learningContent"></div>';
+    window.SV.SpacedRepetition = require('../../js/spaced-repetition.js');
+    window.SV.Today = { showSession: vi.fn(), showOverview: vi.fn() };
+    LS.stopLearningSession();
+  });
+
+  it('queues the word once more at the end and counts it in the progress', () => {
+    startWith(makeWord('a', 'apple'), makeWord('b', 'bread'));
+    const [first, second] = state().learningSession;
+
+    LS.markDifficulty('hard');
+
+    expect(state().learningSession).toEqual([second, first]);
+    expect(state().sessionTotal).toBe(3);
+    expect(progressText()).toBe('2 / 3');
+  });
+
+  it.each(['medium', 'easy', 'perfect'])('does not repeat a word rated %s', (rating) => {
+    startWith(makeWord('a', 'apple'), makeWord('b', 'bread'));
+
+    LS.markDifficulty(rating);
+
+    expect(state().learningSession).toHaveLength(1);
+    expect(state().sessionTotal).toBe(2);
+  });
+
+  it.each([
+    ['build', 'regular', 'Do you know this word?'],
+    ['reverse', 'build', 'Build the word']
+  ])('shows the repeat of a %s card one stage easier, as %s', (stageBefore, firstStage, task) => {
+    startWith(makeWord('a', 'apple', atStage(stageBefore === 'build' ? 'regular' : 'build')));
+    expect(current().currentExerciseType).toBe(stageBefore);
+
+    LS.markDifficulty('hard');
+
+    expect(current().currentExerciseType).toBe(firstStage);
+    expect(taskText()).toBe(`One more time: ${task}`);
+  });
+
+  it('answers the repeat with Next instead of the rating buttons', () => {
+    startWith(makeWord('a', 'apple'));
+    Recognition.showTranslation();
+    expect(ratingButtons()).toHaveLength(4);
+    expect(nextButton()).toBeNull();
+
+    LS.markDifficulty('hard');
+    Recognition.showTranslation();
+
+    expect(ratingButtons()).toHaveLength(0);
+    expect(nextButton().textContent).toBe('Next');
+    expect(nextButton().dataset.action).toBe('next-card');
+  });
+
+  it('leaves SM-2, the review history, updatedAt, the stats and storage untouched by the repeat', () => {
+    startWith(makeWord('a', 'apple'));
+    LS.markDifficulty('hard');
+    const word = current();
+    const wordAfterHard = JSON.parse(JSON.stringify(word));
+
+    Recognition.showTranslation();
+    LS.showNextCard();
+
+    expect(word).toEqual(wordAfterHard);
+    expect(content()).toContain('You reviewed 1 words');
+    expect(content()).toContain('Accuracy: 0%');
+    expect(content()).toContain('Best streak: 0');
+    expect(window.SV.DataManager.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not queue a repeat that goes badly again', () => {
+    startWith(makeWord('a', 'ab', atStage('build')));
+    LS.markDifficulty('hard');
+    expect(current().currentExerciseType).toBe('build');
+
+    Build.placeBuildLetter('b');
+    Build.placeBuildLetter('a');
+    Build.checkBuildAnswer();
+    expect(document.querySelector('.build-feedback--wrong')).toBeTruthy();
+    expect(ratingButtons()).toHaveLength(0);
+    expect(state().learningSession).toHaveLength(1);
+
+    expect(nextButton()).toBeTruthy();
+    LS.showNextCard();
+
+    expect(content()).toContain('Session Complete');
+    expect(state().learningSession).toEqual([]);
+  });
+
+  it('runs a session to its end through the repeat, which counts as no extra word', () => {
+    startWith(makeWord('a', 'apple'), makeWord('b', 'bread'));
+    const first = current();
+    expect(progressText()).toBe('1 / 2');
+
+    LS.markDifficulty('hard');
+    LS.markDifficulty('easy');
+    expect(current()).toBe(first);
+    expect(progressText()).toBe('3 / 3');
+
+    LS.showNextCard();
+
+    expect(content()).toContain('You reviewed 2 words');
+    expect(content()).toContain('Accuracy: 50%');
+  });
+
+  it('keeps the repeat mark out of the word and the saved vocabulary', () => {
+    const storage = createMemoryStorage();
+    const store = createVocabularyStore({ storage, now: () => new Date('2026-11-28T10:00:00Z') });
+    const word = makeWord('a', 'apple');
+    window.SV.DataManager = { vocabulary: [word], save: () => store.save([word]) };
+    LS.forceStartLearning();
+    const keysOnCard = Object.keys(word);
+
+    LS.markDifficulty('hard');
+    const savedAfterHard = storage.data.vocabulary;
+    LS.showNextCard();
+
+    expect(Object.keys(word)).toEqual(keysOnCard);
+    expect(storage.data.vocabulary).toBe(savedAfterHard);
+    expect(WORD_FIELDS).toEqual(expect.arrayContaining(Object.keys(JSON.parse(savedAfterHard).words[0])));
+  });
+
+  it('forgets the queued repeat when the session stops, so the next session rates the word', () => {
+    startWith(makeWord('a', 'apple'));
+    LS.markDifficulty('hard');
+
+    LS.stopLearningSession();
+    expect(state().repeatedWords.size).toBe(0);
+
+    LS.forceStartLearning();
+    Recognition.showTranslation();
+    expect(ratingButtons()).toHaveLength(4);
+    expect(taskText()).toBe('Do you know this word?');
   });
 });
 
